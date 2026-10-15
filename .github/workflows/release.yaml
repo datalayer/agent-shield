@@ -1,7 +1,7 @@
 # Copyright (c) 2023-2026 Datalayer, Inc.
 # Distributed under the terms of the Modified BSD License.
 
-# Publishes the release a tag names, to PyPI (agent-shield) and npm
+# Publishes the release a tag names, to PyPI (datalayer-agent-shield) and npm
 # (@datalayer/agent-shield), with no stored token: both registries trust this
 # workflow file (OIDC trusted publishing, through the `pypi` and `npm`
 # environments). The two packages share one version, which the tag must
@@ -61,12 +61,12 @@ jobs:
             echo "npm: @datalayer/agent-shield@$version will be published"
             echo "npm=yes" >> "$GITHUB_OUTPUT"
           fi
-          status="$(curl -sL -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/agent-shield/$version/json")"
+          status="$(curl -sL -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/datalayer-agent-shield/$version/json")"
           if [ "$status" = "200" ]; then
-            echo "PyPI: agent-shield $version is already published, skipping"
+            echo "PyPI: datalayer-agent-shield $version is already published, skipping"
             echo "python=" >> "$GITHUB_OUTPUT"
           else
-            echo "PyPI: agent-shield $version will be published"
+            echo "PyPI: datalayer-agent-shield $version will be published"
             echo "python=yes" >> "$GITHUB_OUTPUT"
           fi
 
@@ -164,7 +164,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && exit 0
           gh release create "$GITHUB_REF_NAME" --title "Release $version" --generate-notes \
-            --notes "- [PyPI agent-shield](https://pypi.org/project/agent-shield/$version/)
+            --notes "- [PyPI datalayer-agent-shield](https://pypi.org/project/datalayer-agent-shield/$version/)
           - [npm @datalayer/agent-shield](https://www.npmjs.com/package/@datalayer/agent-shield/v/$version)"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

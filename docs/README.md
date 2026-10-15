@@ -4,7 +4,7 @@
 
 # Agent Shield Docs
 
-> Documentation for [Agent Shield](https://agent-shield.datalayer.tech) - Generate programmatic tools from MCP Servers and Skills. Built with [Docusaurus](https://docusaurus.io).
+> Documentation for [Agent Shield](https://agent-shield.datalayer.tech) - A runtime firewall for every agent. Built with [Docusaurus](https://docusaurus.io).
 
 ```bash
 # Install the dependencies.

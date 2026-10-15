@@ -10,7 +10,7 @@
 
 # 🤖 🛡️ Agent Shield
 
-[![PyPI - Version](https://img.shields.io/pypi/v/agent-shield)](https://pypi.org/project/agent-shield)
+[![PyPI - Version](https://img.shields.io/pypi/v/datalayer-agent-shield)](https://pypi.org/project/datalayer-agent-shield)
 [![npm](https://img.shields.io/npm/v/%40datalayer%2Fagent-shield)](https://www.npmjs.com/package/@datalayer/agent-shield)
 
 ## The demo team
@@ -21,7 +21,7 @@ under your own account: the members of the agentspecs team
 of yours, serving their application over A2A, open to visitors.
 
 ```bash
-pip install "agent-shield[demo]"
+pip install "datalayer-agent-shield[demo]"
 datalayer agent-shield demo deploy --dry-run   # what it would launch, and cost
 datalayer agent-shield demo deploy             # prints demoTeam.accountingA2AUrl for the landing
 datalayer agent-shield demo status

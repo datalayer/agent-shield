@@ -11,7 +11,7 @@ One tag releases both packages, with no stored token: PyPI and npm trust
 
 | Package                  | Registry | Version from                 | GitHub environment |
 | ------------------------ | -------- | ---------------------------- | ------------------ |
-| `agent-shield`            | PyPI     | `agent_shield/__version__.py` | `pypi`             |
+| `datalayer-agent-shield`  | PyPI     | `agent_shield/__version__.py` | `pypi`             |
 | `@datalayer/agent-shield` | npm      | `package.json`               | `npm`              |
 
 Both carry **one version**, the one the tag names.
@@ -34,7 +34,9 @@ Both carry **one version**, the one the tag names.
 
 ## Trusted publishing
 
-- PyPI project `agent-shield`: owner `datalayer`, repository `agent-shield`,
+- PyPI project `datalayer-agent-shield` (the import stays `agent_shield`; PyPI
+  refused `agent-shield` as too close to an existing name): owner `datalayer`,
+  repository `agent-shield`,
   workflow `release.yaml`, environment `pypi`.
 - npm package `@datalayer/agent-shield`: GitHub Actions, organization
   `datalayer`, repository `agent-shield`, workflow filename `release.yaml`,
