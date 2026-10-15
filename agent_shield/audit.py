@@ -23,6 +23,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_shield.tracing import observe
+
 #: The events a row may carry.
 EVENTS = (
     "session",
@@ -36,6 +38,10 @@ EVENTS = (
     "limit",
     "mcp",
     "refusal",
+    # The policies themselves: replaced from IAM, unavailable (decision 11), a session rule added or removed.
+    "policy",
+    # The agent's plan: how many steps, their status (§6.4); never their text.
+    "plan",
 )
 
 #: Who decided: the policy, a person asked, the agent itself (a notification), or the Shield.
@@ -79,6 +85,11 @@ def redact(text: str, *, environment: Mapping[str, str] | None = None) -> str:
         else:
             text = pattern.sub(REDACTED, text)
     return text
+
+
+def redacted_row(row: Mapping[str, Any], *, environment: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """A row with every string of it redacted, however deep: what any audit writes, whoever keeps it."""
+    return dict(_redacted(dict(row), environment))
 
 
 def _redacted(value: Any, environment: Mapping[str, str] | None) -> Any:
@@ -127,6 +138,8 @@ class AuditLog:
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row, separators=(",", ":"), ensure_ascii=False) + "\n")
         self.rows_written += 1
+        # The same row, after the same redaction, to the trace and the counts (§6.8).
+        observe(row)
         return row
 
     def rows(self, *, last: int | None = None) -> list[dict[str, Any]]:
@@ -138,4 +151,4 @@ class AuditLog:
         return [json.loads(line) for line in lines if line.strip()]
 
 
-__all__ = ["DECIDERS", "EVENTS", "REDACTED", "AuditLog", "default_audit_path", "diff_summary", "redact"]
+__all__ = ["DECIDERS", "EVENTS", "REDACTED", "AuditLog", "default_audit_path", "diff_summary", "redact", "redacted_row"]

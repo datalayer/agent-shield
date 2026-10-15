@@ -10,17 +10,23 @@ import json
 from pathlib import Path
 
 from .classify import FLAGGED_COMMANDS, KIND_CLASS, SHIELD_KINDS, UnknownKind, class_of, flagged
-from .decide import Context, LimitState, decide, scopes_present
+from .decide import MODEL_KIND, Context, LimitState, decide, decide_budget, scopes_present
 from .default import default_policy
 from .files import LoadedPolicy, PolicyRefused, dump_policy, load_policies, parse_policies, parse_policy
+from .levels import PolicyWidens, admits, check_tightens, credentials_rule, overlaps, widening
 from .model import (
     ACTION_CLASSES,
     LIMIT_NAMES,
+    LIMIT_RELIEF,
+    LIMIT_WORDS,
+    MODEL_LIMITS,
     SCOPES_STRICTEST_FIRST,
     VERDICT_WORDS,
     Action,
     ActionClass,
+    Credentials,
     Decision,
+    Harnesses,
     Limits,
     Mcp,
     Network,
@@ -53,6 +59,10 @@ __all__ = [
     "FLAGGED_COMMANDS",
     "KIND_CLASS",
     "LIMIT_NAMES",
+    "LIMIT_RELIEF",
+    "LIMIT_WORDS",
+    "MODEL_KIND",
+    "MODEL_LIMITS",
     "SCHEMA_PATH",
     "SCOPES_STRICTEST_FIRST",
     "SHIELD_KINDS",
@@ -60,7 +70,9 @@ __all__ = [
     "Action",
     "ActionClass",
     "Context",
+    "Credentials",
     "Decision",
+    "Harnesses",
     "LimitState",
     "Limits",
     "LoadedPolicy",
@@ -68,20 +80,27 @@ __all__ = [
     "Network",
     "Policy",
     "PolicyRefused",
+    "PolicyWidens",
     "Rule",
     "Scope",
     "Threshold",
     "UnknownKind",
     "Verdict",
+    "admits",
+    "check_tightens",
     "class_of",
+    "credentials_rule",
     "decide",
+    "decide_budget",
     "default_policy",
     "dump_policy",
     "flagged",
     "load_policies",
+    "overlaps",
     "parse_policies",
     "parse_policy",
     "policy_json_schema",
     "policy_json_schema_text",
     "scopes_present",
+    "widening",
 ]

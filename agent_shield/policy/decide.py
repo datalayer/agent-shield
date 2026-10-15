@@ -32,7 +32,9 @@ from urllib.parse import urlsplit
 
 from .model import (
     LIMIT_NAMES,
+    LIMIT_RELIEF,
     LIMIT_WORDS,
+    MODEL_LIMITS,
     SCOPES_STRICTEST_FIRST,
     VERDICT_WORDS,
     Action,
@@ -52,6 +54,9 @@ class LimitState:
     tool_calls: int = 0
     terminals_open: int = 0
     bytes_written: int = 0
+    #: What the session's model requests spent so far (SH-32): tokens and credits.
+    model_tokens: int = 0
+    spend: int = 0
     #: ``(scope, limit)`` pairs whose soft threshold was already asked about.
     soft_asked: set[tuple[str, str]] = field(default_factory=set)
 
@@ -59,11 +64,20 @@ class LimitState:
         """Count an action the agent went on with (allowed, or asked and granted)."""
         if decision.verdict == "deny" or not decision.counted:
             return
+        if action.kind == MODEL_KIND:
+            self.model_tokens += action.tokens or 0
+            self.spend += action.credits or 0
+            return
         self.tool_calls += 1
         if action.kind == "terminal":
             self.terminals_open += 1
         if action.bytes and action.action_class == "write":
             self.bytes_written += action.bytes
+
+    def spent(self, *, tokens: int = 0, cost: int = 0) -> None:
+        """Count what a model request spent, once it is known (after the response)."""
+        self.model_tokens += max(0, tokens)
+        self.spend += max(0, cost)
 
     def terminal_released(self) -> None:
         if self.terminals_open > 0:
@@ -98,7 +112,22 @@ def _subject(action: Action) -> str:
     return action.title
 
 
-def _would_use(action: Action, name: str, state: LimitState) -> int:
+#: The kind of a model request, held to the model limits alone (SH-32): never
+#: a tool call, never a rule's business.
+MODEL_KIND = "model"
+
+
+def _would_use(action: Action, name: str, state: LimitState) -> int | None:
+    """What the limit would read after this action, or ``None`` when the action does not touch it."""
+    is_model = action.kind == MODEL_KIND
+    if name in MODEL_LIMITS:
+        if not is_model:
+            return None
+        if name == "model_tokens":
+            return state.model_tokens + (action.tokens or 0)
+        return state.spend + (action.credits or 0)
+    if is_model:
+        return None
     if name == "tool_calls":
         return state.tool_calls + 1
     if name == "terminals_open":
@@ -114,7 +143,7 @@ def _limit_decision(action: Action, context: Context, policy: Policy) -> Decisio
         if threshold is None:
             continue
         after = _would_use(action, name, context.state)
-        if after <= threshold.soft:
+        if after is None or after <= threshold.soft:
             continue
         words = LIMIT_WORDS[name]
         scope = policy.scope
@@ -126,8 +155,7 @@ def _limit_decision(action: Action, context: Context, policy: Policy) -> Decisio
                 rule=name,
                 sentence=(
                     f"{_subject(action)}: refused — the session's {words} would reach {after}, "
-                    f"over the hard limit of {threshold.hard} in the {scope} policy; a person can widen "
-                    f"the limit or start a new session"
+                    f"over the hard limit of {threshold.hard} in the {scope} policy; {LIMIT_RELIEF[name]}"
                 ),
             )
         if (scope, name) not in context.state.soft_asked:
@@ -257,8 +285,34 @@ def decide(action: Action, context: Context, policies: Sequence[Policy]) -> Deci
     )
 
 
+def decide_budget(
+    context: Context, policies: Sequence[Policy], *, tokens: int = 0, cost: int = 0, title: str = "a model request"
+) -> Decision:
+    """Decide the next model request against the model limits alone (SH-32, SH-54).
+
+    ``tokens`` and ``cost`` (in credits) are what the request is expected to add — the
+    last request's cost is the usual estimate; ``0`` asks whether what was
+    spent already crossed a threshold. The limits are read strictest scope
+    first; the rules, the allow-list and the default are not consulted: a
+    model request is not a classed action. Under every limit the answer is
+    *do it*; past a soft one, *ask me first* once per limit and scope; past a
+    hard one, refused with what would let it go on.
+    """
+    action = Action(kind=MODEL_KIND, title=title, tokens=tokens, credits=cost)
+    for policy in sorted(policies, key=_rank):
+        found = _limit_decision(action, context, policy)
+        if found is not None:
+            return found
+    return Decision(
+        verdict="allow",
+        decided_by="default",
+        counted=True,
+        sentence=f"{title}: do it — within every model limit",
+    )
+
+
 def scopes_present(policies: Sequence[Policy]) -> list[Scope]:
     return [policy.scope for policy in sorted(policies, key=_rank)]
 
 
-__all__ = ["Context", "LimitState", "decide", "scopes_present"]
+__all__ = ["MODEL_KIND", "Context", "LimitState", "decide", "decide_budget", "scopes_present"]

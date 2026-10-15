@@ -13,6 +13,16 @@ One document per scope — `organization`, `team`, `session` — with rules, lim
 
 `agent_shield.policy.decide(action, context, policies)` is pure and returns the verdict, a sentence, and the scope and rule that decided. The schema is published as `schema/policy.schema.json`.
 
+**Three levels** (SHIELD.md §6.3, SH-31): on Datalayer the organization's document comes from IAM, the Appspec's Rules are the team's, the session's is the default plus what a person allows or tightens while it runs. The engine gives the strictest answer in every order the documents are given; a lower document may only tighten — `agent_shield.policy.widening(lower, above)` says in sentences where it would permit more (a rule that permits more than an overlapping rule above, a limit above, a fetch host, an MCP server or a harness the scope above does not list, a credentials rule not kept), and IAM refuses a team document, the runtime a session rule, with them.
+
+**The model limits** (SH-32): `limits.model_tokens` (the budget) and `limits.spend` (credits, 100 a USD), soft then hard like the others; `decide_budget(context, policies, tokens=, cost=)` decides the next model request against them alone, and a hard limit's sentence says what would let the session go on.
+
+**The harnesses** (§6.7): `harnesses.admit` names the harnesses a scope admits, `harnesses.credentials` whose key runs them (`account`, the person's own declared secret, is the default of decision 3).
+
+## Managed from the SaaS
+
+`agent_shield.saas.ManagedPolicies` (SH-50, decisions 10 and 11) pulls the documents of an account from IAM — `GET /mcp-policies/shield/accounts/{account_uid}`, the organization's and the teams' `shield` documents, each with its `version` and an `expires` stamped at the serve — keeps them until `expires`, takes one pushed over a socket, and polls every 30 s while a watcher runs, so an administrator's change reaches a running Shield within a minute. It fails closed: with IAM unreachable and no unexpired copy, `PolicyUnavailable` names IAM in a sentence; at creation the harness is refused with it, while running every further action is. No policy lives only in a pod, a file or an environment variable.
+
 ## The proxy
 
 `agent-shield run -- <command>`: an ACP agent on the Shield's stdio in front of the agent it launched. Permissions are decided by the policy; the agent's tool calls are classed and limited; `fs/*` and `terminal/*` are answered against the workspace (a path outside it is refused; a command runs with a trimmed environment); `mcpServers` are rewritten to the allow-list; every action is written to `~/.agent-shield/audit.jsonl` with credentials redacted. `allow_always` chosen by a person becomes a rule for the session, gone with it.
@@ -25,6 +35,6 @@ The harness catalogue and the register live in agentspecs (`harnesses/`): each h
 
 ## Built and not built
 
-Built in 0.1.1: the policy engine, the register, the stdio and WebSocket client channels, the normaliser, the proxy, the audit, the command, the TypeScript types.
+Built in 0.1.2: the policy engine with the three levels, the model limits and the harnesses section, the SaaS client pulling policies from IAM and failing closed, the register, the stdio and WebSocket client channels, the normaliser, the proxy with session rules while running, the audit, the command, the TypeScript types.
 
-Not built: `serve` (the proxy over WebSocket), registration with Datalayer and policies from IAM, the OTEL export, the Shield report and conformance, the diff and terminal renderers.
+Not built: `serve` (the proxy over WebSocket), the standalone proxy's registration with Datalayer (`setup --register`), the OTEL export, the Shield report and conformance, the diff and terminal renderers.

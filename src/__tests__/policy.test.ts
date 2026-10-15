@@ -12,7 +12,9 @@ import { test } from 'node:test';
 
 import {
   ACTION_CLASSES,
+  CREDENTIALS,
   KIND_CLASS,
+  LIMIT_NAMES,
   SCOPES,
   TOOL_KINDS,
   VERDICTS,
@@ -31,12 +33,14 @@ test('the TypeScript constants are the schema’s enums', () => {
   assert.deepEqual(schema.$defs.Rule.properties.decision.enum, [...VERDICTS]);
   assert.deepEqual(schema.$defs.Rule.properties.where.enum, [...WHERE]);
   assert.deepEqual(schema.$defs.Rule.properties.kinds.items.enum, [...TOOL_KINDS]);
+  assert.deepEqual(schema.$defs.Harnesses.properties.credentials.enum, [...CREDENTIALS]);
 });
 
 test('the schema’s document and rule keys are the interfaces’ keys', () => {
-  assert.deepEqual(Object.keys(schema.properties).sort(), ['expires', 'limits', 'mcp', 'network', 'rules', 'scope', 'version']);
+  assert.deepEqual(Object.keys(schema.properties).sort(), ['expires', 'harnesses', 'limits', 'mcp', 'network', 'rules', 'scope', 'version']);
   assert.deepEqual(Object.keys(schema.$defs.Rule.properties).sort(), ['classes', 'commands', 'decision', 'kinds', 'name', 'paths', 'reason', 'where']);
-  assert.deepEqual(Object.keys(schema.$defs.Limits.properties).sort(), ['bytes_written', 'terminals_open', 'tool_calls']);
+  assert.deepEqual(Object.keys(schema.$defs.Limits.properties).sort(), [...LIMIT_NAMES].sort());
+  assert.deepEqual(Object.keys(schema.$defs.Harnesses.properties).sort(), ['admit', 'credentials']);
   assert.equal(schema.additionalProperties, false);
 });
 

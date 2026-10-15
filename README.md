@@ -119,9 +119,28 @@ mcp:
 `agent_shield.policy.decide(action, context, policies)` is pure: it answers
 `allow | ask | deny`, the sentence, and the scope and rule that decided.
 
+Three levels hold (SHIELD.md §6.3): on Datalayer the **organization's**
+document comes from IAM, the **Appspec's** Rules are the team's, and the
+**session's** is the default above plus what a person allows or tightens
+while it runs. A lower document only tightens: `agent_shield.policy.widening`
+says in sentences where it would permit more, IAM refuses a team document
+with them, and the runtime refuses a session rule with them. Two more limits
+hold the model: `model_tokens` (the budget) and `spend` (credits, 100 a USD),
+soft then hard; `decide_budget` decides the next model request against them.
+A `harnesses` section says which harnesses a scope admits and whose
+credentials run them.
+
+Managed from Datalayer (`agent_shield.saas`), the policy is pulled from IAM
+at the agent's creation, kept until its `expires`, refreshed every 30 s or
+when pushed, and **fails closed**: with IAM unreachable and no unexpired
+copy, the harness is refused in a sentence naming IAM.
+
 ## What is built, and what is not
 
-Built (0.1.1, SHIELD.md Phase 0): the policy engine and its schema; the
+Built (0.1.2, SHIELD.md Phase 0 and the policy side of Phase 2): the policy
+engine and its schema, the three levels with `widening`, the model limits and
+`decide_budget`, the `harnesses` section, the SaaS client pulling from IAM
+and failing closed; the
 register read from [agentspecs](https://github.com/datalayer/agentspecs)
 (`claude-code`, `codex`, `gemini-cli`, `goose`, `opencode`, `openhands`,
 `fast-agent`); the stdio and WebSocket client channels on the official
@@ -131,9 +150,10 @@ in front of the test agent (`VERDICT: CONFORMANT`); the audit; the
 `agent-shield` command; `@datalayer/agent-shield`'s policy types.
 
 Not built: `agent-shield serve` (the proxy over WebSocket, SH-52);
-registration with Datalayer and the policy pulled from IAM (SH-47, SH-50);
-the OTEL export (SH-51); the Shield report and conformance (SH-36, SH-60);
-the TypeScript renderers of diffs and terminals (SH-53).
+registration of the standalone proxy with Datalayer (SH-47: the SaaS client
+exists, `setup --register` does not use it yet); the OTEL export (SH-51); the
+Shield report and conformance (SH-36, SH-60); the TypeScript renderers of
+diffs and terminals (SH-53).
 
 Claude Code has been run behind the proxy (`claude-agent-acp` 0.91.0:
 initialize, session, modes); a turn needs a funded Anthropic API key.

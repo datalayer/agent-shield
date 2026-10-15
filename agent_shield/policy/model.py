@@ -91,20 +91,45 @@ class Threshold(_Strict):
 
 
 class Limits(_Strict):
-    """The stateful limits of a session (SHIELD §6.3)."""
+    """The stateful limits of a session (SHIELD §6.3).
+
+    Three count the harness's actions; two count what its model costs: the
+    **model budget** in tokens and the **spend** in credits (the deployment's
+    spend limit; 100 credits are one USD). Each has a soft threshold, where the
+    next call asks the person, and a hard one, where each further call is
+    refused and the sentence says what would let it go on.
+    """
 
     tool_calls: Threshold | None = Field(default=None, description="Classed actions per session.")
     terminals_open: Threshold | None = Field(default=None, description="Terminals open at once.")
     bytes_written: Threshold | None = Field(default=None, description="Bytes written to the workspace.")
+    model_tokens: Threshold | None = Field(
+        default=None, description="The model budget: tokens the session's model requests spend, in and out."
+    )
+    spend: Threshold | None = Field(
+        default=None, description="The spend limit: credits the session spends on models (100 credits a USD)."
+    )
 
 
 #: The limit names, in the order they are checked.
-LIMIT_NAMES: tuple[str, ...] = ("tool_calls", "terminals_open", "bytes_written")
+LIMIT_NAMES: tuple[str, ...] = ("tool_calls", "terminals_open", "bytes_written", "model_tokens", "spend")
 LIMIT_WORDS: dict[str, str] = {
     "tool_calls": "tool calls",
     "terminals_open": "terminals open at once",
     "bytes_written": "bytes written",
+    "model_tokens": "model tokens spent",
+    "spend": "credits spent",
 }
+#: What would let the session go on past each hard limit (§6.3): said in the sentence.
+LIMIT_RELIEF: dict[str, str] = {
+    "tool_calls": "a person can widen the limit or start a new session",
+    "terminals_open": "a terminal can be released, or a person can widen the limit",
+    "bytes_written": "a person can widen the limit or start a new session",
+    "model_tokens": "a cheaper model, a wider budget, or a person's word would let it go on",
+    "spend": "a wider spend limit or a person's word would let it go on",
+}
+#: The limits a model request is held to; the others count the harness's actions.
+MODEL_LIMITS: tuple[str, ...] = ("model_tokens", "spend")
 
 
 class Network(_Strict):
@@ -122,6 +147,26 @@ class Mcp(_Strict):
     allow: list[str] = Field(default_factory=list)
 
 
+#: Whose key may run a harness (SHIELD decision 3): the account's own declared
+#: secret, the platform's, or either.
+Credentials = Literal["account", "platform", "either"]
+
+
+class Harnesses(_Strict):
+    """The harnesses an organization admits, and whose credentials run them (§6.7)."""
+
+    admit: list[str] = Field(
+        default_factory=list,
+        description="Harness ids of the catalogue this scope admits; empty admits every registered harness.",
+    )
+    credentials: Credentials = Field(
+        default="account",
+        description=(
+            "Whose key runs a harness: the account's own declared secret (decision 3), the platform's, or either."
+        ),
+    )
+
+
 class Policy(_Strict):
     """One policy document, one scope."""
 
@@ -132,6 +177,7 @@ class Policy(_Strict):
     limits: Limits = Field(default_factory=Limits)
     network: Network = Field(default_factory=Network)
     mcp: Mcp = Field(default_factory=Mcp)
+    harnesses: Harnesses = Field(default_factory=Harnesses)
 
     @model_validator(mode="after")
     def _rule_names_unique(self) -> Policy:
@@ -158,6 +204,8 @@ class Action(_Strict):
     command: str | None = None
     url: str | None = None
     bytes: int | None = Field(default=None, ge=0, description="Bytes a write carries.")
+    tokens: int | None = Field(default=None, ge=0, description="Tokens a model request spent, in and out.")
+    credits: int | None = Field(default=None, ge=0, description="Credits a model request cost (100 a USD).")
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -187,12 +235,16 @@ class Settings:
 __all__ = [
     "ACTION_CLASSES",
     "LIMIT_NAMES",
+    "LIMIT_RELIEF",
     "LIMIT_WORDS",
+    "MODEL_LIMITS",
     "SCOPES_STRICTEST_FIRST",
     "VERDICT_WORDS",
     "Action",
     "ActionClass",
+    "Credentials",
     "Decision",
+    "Harnesses",
     "Limits",
     "Mcp",
     "Network",

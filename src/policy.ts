@@ -73,10 +73,40 @@ export interface Threshold {
   hard: number;
 }
 
+/**
+ * The stateful limits of a session (SHIELD §6.3): three count the harness's
+ * actions, two what its model costs — the model budget in tokens and the
+ * spend in credits (100 a USD). Each has a soft threshold, where the next
+ * call asks, and a hard one, where each further call is refused.
+ */
 export interface Limits {
   tool_calls?: Threshold | null;
   terminals_open?: Threshold | null;
   bytes_written?: Threshold | null;
+  model_tokens?: Threshold | null;
+  spend?: Threshold | null;
+}
+
+export const LIMIT_NAMES = ['tool_calls', 'terminals_open', 'bytes_written', 'model_tokens', 'spend'] as const;
+export type LimitName = (typeof LIMIT_NAMES)[number];
+
+/** The limits' words, as the sentences say them. */
+export const LIMIT_WORDS: Record<LimitName, string> = {
+  tool_calls: 'tool calls',
+  terminals_open: 'terminals open at once',
+  bytes_written: 'bytes written',
+  model_tokens: 'model tokens spent',
+  spend: 'credits spent',
+};
+
+/** Whose key may run a harness (SHIELD decision 3). */
+export const CREDENTIALS = ['account', 'platform', 'either'] as const;
+export type Credentials = (typeof CREDENTIALS)[number];
+
+/** The harnesses an organization admits, and whose credentials run them (§6.7). */
+export interface Harnesses {
+  admit?: string[];
+  credentials?: Credentials;
 }
 
 export interface Network {
@@ -95,6 +125,7 @@ export interface Policy {
   limits?: Limits;
   network?: Network;
   mcp?: Mcp;
+  harnesses?: Harnesses;
 }
 
 export type DecidedBy = 'rule' | 'limit' | 'network' | 'default';

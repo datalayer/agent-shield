@@ -30,9 +30,6 @@ dependencies = [
     # (`acp.connection.Connection`, the client and agent routers, the
     # schema's camelCase aliases); a newer minor is taken on after it is run.
     "agent-client-protocol>=0.7.1,<0.8",
-    # The harness catalogue and the register (SHIELD SH-01, SH-04): the Shield
-    # reads them from agentspecs and keeps no copy.
-    "agentspecs>=0.0.100",
 ]
 
 [project.scripts]
@@ -51,18 +48,25 @@ agent-shield = "agent_shield.reactor_extension:plugin"
 [project.optional-dependencies]
 # The WebSocket channel: an agent served at a URL (agent-runtimes' ACP route).
 websocket = ["websockets>=13"]
+# The harness catalogue and the register (SHIELD SH-01, SH-04): the Shield
+# reads them from agentspecs and keeps no copy. An extra, not a dependency:
+# the policy engine and the SaaS client (`agent_shield.policy`, `agent_shield.saas`)
+# are what IAM installs to validate a Shield policy, and they must not drag
+# the catalogue's sandbox stack behind them (SH-50).
+register = ["agentspecs>=0.0.100"]
 # One extra per harness (SHIELD §5.3). The adapters are Node packages, which
 # pip cannot install: `agent-shield setup --harness <id>` installs the pinned
 # one into the Shield's own prefix. The extras name the choice on the install
-# line and carry nothing else.
-claude-code = []
-codex = []
-gemini-cli = []
-goose = []
-opencode = []
-openhands = []
-all = ["datalayer-agent-shield[websocket]"]
+# line and bring the register the setup reads.
+claude-code = ["datalayer-agent-shield[register]"]
+codex = ["datalayer-agent-shield[register]"]
+gemini-cli = ["datalayer-agent-shield[register]"]
+goose = ["datalayer-agent-shield[register]"]
+opencode = ["datalayer-agent-shield[register]"]
+openhands = ["datalayer-agent-shield[register]"]
+all = ["datalayer-agent-shield[websocket,register]"]
 test = [
+  "agentspecs>=0.0.100",
   # tests/test_cli.py reads pyproject.toml; tomllib is 3.11+.
   "tomli>=2; python_version < '3.11'",
   "pytest>=7.0",

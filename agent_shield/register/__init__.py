@@ -26,15 +26,23 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from agentspecs.harnesses import (
-    CUSTOM_HARNESS,
-    HarnessError,
-    HarnessSpec,
-    RegisterEntry,
-    ThirdPartyServing,
-    load_harnesses,
-    load_register,
-)
+try:
+    from agentspecs.harnesses import (
+        CUSTOM_HARNESS,
+        HarnessError,
+        HarnessSpec,
+        RegisterEntry,
+        ThirdPartyServing,
+        load_harnesses,
+        load_register,
+    )
+except ImportError:  # the policy engine and the SaaS client work without the catalogue (IAM reads them)
+    AGENTSPECS_MISSING: str | None = (
+        'the harness catalogue needs agentspecs: `pip install "datalayer-agent-shield[register]"` '
+        "(or an extra per harness, `[claude-code]`, `[codex]`, …)"
+    )
+else:
+    AGENTSPECS_MISSING = None
 
 #: The executable an npm adapter installs, where it is not the package's own last name.
 EXECUTABLES: dict[str, str] = {"@google/gemini-cli": "gemini", "opencode-ai": "opencode"}
@@ -121,6 +129,8 @@ class Harness:
 
 
 def catalogue() -> dict[str, Harness]:
+    if AGENTSPECS_MISSING is not None:
+        raise RegisterRefused(AGENTSPECS_MISSING)
     """Every launchable harness of the catalogue with its register entry."""
     specs = load_harnesses()
     register = load_register()

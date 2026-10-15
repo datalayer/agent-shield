@@ -26,6 +26,7 @@ session (decision 7). A malformed update ends the turn with a sentence.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import re
 import sys
@@ -72,12 +73,15 @@ from agent_shield.policy import (
     Policy,
     Rule,
     UnknownKind,
+    check_tightens,
     class_of,
     decide,
+    decide_budget,
 )
+from agent_shield.tracing import with_traceparent
 
 from .channel import SHIELD_CLIENT_CAPABILITIES, SHIELD_CLIENT_INFO, StdioACPChannel
-from .events import ToolCallSaid, ToolCallUpdated
+from .events import PlanUpdated, ToolCallSaid, ToolCallUpdated
 from .normalize import MalformedUpdate, normalize
 from .workspace import OutsideWorkspace, Terminals, Workspace
 
@@ -218,6 +222,88 @@ class ShieldProxy:
         self._launch: Any = None
         self.sessions: dict[str, SessionState] = {}
         self.inner = _InnerClient(self)
+        #: The sentence refusing every action while no unexpired policy is held
+        #: (SHIELD decision 11), or ``None`` while the policies are in force.
+        self.unavailable: str | None = None
+
+    # -- the policies while running (SH-50, SH-54) ---------------------------------------
+
+    def replace_policies(self, policies: Sequence[LoadedPolicy]) -> None:
+        """Take a changed set of documents, in force at once in every open session.
+
+        A session's own rules (``allow_always``, the ones a person added from
+        the panel) stay with it; the documents under them are the new ones.
+        """
+        self.loaded = list(policies)
+        self.policies = [item.policy for item in self.loaded]
+        for session in self.sessions.values():
+            session.policies = self.policies
+        self.unavailable = None
+        self.audit.write("policy", what="replaced", scopes=[policy.scope for policy in self.policies], by="shield")
+
+    def refuse_all(self, sentence: str) -> None:
+        """Hold every further action to ``sentence`` until the policies are in force again (decision 11)."""
+        self.unavailable = sentence
+        self.audit.write("policy", what="unavailable", sentence=sentence, by="shield")
+
+    def add_session_rule(self, session_id: str, rule: Rule) -> list[Rule]:
+        """A rule a person adds to a running session (§6.3): in force at once, gone with the session.
+
+        It may only tighten what the organization's documents say: a rule that
+        would permit more is refused with :class:`PolicyWidens`'s sentences.
+        A rule of the same name replaces the earlier one.
+        """
+        session = self._session(session_id)
+        check_tightens(
+            Policy(scope="session", rules=[rule]),
+            [policy for policy in session.policies if policy.scope == "organization"],
+        )
+        session.session_rules = [*(r for r in session.session_rules if r.name != rule.name), rule]
+        session.session_rules.sort(key=lambda r: 0 if r.decision != "allow" else 1)
+        self.audit.write(
+            "policy",
+            session=session_id,
+            what="session_rule",
+            rule=rule.name,
+            decision=rule.decision,
+            classes=list(rule.classes),
+            kinds=list(rule.kinds),
+            by="person",
+        )
+        return list(session.session_rules)
+
+    def remove_session_rule(self, session_id: str, name: str) -> list[Rule]:
+        """Take a session rule back; a name that is no rule is refused."""
+        session = self._session(session_id)
+        kept = [rule for rule in session.session_rules if rule.name != name]
+        if len(kept) == len(session.session_rules):
+            raise KeyError(f"the session has no rule named {name!r}")
+        session.session_rules = kept
+        self.audit.write("policy", session=session_id, what="session_rule_removed", rule=name, by="person")
+        return list(kept)
+
+    def rules_in_force(self, session_id: str) -> dict[str, Any]:
+        """What decides this session: every document, strictest first, and the session's own rules."""
+        session = self._session(session_id)
+        return {
+            "policies": [
+                json.loads(policy.model_dump_json(exclude_none=True)) for policy in session.policies_in_force()
+            ],
+            "session_rules": [json.loads(rule.model_dump_json(exclude_none=True)) for rule in session.session_rules],
+            "unavailable": self.unavailable,
+        }
+
+    def decide_budget(
+        self, session_id: str, *, tokens: int = 0, cost: int = 0, title: str = "a model request"
+    ) -> Decision:
+        """The next model request against the model limits in force (SH-32)."""
+        session = self._session(session_id)
+        if self.unavailable is not None:
+            return Decision(verdict="deny", decided_by="default", sentence=self.unavailable)
+        decision = decide_budget(session.context, session.policies_in_force(), tokens=tokens, cost=cost, title=title)
+        if decision.decided_by == "limit" and decision.verdict == "ask" and decision.scope and decision.rule:
+            session.state.soft_asked.add((decision.scope, decision.rule))
+        return decision
 
     # -- the outer face: the client's agent --------------------------------------------
 
@@ -369,7 +455,9 @@ class ShieldProxy:
         session = self._session(session_id)
         session.failed = None
         self.audit.write("turn", session=session_id, what="prompt", blocks=len(prompt), by="shield")
-        answer = await self.channel.prompt(session_id, prompt, meta=kwargs or None)
+        # The trace the face arrived on, handed to the harness in the key ACP
+        # reserves for it (§6.8, SH-51); a caller's own `_meta.traceparent` wins.
+        answer = await self.channel.prompt(session_id, prompt, meta=with_traceparent(kwargs))
         if session.failed is not None:
             self.audit.write(
                 "turn", session=session_id, what="ended", stop_reason="refusal", sentence=session.failed, by="shield"
@@ -398,6 +486,8 @@ class ShieldProxy:
     # -- deciding ------------------------------------------------------------------------
 
     def decide(self, session: SessionState, action: Action, *, count_as: str | None = None) -> Decision:
+        if self.unavailable is not None:
+            return Decision(verdict="deny", decided_by="default", sentence=self.unavailable)
         decision = decide(action, session.context, session.policies_in_force())
         if decision.decided_by == "limit" and decision.verdict == "ask" and decision.scope and decision.rule:
             session.state.soft_asked.add((decision.scope, decision.rule))
@@ -516,6 +606,14 @@ class _InnerClient:
         except MalformedUpdate as exc:
             await proxy.fail_turn(session, str(exc))
             return
+        if isinstance(event, PlanUpdated):
+            proxy.audit.write(
+                "plan",
+                session=session_id,
+                steps=len(event.steps),
+                status={status: sum(1 for step in event.steps if step.status == status) for status in sorted({step.status for step in event.steps})},
+                by="agent",
+            )
         if isinstance(event, ToolCallSaid):
             try:
                 action, problem = action_of_tool_call(event, session.workspace)
@@ -756,6 +854,15 @@ class _InnerClient:
                 session_id=session_id, update=update_tool_call(call_id, status="failed")
             )
             raise RequestError(REFUSED, f"{action.title}: {exc}") from None
+        self.proxy.audit.write(
+            "fs_read",
+            session=session_id,
+            tool_call_id=call_id,
+            path=placed.shown,
+            bytes=len(content.encode("utf-8")),
+            what="read",
+            by="shield",
+        )
         await self.proxy.client.session_update(
             session_id=session_id, update=update_tool_call(call_id, status="completed")
         )
