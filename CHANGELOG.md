@@ -6,11 +6,13 @@
 
 # Changelog
 
-## 0.1.5
+## 0.1.6
 
-0.1.3 and 0.1.4 were tagged with a quote nested inside a quoted f-string in
-`conformance/map.py` — a SyntaxError on Python 3.10 and 3.11, which the release's tests
-caught — and were never published; 0.1.5 is the same release, compiled on 3.10.
+0.1.3 to 0.1.5 were never published: a quote nested inside a quoted f-string in
+`conformance/map.py` (a SyntaxError on Python 3.10 and 3.11, which the release's tests
+caught), then the words moved out of it to a name that was not defined (a latent NameError
+on a partially covered clause with no note, which no clause of the catalogue has — tested
+now). 0.1.6 is the same release, compiled on 3.10, 17 tests.
 
 The conformance side of SHIELD.md Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2026):
 

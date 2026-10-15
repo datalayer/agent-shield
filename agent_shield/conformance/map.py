@@ -32,6 +32,9 @@ from agent_shield.conformance import STATUS_ORDER, Assessment, Evidence, Inputs
 from agent_shield.conformance import collect as c
 
 Answer = tuple[str, str, list[Evidence], list[str], str | None]
+
+#: What a partial crosswalk leaves to the organization when the page says nothing more.
+REST_IS_THE_ORGANIZATIONS = "the rest is the organization's"
 Rule = Callable[[Any, Inputs], Answer]
 
 #: The drills of SH-37, by id, as the map names them.

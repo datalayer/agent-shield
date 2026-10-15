@@ -510,3 +510,15 @@ def test_iso_42001_is_answered_from_the_same_evidence_through_the_crosswalk():
     report = build_report(ISO, full_inputs(), scope="organization", name="Acme", uid="o1")
     assert "Conformance report: Acme against ISO/IEC 42001:2023 2023" in report.markdown()
     assert report.audit_hub()["framework"]["id"] == "iso-42001"
+
+
+def test_a_partial_clause_without_a_note_says_the_rest_is_the_organizations():
+    from types import SimpleNamespace  # noqa: PLC0415
+
+    from agent_shield.conformance.map import answer_covered  # noqa: PLC0415
+
+    covering = assess(AIUC, full_inputs())
+    clause = SimpleNamespace(id="X.1", coverage="partial", covered_by=["E006"], coverage_note="", cadence_months=12)
+    status, reason, _evidence, missing, _last = answer_covered(clause, covering, full_inputs())
+    assert status == "partly" and "E006 met by evidence" in reason
+    assert missing[-1].endswith("partially: the rest is the organization's")
