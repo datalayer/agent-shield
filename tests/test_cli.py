@@ -152,8 +152,11 @@ def test_uninstall_previews_by_default_and_keeps_the_audit(shield_home: Path):
 
 
 def test_setup_refuses_an_unknown_harness_and_stops_without_node(shield_home: Path, monkeypatch):
+    result = runner.invoke(app, ["setup", "--harness", "nope", "--yes"])
+    assert result.exit_code == 2 and "'nope' is not in the register" in result.output
+    # The long tail is registered, and not offered until drilled (SH-57).
     result = runner.invoke(app, ["setup", "--harness", "cursor", "--yes"])
-    assert result.exit_code == 2 and "'cursor' is not in the register" in result.output
+    assert result.exit_code == 2 and "listed, not drilled yet" in result.output
     monkeypatch.setattr("agent_shield.cli._node_version", lambda: (18, 0, 0))
     result = runner.invoke(app, ["setup", "--yes"])
     assert result.exit_code == 2 and "needs Node >=22" in result.output
