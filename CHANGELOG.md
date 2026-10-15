@@ -6,7 +6,10 @@
 
 # Changelog
 
-## 0.1.3
+## 0.1.4
+
+0.1.3 was tagged with a quote inside a quoted f-string in `conformance/map.py` (a
+SyntaxError on import) and was never published; 0.1.4 is the same release, fixed.
 
 The conformance side of SHIELD.md Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2026):
 

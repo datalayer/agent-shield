@@ -830,7 +830,7 @@ def answer_covered(control: Any, covering: Assessment | None, inputs: Inputs) ->
         status = "partly"
         missing = [
             *missing,
-            f"the crosswalk says {covering.standard_name} covers this clause partially: {control.coverage_note or 'the rest is the organization's'}",
+            f"the crosswalk says {covering.standard_name} covers this clause partially: {control.coverage_note or "the rest is the organization's"}",
         ]
     reason = (
         f"{control.id} is {_words(status)} through {', '.join(control.covered_by)} of {covering.standard_name} ({control.coverage} coverage): "
