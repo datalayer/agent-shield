@@ -1,6 +1,6 @@
 {
   "name": "@datalayer/agent-shield",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Agent Shield: the policy document's types and the decisions' sentences, for the web and the phone.",
   "type": "module",
   "license": "BSD-3-Clause",
@@ -12,7 +12,14 @@
   "bugs": {
     "url": "https://github.com/datalayer/agent-shield/issues"
   },
-  "keywords": ["agent", "shield", "firewall", "policy", "acp", "datalayer"],
+  "keywords": [
+    "agent",
+    "shield",
+    "firewall",
+    "policy",
+    "acp",
+    "datalayer"
+  ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "exports": {
@@ -22,7 +29,10 @@
     },
     "./schema/policy.schema.json": "./schema/policy.schema.json"
   },
-  "files": ["lib", "schema"],
+  "files": [
+    "lib",
+    "schema"
+  ],
   "sideEffects": false,
   "scripts": {
     "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
@@ -30,10 +40,12 @@
     "build:lib": "npm run clean:lib && tsc -b",
     "clean": "rimraf lib tsconfig.tsbuildinfo",
     "test": "node --test \"lib/__tests__/**/*.test.js\"",
-    "pretest": "npm run build"
+    "pretest": "npm run build",
+    "generate": "node scripts/generate.mjs"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "json-schema-to-typescript": "^16.0.0",
     "rimraf": "^5.0.0",
     "typescript": "^5.8.3"
   },

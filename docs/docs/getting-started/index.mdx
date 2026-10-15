@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 title: Getting started
 ---
 
@@ -13,11 +13,11 @@ agent-shield run -- claude-agent-acp
 
 `setup` finds node (22 or later for the Claude Code and Codex adapters), the vendor CLIs on the path and the credentials present in the environment — by name, never a value — and asks for nothing it found. It installs the harness's pinned adapter into `~/.agent-shield/harnesses/<id>@<version>` with `npm install --prefix` (never a global `npx`), writes `~/.agent-shield/config.yaml` and the default policy `agent-shield.yaml` beside the project, and prints the Zed snippet. Measured on 15 October 2026: 27 seconds from a clean prefix.
 
-`run` starts the agent behind the Shield on the current directory. The first decision is seen in the terminal with the first tool call. Registration with Datalayer (`--register`) is not built yet: `setup` records the wish and stays local.
+`run` starts the agent behind the Shield on the current directory. The first decision is seen in the terminal with the first tool call. Then `agent-shield log` shows the audit, `agent-shield policy show` the policy in force and where each line came from.
 
-Then `agent-shield log` shows the audit, `agent-shield policy show` the policy in force and where each line came from.
+## In an editor or a notebook
 
-## In Zed
+Every ACP client that starts a command takes the Shield as its agent command: `agent-shield run -- <agent>`. The [works with](../works-with/) page lists the clients tried, each with its setting.
 
 ```json
 "agent_servers": {
@@ -25,6 +25,26 @@ Then `agent-shield log` shows the audit, `agent-shield policy show` the policy i
 }
 ```
 
+## At an address
+
+```bash
+export SHIELD_TOKEN=$(openssl rand -hex 24)
+agent-shield serve --host 0.0.0.0 --port 8788 --token-env SHIELD_TOKEN -- claude-agent-acp
+```
+
+A client that reaches an agent over WebSocket or ACP Streamable HTTP connects to `/acp` with the token in its `Authorization` header (or, over WebSocket, in its first message), never in the address; a client that only starts commands reaches the served Shield through `agent-shield connect ws://host:8788/acp --token-env SHIELD_TOKEN`. See [serve and registration](../serve/).
+
+## Registered with Datalayer
+
+```bash
+export AGENT_SHIELD_SERVICE_KEY=...      # a service agent's key, made by the organization's administrator
+agent-shield setup --register --org <organization uid> --agent <service agent uid>
+```
+
+The key is exchanged at IAM for a token (`client_credentials`) and kept with it in `~/.agent-shield/credentials.yaml`, mode 0600, never shown. From then on `agent-shield serve` pulls its policies from IAM and exports its telemetry to Datalayer's observability with that token; `agent-shield policy show` says so. What a standalone Shield cannot have — the operator's network boundary and the companion's mounts, which are a Datalayer runtime's — is said in a sentence there.
+
 ## Credentials
 
-The Shield stores no secret. The harness's declared secrets (`ANTHROPIC_API_KEY` for Claude Code) are passed from the Shield's environment to the agent's, and nothing else of the environment is. A credential the register forbids is refused in a sentence: a Claude Code or ChatGPT subscription login where only an API key serves to third parties, a Google login on Gemini's individuals tier.
+The Shield stores no secret of the harness's. The harness's declared secrets (`ANTHROPIC_API_KEY` for Claude Code) are passed from the Shield's environment to the agent's, and nothing else of the environment is. A credential the register forbids is refused in a sentence: a Claude Code or ChatGPT subscription login where only an API key serves to third parties, a Google login on Gemini's individuals tier.
+
+**Built:** `setup` (local and registered), `run`, `serve`, `connect`, `log`, `policy show`. **Not built:** the timing with a person new to it (REVIEWS Q-01: measured by the author so far).

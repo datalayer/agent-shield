@@ -1,0 +1,66 @@
+# Copyright (c) 2025-2026 Datalayer, Inc.
+# Distributed under the terms of the Modified BSD License.
+
+# The Shield's site, agent-shield.datalayer.tech (SHIELD SH-22): on every push
+# to main the generated pages are checked against the schema, the register and
+# the docstrings, every page is held to what is built (docs/scripts/check_pages.py),
+# and the Docusaurus site is built and kept as an artifact. Deploying is the
+# Makefile's `deploy` (the datalayer-agent-shield bucket), run on a release by
+# someone holding the bucket's credentials: no secret lives in this workflow.
+
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'schema/**'
+      - 'agent_shield/**'
+      - '.github/workflows/docs.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'schema/**'
+      - 'agent_shield/**'
+      - '.github/workflows/docs.yaml'
+  workflow_dispatch:
+
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          python-version: '3.12'
+          activate-environment: true
+
+      - name: Install the Shield with the register
+        run: uv pip install .[register]
+
+      - name: The generated pages are what the schema, the register and the docstrings give
+        run: python docs/scripts/generate.py --check
+
+      - name: Every page says what is built, names only commands and modules that exist
+        run: python docs/scripts/check_pages.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build the site
+        working-directory: docs
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: docs/build

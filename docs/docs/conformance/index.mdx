@@ -1,0 +1,12 @@
+---
+sidebar_position: 8
+title: Conformance
+---
+
+# Conformance
+
+A standard is a spec of agentspecs (`standards/`, AIUC-1 first), and the Shield answers its controls with evidence — a policy document in force, the record and the Shield's decisions, the drills, the Validate gates, a screen or a notice — giving each control one of five honest statuses: **met by evidence**, **partly met**, **the organization's** (a document a person writes and signs), **a third party's** (the quarterly testing a standard asks of someone else), **not applicable**. The report lists every control with its status, its evidence linked, the cadence clocks, the gaps and the crosswalk of each control, and its first page says the Shield evidences and does not certify.
+
+The TypeScript package renders that report: `readConformanceReport` reads the JSON strictly and refuses, in a sentence, a document that is not one; `renderReportMarkdown` and `renderReportHtml` write it as a document with the disclaimer first, the summary, the gaps, then every control under its status in the order a report lists them — what needs attention first.
+
+**Built:** the renderer in `@datalayer/agent-shield`, held to the JSON shape `agent_shield.conformance` writes. **Not built:** the conformance map and the report are the work of SHIELD SH-60 to SH-66 and SH-36, in progress beside this package; the report in Datalayer's Validate tab and Readiness.

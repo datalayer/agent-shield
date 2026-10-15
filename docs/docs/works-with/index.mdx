@@ -1,0 +1,30 @@
+---
+sidebar_position: 6
+title: Works with
+---
+
+# Works with
+
+The proxy is drop-in for every ACP client: to a client, `agent-shield run -- <agent>` is just an agent command, and `agent-shield serve` is just an agent at an address. What was tried, with versions and dates, on this machine (Ubuntu, Node 22.23.2, Python 3.13), against the package's test agent behind the Shield (the fake agent of the tests, which reads, edits, runs and asks); what each client cannot show is said in a sentence.
+
+| Client | Version | Date | Its setting | Driven | Cannot show |
+|---|---|---|---|---|---|
+| **ACP Test Compatibility Kit** (the agent face) | acp-tck at `fa00ccdc` | 2026-10-15 | `acp-tck -- agent-shield run -- <agent>`; and through `agent-shield connect ws://…/acp` against `serve` | `VERDICT: CONFORMANT`, 37 passed, 19 skipped for capabilities the agent does not advertise, both ways | It tests agents only: the client face has no kit. |
+| **ACP Remote** (`acpremote`, vcoderun's acpkit) | 1.10.0 on acp 0.12.1 | 2026-10-15 | `acpremote mirror ws://host:port/acp/ws --bearer-token …` against `serve` | `initialize`, `session/new`, a prompt with a permission asked through it, the turn ended | A transport: it draws nothing; the client behind it does. |
+| **acp-connector** (a Telegram and Discord bridge) | 0.11.1 | 2026-10-15 | `acp-connector.jsonc`: `"agentCmd": "agent-shield run -- <agent>"`, headless with `http.enabled` | `POST /prompt` ran a turn whose file read went through the Shield and was recorded; its headless mode answers every permission itself | No `fs/*` and `terminal/*` of its own (the Shield answers them for the agent); a permission's options reach a person only on Telegram or Discord, as buttons. |
+| **VS Code, the ACP Client extension** (formulahendry) | 0.2.0 on VS Code 1.142.0 | 2026-10-15 | `"acp.agents": {"Shield": {"command": "agent-shield", "args": ["run", "--", "<agent>"]}}` | A scripted VS Code under Xvfb (`--extensionTestsPath`) ran `acp.connectAgent` with that name: the proxy launched and the agent initialized, the audit naming the client `vscode-acp-client 0.2.0` | A prompt is typed in its chat webview, which no command sends (`acp.sendPrompt` only focuses it), so no turn was driven headless. |
+| **Neovim, agentic.nvim** | NVIM 0.12.6, agentic.nvim at `main` | 2026-10-15 | `acp_providers = { shield = { command = "agent-shield", args = { "run", "--", "<agent>" } } }` | `nvim --headless` with `require("agentic").open({ provider = "shield" })`: the proxy launched and the agent initialized, the audit naming the client `Agentic.nvim 0.0.1` | A prompt is sent from its chat buffer's keymap, which headless Neovim has no window for, so no turn was driven; it advertises no `fs/*` of its own. |
+| **agent-client-kernel** (a Jupyter kernel that is an ACP client) | 0.2.0 | 2026-10-15 | `ACP_AGENT_COMMAND=agent-shield ACP_AGENT_ARGS="run -- <agent>"`, a kernelspec running `python -m agent_client_kernel` | A cell through `jupyter_client`: the kernel launched the proxy, initialized, opened a session and read a file through the Shield; its own `session/prompt` then failed on the SDK it imports (`Invalid params` with `agent-client-protocol` 0.7.1; `StdioMcpServer` missing with 0.12.1), so the cell did not finish | Its permission mode is `auto`: a permission's options are not shown to the person. |
+| **marimo** | 0.25.0 | 2026-10-15 | `[experimental] external_agents = true`; its agents panel opens `ws://localhost:3017/message` for Claude Code, which `agent-shield serve --port 3017 -- <agent>` answers (the `/message` path is served for it) | Headless marimo in a browser under Playwright with the flag and an AI provider configured: the AI panel's **Agents** tab was reached (*Work on this notebook with your own agent*, *Capabilities*), but the agent chooser behind that button did not open to a headless click, so no connection to `serve` was made — see below | Unknown: not driven. |
+| **Zed** | preview 0.165.4 | 2026-10-15 | `"agent_servers": {"Claude Code behind the Shield": {"command": "agent-shield", "args": ["run", "--", "claude-agent-acp"]}}` (what `setup` prints) | Not driven: Zed has no command-line route to its agent panel and this machine has no window automation (no xdotool), so nothing was proved beyond the setting | Unknown: not driven. |
+| **JetBrains** | — | — | — | Not installed here; not tried. | — |
+
+## marimo, what was tried
+
+marimo's frontend (0.25.0) opens one WebSocket per agent — `ws://<host>:3017/message` for Claude Code, 3019 Gemini, 3021 Codex, 3023 OpenCode, 3025 Cursor — and tells the person to run `npx stdio-to-ws "<agent command>" --port 3017`; `agent-shield serve --port 3017 -- <agent>` stands in that place and serves `/message`. With `[experimental] external_agents = true` and an AI provider configured, the AI panel (sidebar key `ai`) shows the tabs *Chat* and *Agents*, and the Agents tab the button *Work on this notebook with your own agent*; under Playwright that button opened no chooser (its popover did not render to a dispatched click), so the WebSocket to port 3017 was never opened. A person with the panel open picks Claude Code there and the Shield answers at `/message`. This stays to be proved by hand.
+
+## Not clients, but the same guarantee
+
+A messaging bridge, a mobile app or a workbench of the ACP directory that starts a command, or reaches an address over WebSocket or ACP Streamable HTTP, is served the same way; none was tried beyond those above.
+
+**Built:** `run` behind every client that starts a command; `serve` for every client that reaches an address. **Not built:** a driven turn in VS Code, Neovim and marimo (each needs a window), a Zed drive, JetBrains, the mobile apps; agent-client-kernel waits on its own SDK pin.

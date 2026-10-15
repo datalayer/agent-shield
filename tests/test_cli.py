@@ -129,9 +129,11 @@ def test_log_prints_the_rows_or_says_there_are_none(shield_home: Path):
     assert json.loads(runner.invoke(app, ["log", "--json"]).stdout.splitlines()[0])["event"] == "tool_call"
 
 
-def test_serve_says_it_is_not_built(shield_home: Path):
+def test_serve_wants_one_command_or_a_harness(shield_home: Path):
     result = runner.invoke(app, ["serve"])
-    assert result.exit_code == 2 and "not built (SHIELD SH-52)" in result.output
+    assert result.exit_code == 2 and "one command after `--`" in result.output
+    result = runner.invoke(app, ["serve", "--harness", "claude-code", "--", "x"])
+    assert result.exit_code == 2 and "not both" in result.output
 
 
 def test_uninstall_previews_by_default_and_keeps_the_audit(shield_home: Path):
@@ -192,17 +194,19 @@ def test_setup_installs_through_npm_prefix_writes_config_and_policy_and_never_sh
 
     monkeypatch.setattr("agent_shield.cli.install_adapter", fake_install)
     monkeypatch.setattr("agent_shield.cli._node_version", lambda: (22, 23, 2))
-    result = runner.invoke(app, ["setup", "--yes", "--register"])
+    refused = runner.invoke(app, ["setup", "--yes", "--register"])
+    assert refused.exit_code == 2 and "the organization's uid is needed (`--org`)" in refused.output
+    result = runner.invoke(app, ["setup", "--yes", "--local"])
     assert result.exit_code == 0, result.output
     assert calls == [
         ["@agentclientprotocol/claude-agent-acp", "0.91.0", str(harness_prefix("claude-code", "0.91.0", shield_home))]
     ]
     assert "credentials present: ANTHROPIC_API_KEY" in result.output
     assert "sk-ant-value" not in result.output
-    assert "registration with Datalayer is not built (SH-47)" in result.output
+    assert "PAP: unavailable while local-only" in result.output and "setup --register" in result.output
     assert "run: agent-shield run -- claude-agent-acp" in result.output and "Zed:" in result.output
     config = Config.load(shield_home)
-    assert config.installed("claude-code")["version"] == "0.91.0" and config.data["wants_registration"] is True
+    assert config.installed("claude-code")["version"] == "0.91.0" and config.data["registered"] is False
     assert (tmp_path / "agent-shield.yaml").is_file()
     again = runner.invoke(app, ["setup", "--yes"])
     assert "adapter already installed" in again.output and "policy kept" in again.output and len(calls) == 1

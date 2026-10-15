@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 title: Architecture
 ---
 
@@ -33,8 +33,10 @@ The proxy passes the ACP Test Compatibility Kit in front of the test agent (`VER
 
 The harness catalogue and the register live in agentspecs (`harnesses/`): each harness with its adapter, the version pinned, licence, terms, credential kind, whether serving it to third parties is permitted, and tier restrictions. The Shield reads them and refuses what the register forbids.
 
+## The server
+
+`agent-shield serve` is the proxy as a server (see [serve and registration](../serve/)): one listener, WebSocket and ACP Streamable HTTP on `/acp`, a `ShieldProxy` per connection, the token in the header or the first message; `--bridge` the same listener with no Shield, for the sidecar; `agent-shield connect` the mirror for clients that start commands.
+
 ## Built and not built
 
-Built in 0.1.2: the policy engine with the three levels, the model limits and the harnesses section, the SaaS client pulling policies from IAM and failing closed, the register, the stdio and WebSocket client channels, the normaliser, the proxy with session rules while running, the audit, the command, the TypeScript types.
-
-Not built: `serve` (the proxy over WebSocket), the standalone proxy's registration with Datalayer (`setup --register`), the OTEL export, the Shield report and conformance, the diff and terminal renderers.
+**Built:** in 0.1.2 the policy engine with the three levels, the model limits and the harnesses section, the SaaS client pulling policies from IAM and failing closed, the register, the stdio and WebSocket client channels, the normaliser, the proxy with session rules while running, the audit, the command, the TypeScript types; in 0.1.3 `serve` over both transports, `connect`, the bridge, the OTEL export from a standalone Shield, registration with Datalayer, the generated TypeScript types, the diff and terminal displays and the report renderer. **Not built:** the Shield report in Validate (SH-36); IAM serving a service agent's organization documents, which a registered standalone Shield waits on.

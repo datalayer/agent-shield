@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 9
 title: CLI
 ---
 
@@ -7,15 +7,20 @@ title: CLI
 
 | Command | What it does |
 |---|---|
-| `agent-shield setup [--harness claude-code] [--local\|--register] [--yes]` | Finds node, the vendor CLIs and credentials; installs the pinned adapter into the Shield's prefix; writes the config and the default policy. |
-| `agent-shield run [--workspace DIR] [--policy FILE] [--audit FILE] [--env NAME] [--verbose] -- <command>` | The proxy: the agent behind the Shield on stdio. |
-| `agent-shield log [--last N] [--json]` | The audit's last rows. |
-| `agent-shield policy show` | Every line of the policy in force and where it came from. |
+| `agent-shield setup --harness claude-code --local --yes` | Finds node, the vendor CLIs and credentials; installs the pinned adapter into the Shield's prefix; writes the config and the default policy; prints the run line and the Zed snippet. |
+| `agent-shield setup --register --org UID --agent UID --iam-url URL --otel-url URL --key-env NAME` | The same, registered with Datalayer: the service agent's key read from the environment, exchanged at IAM, kept with the token in `credentials.yaml` (0600). |
+| `agent-shield run --workspace DIR --policy FILE --audit FILE --env NAME --verbose -- <command>` | The proxy: the agent behind the Shield on stdio. |
+| `agent-shield serve --host HOST --port PORT --token-env NAME --harness ID --bridge --workspace DIR --policy FILE --audit FILE --env NAME --idle SECONDS --verbose -- <command>` | The proxy as a server over WebSocket and ACP Streamable HTTP, one harness per connection; `--harness` (repeatable) serves the register's at `/acp/<id>`; `--bridge` relays with no Shield (the sidecar). |
+| `agent-shield connect URL --token-env NAME` | A served Shield as a local stdio agent. |
+| `agent-shield log --last N --json --audit FILE` | The audit's last rows. |
+| `agent-shield policy show --policy FILE --workspace DIR` | Every line of the policy in force and where it came from; the registration and what a standalone Shield cannot have; PAP's availability. |
 | `agent-shield policy schema` | The JSON Schema. |
-| `agent-shield policy init [PATH] [--force]` | The default policy. |
+| `agent-shield policy init --force` | The default policy (a path may follow). |
 | `agent-shield harnesses` | The register. |
-| `agent-shield upgrade [--check]` | A newer Shield or adapter; moves the adapters to the pinned versions. |
-| `agent-shield uninstall [--yes]` | Previews by default; keeps the audit and the policy. |
-| `agent-shield serve` | Not built (SH-52): says so. |
+| `agent-shield upgrade --check` | A newer Shield or adapter; without `--check`, moves the adapters to the pinned versions. |
+| `agent-shield uninstall --yes` | Previews by default; keeps the audit and the policy. |
+| `agent-shield version` | The version. |
 
-`datalayer agent-shield …` is the same application, as a group of the Datalayer CLI.
+Everything the proxy writes to its stdout is the protocol; what it says to a person goes to stderr. Nothing secret is printed: credentials and tokens are reported by name, never by value. `datalayer agent-shield …` is the same application, as a group of the Datalayer CLI.
+
+**Built:** every command above. **Not built:** `report` (the Shield report on request, SH-36).

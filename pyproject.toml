@@ -46,8 +46,14 @@ agent-shield = "agent_shield.reactor_extension:plugin"
 agent-shield = "agent_shield.reactor_extension:plugin"
 
 [project.optional-dependencies]
-# The WebSocket channel: an agent served at a URL (agent-runtimes' ACP route).
+# The WebSocket channel: an agent served at a URL (agent-runtimes' ACP route,
+# `agent-shield serve`), and `agent-shield connect`.
 websocket = ["websockets>=13"]
+# `agent-shield serve`: the proxy as a server over WebSocket and ACP Streamable
+# HTTP (SH-52, SH-56); the sidecar bridge (SH-40).
+serve = ["aiohttp>=3.9"]
+# A registered Shield exports its telemetry to Datalayer's observability (SH-47, SH-51).
+otel = ["opentelemetry-sdk>=1.26", "opentelemetry-exporter-otlp-proto-http>=1.26"]
 # The harness catalogue and the register (SHIELD SH-01, SH-04): the Shield
 # reads them from agentspecs and keeps no copy. An extra, not a dependency:
 # the policy engine and the SaaS client (`agent_shield.policy`, `agent_shield.saas`)
@@ -64,7 +70,7 @@ gemini-cli = ["datalayer-agent-shield[register]"]
 goose = ["datalayer-agent-shield[register]"]
 opencode = ["datalayer-agent-shield[register]"]
 openhands = ["datalayer-agent-shield[register]"]
-all = ["datalayer-agent-shield[websocket,register]"]
+all = ["datalayer-agent-shield[websocket,serve,otel,register]"]
 test = [
   "agentspecs>=0.0.104",
   # tests/test_cli.py reads pyproject.toml; tomllib is 3.11+.
@@ -73,6 +79,9 @@ test = [
   "pytest-asyncio>=0.21",
   "pytest-timeout>=2.0",
   "websockets>=13",
+  "aiohttp>=3.9",
+  "opentelemetry-sdk>=1.26",
+  "opentelemetry-exporter-otlp-proto-http>=1.26",
 ]
 lint = ["mdformat>0.7", "mdformat-gfm>=0.3.5", "ruff"]
 typing = ["mypy>=0.990"]
@@ -136,3 +145,7 @@ ignore = ["FBT001", "FBT002", "FBT003", "N818"]
 # The proxy's sentences are not wrapped; the normaliser and the update handler are dispatchers (C901).
 "agent_shield/acp/proxy.py" = ["E501", "C901"]
 "agent_shield/acp/normalize.py" = ["C901"]
+# The server's handlers are dispatchers over headers and methods (C901); its sentences are not wrapped.
+"agent_shield/acp/server.py" = ["C901", "E501"]
+# The documentation's scripts speak on stdout, walk syntax trees and run the generator.
+"docs/scripts/*" = ["T201", "C901", "E501", "S603", "B007"]

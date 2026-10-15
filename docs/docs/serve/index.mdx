@@ -1,0 +1,55 @@
+---
+sidebar_position: 5
+title: Serve and registration
+---
+
+# Serve and registration
+
+`agent-shield serve` is the proxy as a server: the same Shield as `agent-shield run`, reached at an address instead of a pipe, **one harness per connection** — each connection gets a proxy of its own, which launches the agent on the client's `initialize` and ends it when the connection goes.
+
+```bash
+agent-shield serve --port 8788 -- claude-agent-acp                      # one agent at /acp
+agent-shield serve --port 8788 --harness claude-code --harness codex   # the register's, at /acp/claude-code and /acp/codex
+```
+
+## Two transports, one path
+
+The transports are the ones the ecosystem's bridges converge on (the ACP project's RFD *streamable-http-websocket-transport*, `acp_rpc_bridge`'s Streamable HTTP, ACP Remote's WebSocket), so a remote-capable client needs nothing of the Shield's own.
+
+**WebSocket** — `GET /acp` with `Upgrade: websocket` (also `/acp/ws`, ACP Remote's default path, and `/message`, marimo's): one JSON-RPC message per text frame, binary frames ignored, the `Acp-Connection-Id` in the 101's headers.
+
+**ACP Streamable HTTP** — `POST /acp` carries one JSON-RPC message in. An `initialize` with no `Acp-Connection-Id` makes the connection and is answered `200` with the result (`connectionId` added) and the id in that header; every other message needs the header and is answered `202` at once, its response arriving on a stream. `GET /acp` with `Accept: text/event-stream` opens the stream — connection-scoped with the connection header alone (the responses to `session/new` and `session/load`), session-scoped with `Acp-Session-Id` too (`session/update`, `session/request_permission`, the response to `session/prompt`); each SSE event's `data` holds one JSON-RPC message. `session/prompt`, `session/cancel` and the mode and model setters need `Acp-Session-Id`. `DELETE /acp` ends the connection; so does sitting idle with no stream open past `--idle` seconds (300 by default). Batches are `501`; a body that is not `application/json` is `415`.
+
+## The token
+
+Beyond the loopback a token is required (`--token-env NAME`: the value is read from the environment, never from an argument). It travels in the `Authorization: Bearer` header — on every HTTP request and on the WebSocket upgrade — or, for a WebSocket client that cannot set headers, in the **first message**: `authenticate` with `methodId` `bearer` and the token in `params._meta.token`; any other first message is refused with error `-32001` and the socket closed. A token in the address (`?token=`, `?access_token=`, a userinfo) is refused with `400` before anything is read. Without a token the listener stays on `127.0.0.1`.
+
+## A client that only starts commands
+
+```bash
+agent-shield connect ws://host:8788/acp --token-env SHIELD_TOKEN
+```
+
+mirrors a served Shield on stdio — stdin's lines become frames, frames become lines, the token in the header — so an editor, a notebook or the ACP Test Compatibility Kit reaches a remote Shield as it would a local one. Nothing is decided in the mirror: the Shield at the other end decides. The TCK was run through it against `serve` on 15 October 2026: `VERDICT: CONFORMANT` (37 passed, 19 skipped for capabilities not advertised).
+
+## The bridge
+
+```bash
+agent-shield serve --bridge --port 8788 --harness claude-code --harness codex
+```
+
+is the same server with **no Shield in it**: each connection's frames are relayed verbatim to a harness spawned for it. This is the `datalayer-harnesses` sidecar of a Datalayer runtime pod (SHIELD §5, SH-40), where the runtime's own Shield decides and the sidecar only carries the adapters; it listens on the loopback, inside the pod, and is never given a token or an ingress.
+
+## Registered: the policies from IAM, the trace to Datalayer
+
+A standalone Shield registers with a **service-agent key** of an organization — made by its administrator with `datalayer mcp service-agents create` — which is not a bearer token: `agent-shield setup --register --org <uid> --agent <uid>` reads it from `$AGENT_SHIELD_SERVICE_KEY` (`--key-env` names another variable), exchanges it once at IAM's token endpoint (`POST /api/iam/v1/oauth/token`, `grant_type=client_credentials`) to prove it, and keeps the key and the token in `~/.agent-shield/credentials.yaml`, mode 0600; neither is ever printed, and a credentials file with a looser mode is not read.
+
+From then on `serve`:
+
+- pulls its policies from IAM (`GET /api/iam/v1/mcp-policies/shield/accounts/<agent uid>`) at start and every 30 seconds, keeps them until their `expires`, and puts a changed document in force in every open session at once; it **fails closed** — with IAM unreachable and no unexpired copy, every action is refused in a sentence naming IAM (decision 11), and a registration IAM serves no document for does not start at all;
+- exchanges the key again before the token expires (an hour), for the policies and for the telemetry alike;
+- exports its spans and counts to Datalayer's observability (`/api/otel/v1/otlp`) with that token, so the session is one trace there and the Shield dashboard counts its decisions, refusals and limits.
+
+What a standalone Shield cannot have is said in one sentence, in `setup`, in `policy show` and here: *the operator's network boundary (the pod's egress table) and the companion's mounts are a Datalayer runtime's, and here the host's own firewall and filesystem stand in their place.* PAP through the Shield (§6.10) is available once registered and said unavailable while local-only.
+
+**Built:** `serve` over both transports with the token in the header or the first message, `connect`, `--bridge`, `setup --register` and the registered `serve` (proved against prod1's IAM on 15 October 2026 with a throwaway service agent: the exchange, the policy route, the export accepted). **Not built:** IAM serves no Shield document for a service agent yet (its organization's documents are read by account membership, which a service agent has not), so a registered standalone Shield refuses to start until IAM answers a service agent's organization (the saas side of SH-47); PAP lent to a standalone Shield (SH-72); the mobile apps of SHIELD §2.5 were not driven.

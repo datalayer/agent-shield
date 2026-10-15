@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 10
 title: API
 ---
 
@@ -7,12 +7,22 @@ title: API
 
 ## Python: `agent_shield`
 
-- `agent_shield.policy`: `Policy`, `Rule`, `Limits`, `Harnesses`, `Action`, `Decision`, `decide`, `decide_budget`, `widening`, `check_tightens`, `PolicyWidens`, `admits`, `credentials_rule`, `default_policy`, `load_policies`, `policy_json_schema`, `class_of`, `flagged`.
-- `agent_shield.saas`: `ManagedPolicies` (`pull`, `in_force`, `push`, `watch`), `IamPolicySource`, `PolicyUnavailable`, `ServedPolicies`.
-- `agent_shield.acp`: `StdioACPChannel`, `WebSocketACPChannel`, `normalize`, `Workspace`, `Terminals`; `agent_shield.acp.proxy.ShieldProxy`, `serve_stdio`.
+The [Python reference](python) is generated from the package's docstrings: every module and its public names. In short:
+
+- `agent_shield.policy`: the document, the classes, `decide`, `decide_budget`, the three levels (`widening`, `check_tightens`), the default policy, the schema.
+- `agent_shield.acp`: `StdioACPChannel`, `WebSocketACPChannel`, `normalize`, `Workspace`, `Terminals`; `agent_shield.acp.proxy.ShieldProxy` and `serve_stdio`; `agent_shield.acp.server.ShieldServer` (WebSocket and Streamable HTTP, `ShieldBackend` and `BridgeBackend`); `agent_shield.acp.remote.mirror_stdio`.
 - `agent_shield.audit`: `AuditLog`, `redact`, `diff_summary`.
+- `agent_shield.tracing`: `turn_span`, `observe`, `with_traceparent`, `trace_headers`, `continued`, `configure_export`, `refresh_export_token`, `flush_export`.
+- `agent_shield.saas`: `ManagedPolicies`, `IamPolicySource`, `PolicyUnavailable`.
+- `agent_shield.registration`: `Registration`, `register`, `cannot_have`, `pap_sentence`.
 - `agent_shield.register`: `catalogue`, `harness`, `credential_refusal`.
 
 ## TypeScript: `@datalayer/agent-shield`
 
-The policy document's types (`Policy`, `Rule`, `Limits`, `Harnesses`, `Decision`), the constants (`SCOPES`, `ACTION_CLASSES`, `VERDICTS`, `TOOL_KINDS`, `KIND_CLASS`, `VERDICT_WORDS`, `LIMIT_NAMES`, `LIMIT_WORDS`, `CREDENTIALS`), `classOf` and `describeDecision`; `schema/policy.schema.json` exported. The diff and terminal renderers are not built yet.
+- The policy document's types, **generated from `schema/policy.schema.json`** (`policy.generated.ts`, written by `npm run generate` and held equal to the schema by `npm test`): `Policy`, `Rule`, `Limits`, `Threshold`, `Harnesses`, `Network`, `Mcp`, `Scope`, `Verdict`, `Where`, `Credentials`; the constants `SCOPES`, `ACTION_CLASSES`, `VERDICTS`, `TOOL_KINDS`, `KIND_CLASS`, `LIMIT_NAMES`, `LIMIT_WORDS`, `CREDENTIALS`.
+- The decisions' sentences, in one place: `VERDICT_WORDS` (*do it*, *ask me first*, *leave it to me*) and `describeDecision`; `classOf`.
+- The `diff` and `terminal` display contracts (`readShieldDisplay`, `DiffDisplay`, `TerminalDisplay`, `unifiedDiffLines`, `unifiedDiffText`, `terminalText`, `SHIELD_DIFF_TYPE`, `SHIELD_TERMINAL_TYPE`, `DISPLAY_META_KEY`), the same shapes as agent-runtimes' `portable/displays`, held equal by a test when the two are side by side.
+- The report document's renderer: `readConformanceReport`, `renderReportMarkdown`, `renderReportHtml`, `controlsByStatus`, `STATUSES`, `STATUS_WORDS`.
+- `schema/policy.schema.json` exported.
+
+**Built:** everything above, at the package's version. **Not built:** `@datalayer/agent-shield` is not on npm yet (the scaffold's 1.1.3 holds `latest` until it is unpublished), so agent-runtimes' dependency on it waits.

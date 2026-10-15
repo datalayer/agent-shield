@@ -78,6 +78,43 @@ Zed, `settings.json`:
 }
 ```
 
+Every ACP client that starts a command takes the same line — VS Code's ACP
+Client, agentic.nvim, agent-client-kernel, a Telegram bridge such as
+acp-connector; the [works with](https://agent-shield.datalayer.tech/works-with/)
+page says what was tried, with versions and dates.
+
+## At an address: `serve`
+
+```bash
+export SHIELD_TOKEN=$(openssl rand -hex 24)
+agent-shield serve --host 0.0.0.0 --port 8788 --token-env SHIELD_TOKEN -- claude-agent-acp   # one harness per connection
+agent-shield connect ws://host:8788/acp --token-env SHIELD_TOKEN                               # a served Shield as a local stdio agent
+```
+
+`serve` is the same proxy as a server, over **WebSocket** and **ACP Streamable
+HTTP** on `/acp` — the transports the ecosystem's bridges converge on (ACP
+Remote, `acp_rpc_bridge`, the ACP project's RFD) — with the token in the
+`Authorization` header or, over WebSocket, in the first message, never in the
+address; `--harness <id>` serves the register's at `/acp/<id>`; `--bridge` is
+the same server with no Shield in it, the sidecar of a Datalayer runtime pod.
+The ACP TCK through `connect` against `serve`: `VERDICT: CONFORMANT`.
+
+## Registered with Datalayer
+
+```bash
+export AGENT_SHIELD_SERVICE_KEY=...   # a service agent's key, made by the organization's administrator
+agent-shield setup --register --org <organization uid> --agent <service agent uid>
+```
+
+The key is exchanged at IAM for a token (`client_credentials`) and kept with
+it in `~/.agent-shield/credentials.yaml`, mode 0600, never shown; `serve` then
+pulls its policies from IAM, fails closed without them, and exports its spans
+and counts to Datalayer's observability with that token. What a standalone
+Shield cannot have — the operator's network boundary and the companion's
+mounts, a Datalayer runtime's — is said in a sentence by `setup` and
+`policy show`; PAP is available once registered and said unavailable while
+local-only.
+
 ## The policy
 
 One document per scope — `organization`, `team`, `session` — in
@@ -149,11 +186,20 @@ register read from [agentspecs](https://github.com/datalayer/agentspecs)
 in front of the test agent (`VERDICT: CONFORMANT`); the audit; the
 `agent-shield` command; `@datalayer/agent-shield`'s policy types.
 
-Not built: `agent-shield serve` (the proxy over WebSocket, SH-52);
-registration of the standalone proxy with Datalayer (SH-47: the SaaS client
-exists, `setup --register` does not use it yet); the OTEL export (SH-51); the
-Shield report and conformance (SH-36, SH-60); the TypeScript renderers of
-diffs and terminals (SH-53).
+Built in 0.1.7 (SHIELD Phase 3's standalone side): `agent-shield serve` over
+WebSocket and ACP Streamable HTTP, one harness per connection, the token in the
+header or the first message (SH-52, SH-56); `agent-shield connect`; the bridge
+of the `datalayer-harnesses` sidecar (SH-40); `setup --register` through a
+service-agent key exchanged at IAM, the registered `serve` pulling its
+policies and exporting over OTEL (SH-47, SH-73); the TypeScript types
+generated from the schema, the `diff` and `terminal` displays, the report
+renderer (SH-53); the documentation site built in CI, its policy reference
+and register generated, every page held to what is built (SH-22).
+
+Not built: the Shield report in Datalayer's Validate tab (SH-36); IAM serving
+a service agent's organization documents, which a registered standalone
+Shield waits on (it refuses to start with none); a driven turn in VS Code,
+Neovim and marimo (each needs a window).
 
 Claude Code has been run behind the proxy (`claude-agent-acp` 0.91.0:
 initialize, session, modes); a turn needs a funded Anthropic API key.

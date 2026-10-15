@@ -1,0 +1,38 @@
+---
+sidebar_position: 7
+title: The audit
+---
+
+# The audit
+
+Every action and decision is one JSON line of `~/.agent-shield/audit.jsonl` (`agent-shield log` reads it; `--audit` names another file), and, with OpenTelemetry installed, an event on the current span and a count. The vocabulary is A-01's safe one, extended with ACP's kinds: a row says the event, the kind and the class, the decision and who decided it, a path or a command, a diff's hash and size — never a file's content, never a credential.
+
+## The events
+
+| `event` | When |
+|---|---|
+| `session` | A connection made or closed, an agent initialized, a session opened or loaded; `serve` listening |
+| `turn` | A prompt taken, a turn ended with its `stop_reason`, a cancel, a question the agent asked |
+| `tool_call` | The agent's tool call, classed and decided |
+| `permission` | A `session/request_permission`, with the decision, who decided and what was chosen |
+| `fs_read` | A file read answered against the workspace (path, bytes) |
+| `fs_write` | A file written (path, the diff's hash and size) |
+| `terminal` | A terminal created, waited for, killed or released (command, exit code) |
+| `fetch` | A fetch decided against the allow-list |
+| `limit` | A soft or hard limit reached |
+| `mcp` | An MCP server kept or cut from `session/new` |
+| `refusal` | What was refused and why |
+| `policy` | The policies replaced from IAM, unavailable (decision 11), a session rule added or removed |
+| `plan` | The agent's plan: how many steps, their statuses; never their text |
+
+Who decided is `by`: `policy`, `person`, `agent` (a notification) or `shield`.
+
+## Redaction
+
+Every string of a row goes through `agent_shield.audit.redact` before it is written: credentials by shape (Anthropic and OpenAI keys, AWS keys, GitHub and Slack tokens, JWTs, bearer values, `key=`/`token=` pairs) and the Shield's own environment values whose names look like secrets, by value — so a key the agent echoes never lands in the log.
+
+## The trace
+
+Each prompt is a span (`agent_shield.tracing.turn_span`) under whatever span is current — the face's request on a Datalayer runtime —, each row an event of it after redaction, and four counts carry the labels `harness`, `deployment` and `usage_account_uid`: `shield.actions`, `shield.decisions`, `shield.refusals`, `shield.limits`. The W3C trace context is handed to the harness in the prompt's `_meta.traceparent`, the key ACP reserves, and to a lent MCP server as headers. A registered standalone Shield exports all of it to Datalayer's observability with its token (`agent_shield.tracing.configure_export`); without the OpenTelemetry SDK nothing is exported and the Shield keeps deciding.
+
+**Built:** the rows, the redaction, the span events and counts, the export. **Not built:** the Shield report reading its numbers from the dashboard (SH-36).

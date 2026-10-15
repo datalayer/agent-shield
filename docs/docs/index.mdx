@@ -8,10 +8,30 @@ slug: /
 
 **A runtime firewall for every agent.** Deploy a shield with each agent. Enforce permissions before actions execute, manage policies centrally, and retain an audit trail.
 
-`agent-shield run -- <command>` starts any [Agent Client Protocol](https://agentclientprotocol.com) agent — Claude Code, Codex, Gemini CLI, Goose, OpenCode, OpenHands — as its subprocess and stands as an ACP agent in front of it. Any ACP client sees one agent; the Shield decides, confines and records in between.
+`agent-shield run -- <command>` starts any [Agent Client Protocol](https://agentclientprotocol.com) agent — Claude Code, Codex, Gemini CLI, Goose, OpenCode, OpenHands, or one of your own — as its subprocess and stands as an ACP agent in front of it. Any ACP client sees one agent; in between, the Shield decides, confines and records: `session/request_permission` by the policy (*do it* answered without the client, *ask me first* forwarded with the same options, *leave it to me* refused in a sentence), the agent's tool calls classed and held to the limits, `fs/*` and `terminal/*` confined to the workspace, `mcpServers` cut to what the policy lends, every action written to the audit and exported over OTEL.
 
-- [Getting started](getting-started/) — the first five minutes.
-- [Architecture](architecture/) — the policy, the proxy, the audit; what is built and what is not.
-- [Protocols](protocols/) — ACP, and what the Shield lends.
+`agent-shield serve` is the same proxy as a server, over WebSocket and ACP Streamable HTTP, one harness per connection, for the clients that reach an agent at an address — editors, notebooks, messaging bridges, a mobile app — and for a Shield on your own infrastructure, registered with Datalayer for its policies and its observability.
+
+## The first five minutes
+
+```bash
+pip install "datalayer-agent-shield[claude-code]"
+agent-shield setup                       # node, the vendor CLIs, the credentials by name; the pinned adapter into the Shield's own prefix
+agent-shield run -- claude-agent-acp     # Claude Code behind the Shield, on this directory, with the default policy
+```
+
+The first decision is seen in the terminal with the first tool call. `agent-shield log` shows the audit; `agent-shield policy show` the policy in force and where each line came from. Measured on 15 October 2026 from a clean prefix: `setup` 27 seconds, `run` to a session 1.5 seconds.
+
+- [Getting started](getting-started/) — install, `setup`, `run`, the first decision; registering with Datalayer.
+- [Architecture](architecture/) — the policy, the three levels, the proxy, the audit; what is built and what is not.
+- [Policy reference](policy/reference) — every field, generated from the schema.
+- [The register](harnesses/register) — every harness, its adapter and pin, its terms, generated from agentspecs.
+- [Serve and registration](serve/) — WebSocket and Streamable HTTP, the token, the bridge, the policies from IAM and the trace.
+- [Works with](works-with/) — the clients tried, with versions and dates, and what each cannot show.
+- [The audit](audit/) — the vocabulary of the rows, the redaction, the trace.
+- [Protocols](protocols/) — ACP on both faces, and what the Shield lends.
+- [Conformance](conformance/) — the report, and what it evidences.
 - [CLI](cli/) — every command.
 - [API](api-reference/) — the Python package and the TypeScript package.
+
+**Built:** the proxy (`run`), the server (`serve`, `connect`), the policy engine with its three levels and its limits, the register, the audit and the OTEL export, registration with Datalayer (`setup --register`), the TypeScript package (types, sentences, displays, the report renderer). **Not built:** the long tail of ACP agents beyond the register (SHIELD SH-57), PAP lent to a standalone Shield (SH-72), the Shield report in Datalayer's Validate tab (SH-36).

@@ -80,7 +80,7 @@ from agent_shield.policy import (
 )
 from agent_shield.tracing import with_traceparent
 
-from .channel import SHIELD_CLIENT_CAPABILITIES, SHIELD_CLIENT_INFO, StdioACPChannel
+from .channel import SHIELD_CLIENT_CAPABILITIES, SHIELD_CLIENT_INFO, ACPChannel, StdioACPChannel, WebSocketACPChannel
 from .events import PlanUpdated, ToolCallSaid, ToolCallUpdated
 from .normalize import MalformedUpdate, normalize
 from .workspace import OutsideWorkspace, Terminals, Workspace
@@ -216,10 +216,17 @@ class ShieldProxy:
         workspace: Path | None = None,
         agent_env: Mapping[str, str] | None = None,
         agent_stderr: Any = None,
+        connect_url: str | None = None,
+        connect_headers: Mapping[str, str] | None = None,
     ) -> None:
-        if not command:
+        if not command and not connect_url:
             raise ProxyRefused("no agent command: `agent-shield run -- <command>`")
         self.command = list(command)
+        #: The agent served at a URL instead of launched here (SH-40: the sidecar
+        #: bridge, ``ws://127.0.0.1:<port>/acp/<harness>``): the WebSocket
+        #: channel, the same interface, the same decisions.
+        self.connect_url = connect_url
+        self.connect_headers = dict(connect_headers or {})
         self.loaded = list(policies)
         self.policies = [item.policy for item in self.loaded]
         self.audit = audit
@@ -227,7 +234,7 @@ class ShieldProxy:
         self.agent_env = dict(agent_env or {})
         self.agent_stderr = agent_stderr
         self._client: Any = None
-        self._channel: StdioACPChannel | None = None
+        self._channel: ACPChannel | None = None
         self._launch: Any = None
         self.sessions: dict[str, SessionState] = {}
         self.inner = _InnerClient(self)
@@ -328,18 +335,22 @@ class ShieldProxy:
         return self._client
 
     @property
-    def channel(self) -> StdioACPChannel:
+    def channel(self) -> ACPChannel:
         if self._channel is None:
             raise RequestError(REFUSED, "the Shield was not initialized, so no agent runs behind it")
         return self._channel
 
-    async def start_agent(self) -> StdioACPChannel:
+    async def start_agent(self) -> ACPChannel:
+        """Launch the agent as a subprocess, or connect to it at ``connect_url``; once."""
         if self._channel is not None:
             return self._channel
-        cwd = self.pinned_workspace.root if self.pinned_workspace else None
-        self._launch = StdioACPChannel.launch(
-            self.inner, self.command[0], *self.command[1:], cwd=cwd, env=self.agent_env, stderr=self.agent_stderr
-        )
+        if self.connect_url:
+            self._launch = WebSocketACPChannel.connect(self.inner, self.connect_url, headers=self.connect_headers)
+        else:
+            cwd = self.pinned_workspace.root if self.pinned_workspace else None
+            self._launch = StdioACPChannel.launch(
+                self.inner, self.command[0], *self.command[1:], cwd=cwd, env=self.agent_env, stderr=self.agent_stderr
+            )
         self._channel = await self._launch.__aenter__()
         return self._channel
 

@@ -5,22 +5,56 @@
  */
 
 /**
- * The policy document's types and the decisions' sentences, mirroring
- * `schema/policy.schema.json` (the one schema the Python package publishes).
- * `npm test` reads that schema and refuses a drift between the two.
+ * The policy document's types and the decisions' sentences.
+ *
+ * The types come from `schema/policy.schema.json` — the one schema the Python
+ * package publishes — through `policy.generated.ts`, written by
+ * `npm run generate` (json-schema-to-typescript) and checked in; `npm test`
+ * regenerates it and refuses a drift. The constants below are the schema's
+ * enums as arrays, held equal to it by the same test. The decisions'
+ * sentences live here and nowhere else (SHIELD SH-53): `VERDICT_WORDS` and
+ * `describeDecision` are what every card, row and page says.
  */
 
-export const SCOPES = ['organization', 'team', 'session'] as const;
-export type Scope = (typeof SCOPES)[number];
+import type {
+  AgentShieldPolicy,
+  Credentials,
+  Decision as Verdict,
+  Harnesses,
+  Limits,
+  Mcp,
+  Network,
+  Rule,
+  Scope,
+  Threshold,
+  Where,
+} from './policy.generated.js';
+
+export type {
+  AgentShieldPolicy,
+  Credentials,
+  Harnesses,
+  Limits,
+  Mcp,
+  Network,
+  Rule,
+  Scope,
+  Threshold,
+  Verdict,
+  Where,
+};
+
+/** One policy document, one scope: the generated type under the name the plan uses. */
+export type Policy = AgentShieldPolicy;
+
+export const SCOPES = ['organization', 'team', 'session'] as const satisfies readonly Scope[];
 
 export const ACTION_CLASSES = ['read', 'write', 'send', 'buy', 'delete', 'execute'] as const;
 export type ActionClass = (typeof ACTION_CLASSES)[number];
 
-export const VERDICTS = ['allow', 'ask', 'deny'] as const;
-export type Verdict = (typeof VERDICTS)[number];
+export const VERDICTS = ['allow', 'ask', 'deny'] as const satisfies readonly Verdict[];
 
-export const WHERE = ['inside', 'outside', 'any'] as const;
-export type Where = (typeof WHERE)[number];
+export const WHERE = ['inside', 'outside', 'any'] as const satisfies readonly Where[];
 
 export const TOOL_KINDS = [
   'read',
@@ -57,37 +91,7 @@ export const KIND_CLASS: Record<ToolKind, ActionClass | null> = {
   other: 'write',
 };
 
-export interface Rule {
-  name: string;
-  decision: Verdict;
-  classes?: ActionClass[];
-  kinds?: ToolKind[];
-  where?: Where;
-  paths?: string[];
-  commands?: string[];
-  reason?: string | null;
-}
-
-export interface Threshold {
-  soft: number;
-  hard: number;
-}
-
-/**
- * The stateful limits of a session (SHIELD §6.3): three count the harness's
- * actions, two what its model costs — the model budget in tokens and the
- * spend in credits (100 a USD). Each has a soft threshold, where the next
- * call asks, and a hard one, where each further call is refused.
- */
-export interface Limits {
-  tool_calls?: Threshold | null;
-  terminals_open?: Threshold | null;
-  bytes_written?: Threshold | null;
-  model_tokens?: Threshold | null;
-  spend?: Threshold | null;
-}
-
-export const LIMIT_NAMES = ['tool_calls', 'terminals_open', 'bytes_written', 'model_tokens', 'spend'] as const;
+export const LIMIT_NAMES = ['tool_calls', 'terminals_open', 'bytes_written', 'model_tokens', 'spend'] as const satisfies readonly (keyof Limits)[];
 export type LimitName = (typeof LIMIT_NAMES)[number];
 
 /** The limits' words, as the sentences say them. */
@@ -100,33 +104,7 @@ export const LIMIT_WORDS: Record<LimitName, string> = {
 };
 
 /** Whose key may run a harness (SHIELD decision 3). */
-export const CREDENTIALS = ['account', 'platform', 'either'] as const;
-export type Credentials = (typeof CREDENTIALS)[number];
-
-/** The harnesses an organization admits, and whose credentials run them (§6.7). */
-export interface Harnesses {
-  admit?: string[];
-  credentials?: Credentials;
-}
-
-export interface Network {
-  fetch?: string[];
-}
-
-export interface Mcp {
-  allow?: string[];
-}
-
-export interface Policy {
-  scope: Scope;
-  version?: number;
-  expires?: string | null;
-  rules?: Rule[];
-  limits?: Limits;
-  network?: Network;
-  mcp?: Mcp;
-  harnesses?: Harnesses;
-}
+export const CREDENTIALS = ['account', 'platform', 'either'] as const satisfies readonly Credentials[];
 
 export type DecidedBy = 'rule' | 'limit' | 'network' | 'default';
 

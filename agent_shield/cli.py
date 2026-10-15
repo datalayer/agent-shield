@@ -11,7 +11,8 @@
     agent-shield harnesses
     agent-shield upgrade [--check]
     agent-shield uninstall [--yes]
-    agent-shield serve          # not built (SH-52): says so
+    agent-shield serve [--host 127.0.0.1] [--port 8788] [--token-env NAME] [--harness ID]... [--bridge] -- <command>
+    agent-shield connect ws://host:port/acp [--token-env NAME]
 
 Everything the proxy writes to its stdout is the protocol; what it says to a
 person goes to stderr. Nothing secret is printed: credentials are reported
@@ -55,6 +56,21 @@ from agent_shield.policy import (
 )
 from agent_shield.register import Harness, RegisterRefused, catalogue, credential_refusal, harness_of_command
 from agent_shield.register import harness as harness_of
+from agent_shield.registration import (
+    DEFAULT_IAM_URL,
+    KEY_ENV,
+    Registration,
+    RegistrationRefused,
+    cannot_have,
+    pap_sentence,
+)
+from agent_shield.registration import register as register_shield
+from agent_shield.tracing import configure_export, flush_export, refresh_export_token
+
+#: Where `serve` listens by default.
+DEFAULT_PORT = 8788
+#: How long an HTTP connection of `serve` may sit idle (the server's default).
+DEFAULT_IDLE_SECONDS = 300.0
 
 app = typer.Typer(
     name="agent-shield",
@@ -236,7 +252,20 @@ def setup(
         "claude-code", "--harness", help="The harness to set up (see `agent-shield harnesses`)."
     ),
     register: bool = typer.Option(
-        False, "--register/--local", help="Register with Datalayer (not built: SH-47) or stay local."
+        False,
+        "--register/--local",
+        help=f"Register with Datalayer through a service-agent key read from ${KEY_ENV} (SH-47), or stay local.",
+    ),
+    org: Optional[str] = typer.Option(
+        None, "--org", help="With --register: the organization the service agent belongs to."
+    ),
+    agent: Optional[str] = typer.Option(None, "--agent", help="With --register: the service agent's uid."),
+    iam_url: str = typer.Option(DEFAULT_IAM_URL, "--iam-url", help="With --register: IAM."),
+    otel_url: str = typer.Option(
+        "", "--otel-url", help="With --register: where the telemetry goes; default: IAM's host."
+    ),
+    key_env: str = typer.Option(
+        KEY_ENV, "--key-env", help="With --register: the environment variable holding the key."
     ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask."),
 ) -> None:
@@ -279,6 +308,27 @@ def setup(
     )
     if entry.entry.tier_restrictions:
         say(f"  tiers: {entry.entry.tier_restrictions}")
+    if register:
+        try:
+            registration = register_shield(
+                org_uid=org or "",
+                agent_uid=agent or "",
+                key=os.environ.get(key_env, ""),
+                iam_url=iam_url,
+                otel_url=otel_url,
+                base=base,
+            )
+        except RegistrationRefused as exc:
+            refuse(str(exc))
+        config.data["registered"] = True
+        config.data.pop("wants_registration", None)
+        say(
+            f"  registered with Datalayer: organization {registration.org_uid}, service agent {registration.agent_uid}, "
+            f"IAM {registration.iam_url}; the key and the token kept in {registration.path} (0600), never shown"
+        )
+        say(f"  {cannot_have()}")
+    else:
+        config.data["registered"] = bool(Registration.load(base))
     if entry.npm_package:
         installed = config.installed(entry.id)
         if installed and installed.get("version") == entry.version and Path(installed["bin"]).is_file():
@@ -305,12 +355,9 @@ def setup(
         )
         config.harnesses[entry.id] = {"version": entry.version, "bin": found or entry.command, "package": entry.adapter}
     config.data["default_harness"] = entry.id
-    config.data["registered"] = False
-    if register:
-        say("  registration with Datalayer is not built (SH-47): staying local; the wish is recorded in config.yaml")
-        config.data["wants_registration"] = True
     config.save()
     say(f"  config: {config.path}")
+    say(f"  {pap_sentence(bool(config.data.get('registered')))}")
     project_policy = Path.cwd() / POLICY_FILE
     if project_policy.is_file():
         say(f"  policy kept: {project_policy}")
@@ -399,6 +446,23 @@ def policy_show(
         typer.echo(f"  fetch allow-list: {', '.join(doc.network.fetch) or 'none (every fetch refused)'}")
         typer.echo(f"  mcp lent: {', '.join(doc.mcp.allow) or 'none'}")
         typer.echo("  nothing a rule names falls to: ask me first")
+    try:
+        registration = Registration.load()
+    except RegistrationRefused as exc:
+        refuse(str(exc))
+    if registration is None:
+        typer.echo(
+            "registration: local-only (the policy above is a file's; `agent-shield setup --register` takes IAM's)"
+        )
+    else:
+        described = registration.describe()
+        typer.echo(
+            f"registration: organization {described['org_uid']}, service agent {described['agent_uid']}, IAM {described['iam_url']}, "
+            f"telemetry to {described['otel_url']}, token {described['token']}"
+            + (f" until {described['token_expires']}" if described["token_expires"] else "")
+        )
+        typer.echo(f"  {cannot_have()}")
+    typer.echo(pap_sentence(registration is not None))
 
 
 @policy_app.command("schema")
@@ -516,10 +580,253 @@ def uninstall(yes: bool = typer.Option(False, "--yes", "-y", help="Do it; withou
     say("done; `pip uninstall datalayer-agent-shield` removes the command")
 
 
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def serve(
+    ctx: typer.Context,
+    host: str = typer.Option("127.0.0.1", "--host", help="Where to listen; beyond the loopback a token is needed."),
+    port: int = typer.Option(DEFAULT_PORT, "--port", help="The port; 0 picks a free one and says it."),
+    token_env: Optional[str] = typer.Option(
+        None,
+        "--token-env",
+        help="The environment variable holding the bearer token clients present (header or first message).",
+    ),
+    harness: list[str] = typer.Option(
+        [], "--harness", help="A harness of the register to serve at /acp/<id> (repeatable), instead of one command."
+    ),
+    bridge: bool = typer.Option(
+        False, "--bridge", help="No Shield: relay each connection to a harness it spawns (the sidecar, SH-40)."
+    ),
+    workspace: Optional[Path] = typer.Option(None, "--workspace", "-w", help="The directory the Shield guards."),
+    policy: Optional[Path] = typer.Option(None, "--policy", "-p", help="The policy file (local-only)."),
+    audit: Optional[Path] = typer.Option(None, "--audit", help="The audit file; default: ~/.agent-shield/audit.jsonl."),
+    env: list[str] = typer.Option([], "--env", help="An environment variable name to pass to the agents."),
+    idle: float = typer.Option(DEFAULT_IDLE_SECONDS, "--idle", help="Seconds an HTTP connection may sit idle."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Log at DEBUG; pass the agents' stderr through."),
+) -> None:
+    """The proxy as a server over WebSocket and ACP Streamable HTTP, one harness per connection (SH-52, SH-56)."""
+    from agent_shield.acp.proxy import ProxyRefused, ShieldProxy, stderr_passthrough
+    from agent_shield.acp.server import ServeRefused, ShieldBackend, ShieldServer
+
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG if verbose else logging.INFO)
+    command = list(ctx.args)
+    if command and command[0] == "--":
+        command = command[1:]
+    if bool(command) == bool(harness):
+        refuse("serve one command after `--`, or one or more `--harness <id>` of the register; not both, not neither")
+    token = None
+    if token_env:
+        token = os.environ.get(token_env, "")
+        if not token:
+            refuse(
+                f"${token_env} is empty: the token is read from the environment, never from an argument or the address"
+            )
+    config = Config.load()
+    base = (workspace or Path.cwd()).resolve()
+    commands: dict[str, tuple[list[str], Harness | None]] = {}
+    if command:
+        commands[""] = _resolve_command(command, config)
+    for harness_id in harness:
+        try:
+            entry = harness_of(harness_id)
+        except RegisterRefused as exc:
+            refuse(str(exc))
+        commands[entry.id] = _resolve_command([entry.command], config)
+    environments = {name: _agent_environment(entry, env) for name, (_, entry) in commands.items()}
+    audit_log = AuditLog(audit)
+    registration = None if bridge else _registration_or_none()
+    loaded: list[LoadedPolicy] = []
+    managed = None
+    if bridge:
+        say(
+            "agent-shield serve --bridge: no Shield here; every connection relayed verbatim to its harness (the runtime's Shield decides)"
+        )
+    elif registration is not None:
+        managed = _managed_policies(registration)
+        try:
+            loaded = _managed_loaded(managed, registration)
+        except Exception as exc:
+            refuse(str(exc))
+        if not configure_export(
+            registration.telemetry_url,
+            registration.token,
+            service_name="agent-shield",
+            **{"shield.agent": registration.agent_uid},
+        ):
+            refuse(
+                "registered, the Shield exports its telemetry; install `datalayer-agent-shield[otel]` for the OTEL SDK and the OTLP exporter"
+            )
+        say(
+            f"agent-shield {__version__}: policies from IAM at {registration.iam_url} ({len(loaded)} documents), telemetry to {registration.telemetry_url}; {cannot_have()}"
+        )
+    else:
+        policy_path = policy or find_policy_file(base)
+        if policy_path is None:
+            refuse(f"no {POLICY_FILE} in {base} and none in {home()}: `agent-shield setup` writes the default one")
+        try:
+            loaded = load_policies(policy_path)
+        except PolicyRefused as exc:
+            refuse(str(exc))
+        say(f"agent-shield {__version__}: policy {policy_path} (local-only); audit {audit or home() / AUDIT_FILE}")
+
+    def factory_of(name: str):
+        resolved, _entry = commands[name]
+
+        def make() -> ShieldProxy:
+            return ShieldProxy(
+                resolved,
+                policies=loaded,
+                audit=audit_log,
+                workspace=workspace,
+                agent_env=environments[name],
+                agent_stderr=stderr_passthrough if verbose else None,
+            )
+
+        return make
+
+    agents: dict = {name: (resolved if bridge else factory_of(name)) for name, (resolved, _) in commands.items()}
+    bridge_env = environments.get("") or (environments[next(iter(environments))] if len(environments) == 1 else {})
+    try:
+        server = ShieldServer(
+            agents,
+            audit=audit_log,
+            token=token,
+            bridge_cwd=str(base) if bridge else None,
+            bridge_env=bridge_env,
+            idle_seconds=idle,
+        )
+    except (ServeRefused, ProxyRefused) as exc:
+        refuse(str(exc))
+
+    async def main() -> None:
+        try:
+            await server.start(host, port)
+        except ServeRefused as exc:
+            refuse(str(exc))
+        paths = ", ".join(f"/acp/{name}" if name else "/acp" for name in sorted(agents))
+        say(
+            f"agent-shield serve: listening on {server.host}:{server.port} ({paths}; WebSocket and Streamable HTTP; "
+            f"{'bearer token required' if token else 'no token: loopback only'})"
+        )
+        watcher = None
+        if managed is not None and registration is not None:
+
+            async def changed(policies) -> None:
+                fresh = [LoadedPolicy(policy=item, origin=f"IAM {registration.iam_url}") for item in policies]
+                loaded[:] = fresh
+                for served in list(server.connections.values()):
+                    if isinstance(served.backend, ShieldBackend):
+                        served.backend.proxy.replace_policies(fresh)
+
+            async def unavailable(sentence: str) -> None:
+                for served in list(server.connections.values()):
+                    if isinstance(served.backend, ShieldBackend):
+                        served.backend.proxy.refuse_all(sentence)
+
+            watcher = asyncio.create_task(_watch_managed(managed, registration, changed, unavailable))
+        try:
+            await asyncio.Event().wait()
+        finally:
+            if watcher is not None:
+                watcher.cancel()
+            await server.stop()
+            flush_export()
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        say("agent-shield serve: stopped")
+
+
+def _registration_or_none() -> Registration | None:
+    try:
+        return Registration.load()
+    except RegistrationRefused as exc:
+        refuse(str(exc))
+    return None  # pragma: no cover
+
+
+def _managed_policies(registration: Registration):
+    from agent_shield.saas import IamPolicySource, ManagedPolicies
+
+    token = registration.fresh_token()
+    return ManagedPolicies(IamPolicySource(registration.iam_url, token, registration.agent_uid))
+
+
+def _managed_loaded(managed, registration: Registration) -> list[LoadedPolicy]:
+    from agent_shield.saas import IamPolicySource
+
+    if not registration.token_fresh():
+        managed.source = IamPolicySource(registration.iam_url, registration.fresh_token(), registration.agent_uid)
+        refresh_export_token(registration.token)
+    pulled = managed.pull()
+    if not pulled:
+        raise RegistrationRefused(
+            f"IAM at {registration.iam_url} serves no Shield document for service agent {registration.agent_uid}: "
+            "its organization has written none, or IAM does not answer a service agent's organization yet; "
+            "with no document nothing is decided (SHIELD decision 11), so the Shield does not start"
+        )
+    return [LoadedPolicy(policy=item, origin=f"IAM {registration.iam_url}") for item in pulled]
+
+
+async def _watch_managed(managed, registration: Registration, changed, unavailable) -> None:
+    """Poll IAM as the saas module does, the token exchanged again before it expires."""
+    from agent_shield.saas import IamPolicySource, PolicyUnavailable, fingerprint
+
+    before = fingerprint(managed.kept.policies) if managed.kept is not None else None
+    refused_said = False
+    while True:
+        await asyncio.sleep(managed.poll_seconds)
+        if not registration.token_fresh():
+            try:
+                managed.source = IamPolicySource(
+                    registration.iam_url, registration.fresh_token(), registration.agent_uid
+                )
+                refresh_export_token(registration.token)
+            except RegistrationRefused as exc:
+                if not refused_said:
+                    await unavailable(
+                        f"The Shield cannot exchange its key at IAM ({exc}); nothing is decided until it can"
+                    )
+                refused_said = True
+                continue
+        try:
+            policies = await asyncio.to_thread(managed.pull)
+        except PolicyUnavailable as exc:
+            if not refused_said:
+                await unavailable(str(exc))
+            refused_said = True
+            continue
+        now = fingerprint(policies)
+        if now != before or refused_said:
+            before = now
+            refused_said = False
+            await changed(policies)
+
+
 @app.command()
-def serve() -> None:
-    """The proxy as a WebSocket server: not built (SH-52)."""
-    refuse("serve is not built (SHIELD SH-52); `agent-shield run -- <command>` is the stdio proxy")
+def connect(
+    url: str = typer.Argument(..., help="The Shield served elsewhere: ws://host:port/acp (or /acp/<harness>)."),
+    token_env: Optional[str] = typer.Option(
+        None, "--token-env", help="The environment variable holding the bearer token."
+    ),
+) -> None:
+    """A remote Shield as a local stdio agent, for clients that only start commands (SH-56)."""
+    from agent_shield.acp.remote import RemoteRefused, mirror_stdio
+
+    token = None
+    if token_env:
+        token = os.environ.get(token_env, "")
+        if not token:
+            refuse(
+                f"${token_env} is empty: the token is read from the environment, never from an argument or the address"
+            )
+    try:
+        status = asyncio.run(mirror_stdio(url, token=token))
+    except RemoteRefused as exc:
+        refuse(str(exc))
+    except OSError as exc:
+        refuse(f"{url} could not be reached ({exc})")
+    raise typer.Exit(status)
 
 
 @app.command()

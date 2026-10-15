@@ -6,6 +6,51 @@
 
 # Changelog
 
+## 0.1.7
+
+The standalone side of SHIELD.md Phase 3 (SH-52, SH-56, SH-55, SH-53, SH-40, SH-47, SH-73,
+SH-22; 15 October 2026):
+
+- `agent-shield serve` (`agent_shield.acp.server.ShieldServer`): the proxy as a server, one
+  harness per connection, over **WebSocket** (`GET /acp` upgraded; `/acp/ws` as ACP Remote
+  has it; `/message` as marimo has it; one JSON-RPC message per text frame) and **ACP
+  Streamable HTTP** (`POST /acp` in — `initialize` makes the connection, `200` with the
+  result and `Acp-Connection-Id`, everything else `202` —, SSE streams out, connection- and
+  session-scoped by `Acp-Session-Id`, `DELETE /acp` to end; batches `501`), as the ACP
+  project's RFD and the ecosystem's bridges speak them. The token in the `Authorization`
+  header or, over WebSocket, in the first message (`authenticate` with `methodId` `bearer`
+  and `_meta.token`), never in the address (refused `400`); beyond the loopback a token is
+  required. `--harness <id>` serves the register's at `/acp/<id>`; `--bridge` relays with no
+  Shield (the sidecar); an idle HTTP connection is ended. `agent-shield connect <url>`
+  mirrors a served Shield on stdio. The ACP TCK through `connect` against `serve`:
+  `VERDICT: CONFORMANT`; ACP Remote's `acpremote mirror` drove a shielded turn with a
+  permission through it. `ShieldProxy` takes `connect_url` (the agent over the WebSocket
+  channel instead of a subprocess) for the sidecar. Extras `serve` (aiohttp) and `otel`.
+- `agent-shield setup --register --org --agent` (`agent_shield.registration`): the service
+  agent's key read from `$AGENT_SHIELD_SERVICE_KEY`, exchanged at IAM
+  (`client_credentials`) and kept with the token in `credentials.yaml` (0600, a looser mode
+  not read), exchanged again before it expires; the registered `serve` pulls its policies
+  from IAM (fail closed; refuses to start when IAM serves no document), exports its spans
+  and counts to Datalayer's observability with the token
+  (`agent_shield.tracing.configure_export`, `refresh_export_token`, `flush_export`); what a
+  standalone Shield cannot have said in one sentence (`cannot_have`), PAP's availability
+  (`pap_sentence`) in `setup` and `policy show`. Proved against prod1's IAM with a throwaway
+  service agent, revoked after.
+- `@datalayer/agent-shield`: the policy types generated from `schema/policy.schema.json`
+  (`policy.generated.ts`, `npm run generate`, held equal by `npm test`); the `diff` and
+  `terminal` display contracts of agent-runtimes' `portable/displays` (`readShieldDisplay`,
+  `unifiedDiffLines`, `unifiedDiffText`, `terminalText`), held equal to that file by a
+  test when it is beside the package; the conformance report's renderer
+  (`readConformanceReport`, `renderReportMarkdown`, `renderReportHtml`) on the JSON
+  `agent_shield.conformance` writes.
+- The documentation: `docs/scripts/generate.py` writes the policy reference from the schema,
+  the register table from agentspecs and the Python API from the docstrings;
+  `docs/scripts/check_pages.py` holds every page to a **Built** and a **Not built** line and
+  to commands, options, modules and links that exist; the *serve and registration*, *works
+  with*, *audit* and *conformance* pages; `docs.yaml` builds the site in CI; the Makefile's
+  `deploy` refuses without the distribution id.
+- 17 new tests (serve, registration), 14 TypeScript tests.
+
 ## 0.1.6
 
 0.1.3 to 0.1.5 were never published: a quote nested inside a quoted f-string in

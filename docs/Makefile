@@ -50,16 +50,30 @@ build: ## build
 	($(CONDA_ACTIVATE) ${ENV_NAME}; \
 	  npm run build )
 
-deploy: build ## deploy
+# The bucket and the distribution of agent-shield.datalayer.tech. Neither
+# exists yet (checked 2026-10-15 in account 773842031886: the bucket answers
+# 404, the name has no DNS record); the distribution id is taken from the
+# environment so that no other site's is ever invalidated by mistake.
+BUCKET ?= datalayer-agent-shield
+DISTRIBUTION ?= $(AGENT_SHIELD_CLOUDFRONT_DISTRIBUTION)
+
+generate: ## write the generated pages (the policy reference, the register, the Python API)
+	python scripts/generate.py
+
+check: ## hold every page to what is built
+	python scripts/generate.py --check && python scripts/check_pages.py
+
+deploy: build ## deploy to the bucket and invalidate the distribution
+	@test -n "$(DISTRIBUTION)" || (echo "set AGENT_SHIELD_CLOUDFRONT_DISTRIBUTION to the distribution of agent-shield.datalayer.tech" && exit 1)
 	($(CONDA_ACTIVATE) ${ENV_NAME}; \
 	  aws s3 rm \
-		s3://datalayer-agent-shield/ \
+		s3://$(BUCKET)/ \
 		--recursive && \
 	  aws s3 cp \
 		./build \
-		s3://datalayer-agent-shield/ \
+		s3://$(BUCKET)/ \
 		--recursive && \
 	  aws cloudfront create-invalidation \
-		--distribution-id EF1X7HFFZFTLY \
+		--distribution-id $(DISTRIBUTION) \
 		--paths "/*" )
 	echo open ✨  https://agent-shield.datalayer.tech

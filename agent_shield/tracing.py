@@ -88,7 +88,7 @@ def labels() -> dict[str, str]:
 def _otel() -> tuple[Any, Any] | None:
     try:
         from opentelemetry import metrics, trace
-    except Exception:  # noqa: BLE001 - telemetry is optional
+    except Exception:
         return None
     return trace, metrics
 
@@ -118,7 +118,9 @@ def reset_instruments() -> None:
 def _attributes(row: Mapping[str, Any], names: tuple[str, ...]) -> dict[str, Any]:
     attributes = {name: row[name] for name in names if row.get(name) is not None and name not in _labels}
     attributes.update({name: value for name, value in _labels.items() if name in names})
-    return {key: (value if isinstance(value, (str, int, float, bool)) else str(value)) for key, value in attributes.items()}
+    return {
+        key: (value if isinstance(value, (str, int, float, bool)) else str(value)) for key, value in attributes.items()
+    }
 
 
 def observe(row: Mapping[str, Any]) -> None:
@@ -143,12 +145,11 @@ def observe(row: Mapping[str, Any]) -> None:
         if decision in ("allow", "ask", "deny"):
             counters["shield.decisions"].add(1, _attributes(row, CATALOGUE["shield.decisions"]))
         if decision == "deny" or event == "refusal":
-            counters["shield.refusals"].add(
-                1, _attributes({**row, "event": event, "decided_by": row.get("decided_by") or row.get("by")}, CATALOGUE["shield.refusals"])
-            )
+            refusal = {**row, "event": event, "decided_by": row.get("decided_by") or row.get("by")}
+            counters["shield.refusals"].add(1, _attributes(refusal, CATALOGUE["shield.refusals"]))
         if event == "limit":
             counters["shield.limits"].add(1, _attributes(row, CATALOGUE["shield.limits"]))
-    except Exception as error:  # noqa: BLE001 - the story about the work is worth less than the work
+    except Exception as error:
         logger.debug("The Shield's telemetry could not take a row: %s", error)
 
 
@@ -169,12 +170,12 @@ def trace_headers() -> dict[str, str]:
     """The current trace context as W3C headers, or nothing when there is none."""
     try:
         from opentelemetry.propagate import inject
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {}
     carrier: dict[str, str] = {}
     try:
         inject(carrier)
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         logger.debug("The trace context could not be injected: %s", error)
         return {}
     return carrier
@@ -214,7 +215,7 @@ def continued(traceparent: str | None, tracestate: str | None = None) -> Iterato
     try:
         from opentelemetry import context as otel_context
         from opentelemetry.propagate import extract
-    except Exception:  # noqa: BLE001
+    except Exception:
         yield
         return
     current = found[0].get_current_span()
@@ -231,14 +232,95 @@ def continued(traceparent: str | None, tracestate: str | None = None) -> Iterato
         otel_context.detach(token)
 
 
+# -- exporting from a standalone Shield (SH-47, SH-52) -------------------------------------
+
+#: The OTLP/HTTP ingest of Datalayer's observability, under the service's prefix.
+INGEST_PATH = "/api/otel/v1/otlp"
+
+_exporters: list[Any] = []
+
+
+def configure_export(url: str, token: str, *, service_name: str = "agent-shield", **resource: str) -> bool:
+    """Export spans and counts to Datalayer's observability at ``url`` with ``token``; ``False`` without the SDK.
+
+    Sets the process's tracer and meter providers once — OTLP over HTTP to
+    ``{url}/api/otel/v1/otlp/v1/traces`` and ``/v1/metrics``, the token as
+    the bearer — so :func:`turn_span` and :func:`observe` leave the process.
+    Without the OTEL SDK and the OTLP HTTP exporter installed
+    (``datalayer-agent-shield[otel]``), nothing is set and ``False`` says so.
+    """
+    try:
+        from opentelemetry import metrics, trace
+        from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    except ImportError:
+        return False
+    if not url.startswith(("https://", "http://")):
+        raise ValueError(f"the observability's URL is http(s), not {url!r}")
+    if not token:
+        raise ValueError("a token is needed to export telemetry")
+    base = url.rstrip("/") + INGEST_PATH
+    headers = {"Authorization": f"Bearer {token}"}
+    attributes = {"service.name": service_name, **{k: v for k, v in resource.items() if v}}
+    spans = OTLPSpanExporter(endpoint=f"{base}/v1/traces", headers=headers)
+    points = OTLPMetricExporter(endpoint=f"{base}/v1/metrics", headers=headers)
+    tracer_provider = TracerProvider(resource=Resource.create(attributes))
+    tracer_provider.add_span_processor(BatchSpanProcessor(spans))
+    meter_provider = MeterProvider(
+        resource=Resource.create(attributes), metric_readers=[PeriodicExportingMetricReader(points)]
+    )
+    trace.set_tracer_provider(tracer_provider)
+    metrics.set_meter_provider(meter_provider)
+    _exporters[:] = [spans, points]
+    reset_instruments()
+    return True
+
+
+def refresh_export_token(token: str) -> int:
+    """A new bearer for the exporters already configured (a token exchanged again); how many took it."""
+    taken = 0
+    for exporter in _exporters:
+        session = getattr(exporter, "_session", None)
+        if session is not None and hasattr(session, "headers"):
+            session.headers["Authorization"] = f"Bearer {token}"
+            taken += 1
+        held = getattr(exporter, "_headers", None)
+        if isinstance(held, dict):
+            held["Authorization"] = f"Bearer {token}"
+    return taken
+
+
+def flush_export(timeout_millis: int = 5000) -> None:
+    """Hand what is batched to the ingest now (at exit, or before a check)."""
+    found = _otel()
+    if found is None:
+        return
+    for provider in (found[0].get_tracer_provider(), found[1].get_meter_provider()):
+        flush = getattr(provider, "force_flush", None)
+        if flush is not None:
+            try:
+                flush(timeout_millis)
+            except Exception as error:
+                logger.debug("The Shield's telemetry could not be flushed: %s", error)
+
+
 __all__ = [
     "CATALOGUE",
     "EVENT_FIELDS",
+    "INGEST_PATH",
     "INSTRUMENTATION",
     "META_TRACEPARENT",
+    "configure_export",
     "continued",
+    "flush_export",
     "labels",
     "observe",
+    "refresh_export_token",
     "reset_instruments",
     "set_labels",
     "trace_headers",
