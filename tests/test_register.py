@@ -29,8 +29,8 @@ def test_custom_is_not_set_up_from_the_catalogue():
 
 
 def test_an_unknown_harness_is_refused_naming_the_register():
-    with pytest.raises(RegisterRefused, match="'cursor' is not in the register; the harnesses are claude-code"):
-        harness("cursor")
+    with pytest.raises(RegisterRefused, match="'nope' is not in the register; the harnesses are claude-code"):
+        harness("nope")
 
 
 def test_claude_code_is_installed_from_the_prefix_never_npx():
@@ -86,3 +86,14 @@ def test_a_google_login_on_the_consumer_tier_is_refused_and_the_tier_named(tmp_p
 def test_harnesses_without_a_login_file_are_not_refused(tmp_path: Path):
     for harness_id in ("goose", "opencode", "openhands", "fast-agent"):
         assert credential_refusal(harness(harness_id), environment={}, home=tmp_path) is None
+
+
+def test_a_listed_or_an_organizations_own_harness_is_refused_by_the_standalone_shield():
+    """SH-57: the long tail is listed, not drilled yet; SH-46: an organization's own
+    harness is served on Datalayer, where its organization admits the reviewed command."""
+    from agent_shield.register import RegisterRefused, harness
+
+    with pytest.raises(RegisterRefused, match="listed, not drilled yet"):
+        harness("qwen-code")
+    with pytest.raises(RegisterRefused, match="served on Datalayer"):
+        harness("org-acme-coder")

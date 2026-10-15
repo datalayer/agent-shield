@@ -152,6 +152,20 @@ def harness(harness_id: str) -> Harness:
         raise RegisterRefused(str(exc)) from None
     if harness_id == CUSTOM_HARNESS:
         raise RegisterRefused("'custom' is an organization's own spec, not one the Shield sets up from the catalogue")
+    # The long tail (SH-57): registered with its documented command and its
+    # terms, offered by nothing until drilled.
+    from agentspecs.harnesses import is_organization_harness, listed_refusal  # noqa: PLC0415
+
+    listed = listed_refusal(harness_id)
+    if listed is not None:
+        raise RegisterRefused(listed)
+    # An organization's own (SH-46): read from its organization's catalogue on
+    # Datalayer and admitted by its policy there; a standalone Shield has neither.
+    if is_organization_harness(harness_id):
+        raise RegisterRefused(
+            f"{harness_id!r} is an organization's own harness: it is served on Datalayer, where its "
+            "organization's catalogue holds it and its policy admits the command reviewed, and nowhere else"
+        )
     try:
         return found[harness_id]
     except KeyError:

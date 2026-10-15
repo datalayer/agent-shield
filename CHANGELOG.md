@@ -6,6 +6,10 @@
 
 # Changelog
 
+## Unreleased
+
+- The register refuses, at `setup` and `run`, a harness of agentspecs' listed tier in the sentence *listed, not drilled yet* (SHIELD SH-57: the long tail of the ACP agents page, registered with its documented command and its terms) and an organization's own `org-…` harness, which is served on Datalayer only, where its organization's catalogue holds it and its policy admits the reviewed command (SH-46). agentspecs 0.0.107.
+
 ## 0.2.0
 
 External authorization and PAP through the Shield (SHIELD.md §6.10, §6.11; SH-74, SH-75's client
