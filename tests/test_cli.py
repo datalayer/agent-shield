@@ -11,7 +11,10 @@ from importlib import import_module
 from pathlib import Path
 
 import pytest
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10: tomllib arrived in 3.11
+    import tomli as tomllib
 from typer.testing import CliRunner
 
 from agent_shield import __version__

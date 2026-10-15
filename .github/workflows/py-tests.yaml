@@ -91,15 +91,17 @@ jobs:
       - name: Install the TCK
         run: uv tool install --python 3.14 "git+https://github.com/agentclientprotocol/acp-tck@fa00ccdc13df"
 
+      # The TCK runs the agent with cwd /tmp/wd (--agent-cwd), so paths are
+      # absolute, and the venv's python, where the SDK is installed.
       - name: The fake agent alone (the baseline)
         run: |
           mkdir -p /tmp/wd
-          acp-tck --agent-cwd /tmp/wd --timeout 20 --test-timeout 60 --report-json baseline.json -- python tests/fixtures/fake_agent.py
+          acp-tck --agent-cwd /tmp/wd --timeout 20 --test-timeout 60 --report-json baseline.json -- "$VIRTUAL_ENV/bin/python" "$GITHUB_WORKSPACE/tests/fixtures/fake_agent.py"
 
       - name: The proxy in front of the fake agent
         run: |
-          agent-shield policy init /tmp/wd/agent-shield.yaml
-          acp-tck --agent-cwd /tmp/wd --timeout 20 --test-timeout 60 --report-json proxy.json -- agent-shield run --policy /tmp/wd/agent-shield.yaml -- python tests/fixtures/fake_agent.py
+          "$VIRTUAL_ENV/bin/agent-shield" policy init /tmp/wd/agent-shield.yaml
+          acp-tck --agent-cwd /tmp/wd --timeout 20 --test-timeout 60 --report-json proxy.json -- "$VIRTUAL_ENV/bin/agent-shield" run --policy /tmp/wd/agent-shield.yaml -- "$VIRTUAL_ENV/bin/python" "$GITHUB_WORKSPACE/tests/fixtures/fake_agent.py"
 
       - uses: actions/upload-artifact@v4
         if: always()
