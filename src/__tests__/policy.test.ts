@@ -37,7 +37,7 @@ test('the TypeScript constants are the schema’s enums', () => {
 });
 
 test('the schema’s document and rule keys are the interfaces’ keys', () => {
-  assert.deepEqual(Object.keys(schema.properties).sort(), ['expires', 'harnesses', 'limits', 'mcp', 'network', 'rules', 'scope', 'version']);
+  assert.deepEqual(Object.keys(schema.properties).sort(), ['authorize', 'authorizer', 'expires', 'harnesses', 'limits', 'mcp', 'network', 'rules', 'scope', 'version']);
   assert.deepEqual(Object.keys(schema.$defs.Rule.properties).sort(), ['classes', 'commands', 'decision', 'kinds', 'name', 'paths', 'reason', 'where']);
   assert.deepEqual(Object.keys(schema.$defs.Limits.properties).sort(), [...LIMIT_NAMES].sort());
   assert.deepEqual(Object.keys(schema.$defs.Harnesses.properties).sort(), ['admit', 'credentials']);
