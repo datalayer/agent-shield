@@ -24,13 +24,25 @@ from .authorize import (
     EvaluationResponse,
     Grant,
     LocalAuthorizer,
+    OpaAuthorizer,
     OpenFgaAuthorizer,
     Resource,
     Subject,
     authorize,
     hook_for,
 )
-from .classify import FLAGGED_COMMANDS, KIND_CLASS, SHIELD_KINDS, UnknownKind, class_of, flagged
+from .classify import (
+    CLASS_STRICTNESS,
+    FLAGGED_COMMANDS,
+    KIND_CLASS,
+    PAP_TOOL_CLASSES,
+    SHIELD_KINDS,
+    UnknownKind,
+    class_of,
+    flagged,
+    pap_tool_class,
+    strictest,
+)
 from .decide import LOCAL_SUBJECT, MODEL_KIND, Context, LimitState, decide, decide_budget, request_for, scopes_present
 from .default import default_policy
 from .files import LoadedPolicy, PolicyRefused, dump_policy, load_policies, parse_policies, parse_policy
@@ -78,6 +90,10 @@ def policy_json_schema_text() -> str:
 __all__ = [
     "ACTION_CLASSES",
     "ALLOW_TTL",
+    "CLASS_STRICTNESS",
+    "PAP_TOOL_CLASSES",
+    "pap_tool_class",
+    "strictest",
     "LOCAL_SUBJECT",
     "RELATIONS",
     "ActionName",
@@ -92,6 +108,7 @@ __all__ = [
     "EvaluationResponse",
     "Grant",
     "LocalAuthorizer",
+    "OpaAuthorizer",
     "OpenFgaAuthorizer",
     "Resource",
     "Subject",

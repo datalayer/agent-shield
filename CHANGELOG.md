@@ -6,6 +6,44 @@
 
 # Changelog
 
+## 0.2.0
+
+External authorization and PAP through the Shield (SHIELD.md §6.10, §6.11; SH-74, SH-75's client
+side, SH-78, SH-70, SH-71, SH-72, SH-73; 16 October 2026). **The schema changed** — the
+document gains `authorize:` and `authorizer:` — so IAM and agentspecs follow (agentspecs
+0.0.105 carries it):
+
+- `agent_shield.policy.authorize`: the authorizer port — `authorize(subject, action, resource,
+  context)` in the OpenID AuthZen evaluation shape; the contributions `local` (grants as
+  patterns in `agent-shield.yaml`), `authzen` (any evaluation endpoint), `openfga` (an
+  organization's own, at its check API) and `opa` (Open Policy Agent, the request as its
+  `input`; proved against a real OPA 1.9.0); the port's rules: a deny wins over any Rule, an
+  authorizer that cannot be reached is a deny naming it, allows cached until they expire and
+  honoured through an outage, denies never cached, no authorizer configured is a deny for
+  every class a policy lists — never a fail-open. A by-hand mutation pass killed 7 of 7
+  mutants of the precedence.
+- The policy's `authorize: [classes]` (empty for a local-only Shield; Datalayer's documents
+  name the classes its relationships decide) and `authorizer: {local|openfga|authzen|opa}`;
+  `decide` asks the context's hook first, for the strictest scope listing the class, an allow
+  letting the rules decide and loosening nothing; the decision carries the authorizer, its
+  answer and the model's version into the audit; a scope below drops no class the one above
+  authorizes (`widening`).
+- `agent_shield.saas.IamAuthorizer`: OpenFGA through IAM (`POST /api/iam/v1/authz/evaluate`
+  with the token), the one authorizer on Datalayer and of the registered standalone Shield; a
+  managed document naming an authorizer is refused.
+- The gateway's `pap_*` tools classed by agentspecs' table (`PAP_TOOL_CLASSES`), a host's own
+  table through `ShieldProxy(tool_class=…)` naming the company as the resource, so each PAP
+  operation is decided by the Rules and the PAP grant is a decision input through the
+  authorizer (`connection:<company>`); the harness's own fetch to a connected company refused
+  (`ShieldProxy(companies=…)`): PAP is the only way to a company.
+- `agent_shield.pap`: the company role in front of any agent on the PAP SDK's company points
+  (`CompanyShield`, `ShieldedCompanyAgent`, `ShieldedOperationExecutor`, `ShieldCompanyPlugin`):
+  an incoming operation classed (a term moving money is a `buy`, else a `write`; no terms, a
+  `buy`) and decided by the company's policy, held for review when it says ask and released or
+  refused by a person, refused in the sentence when it says deny, the answer signed
+  (`Signer`), the audit in PAP's vocabulary (`operation`, `review`); the `pap` extra.
+- Nothing of 0.1.x is removed; a document without `authorize:` decides as before.
+
 ## 0.1.7
 
 The standalone side of SHIELD.md Phase 3 (SH-52, SH-56, SH-55, SH-53, SH-40, SH-47, SH-73,

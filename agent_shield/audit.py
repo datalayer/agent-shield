@@ -42,6 +42,10 @@ EVENTS = (
     "policy",
     # The agent's plan: how many steps, their status (§6.4); never their text.
     "plan",
+    # PAP's vocabulary, the company role (§6.10, SH-71): an operation performed
+    # for a person, signed; a review held for a person of the company, released or refused.
+    "operation",
+    "review",
 )
 
 #: Who decided: the policy, a person asked, the agent itself (a notification), or the Shield.

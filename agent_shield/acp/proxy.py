@@ -82,6 +82,7 @@ from agent_shield.policy import (
     decide,
     decide_budget,
     hook_for,
+    pap_tool_class,
 )
 from agent_shield.tracing import with_traceparent
 
@@ -126,6 +127,8 @@ class SessionState:
     #: Who acts in this session and the authorizer's hook (SHIELD §6.11), the proxy's.
     subject: Subject | None = None
     authorize: AuthorizeHook | None = None
+    #: The companies the application connects through PAP (§6.10).
+    companies: tuple[str, ...] = ()
 
     @property
     def context(self) -> Context:
@@ -135,6 +138,7 @@ class SessionState:
             state=self.state,
             subject=self.subject,
             authorize=self.authorize,
+            companies=self.companies,
         )
 
     def all_session_rules(self) -> list[Rule]:
@@ -166,12 +170,50 @@ def _raw(value: Any, *names: str) -> str | None:
     return None
 
 
-def action_of_tool_call(tool_call: Any, workspace: Workspace) -> tuple[Action | None, str | None]:
-    """An ``Action`` from a tool call (a ``ToolCallSaid`` event or a ``ToolCallUpdate``), or none to decide."""
+#: What a host says of a lent tool (SHIELD §6.10, SH-70): the class of the tool as
+#: the model names it and the resource the authorizer is asked about
+#: (``connection:<company>``), or ``None`` for a tool of no company.
+ToolClass = Callable[[str], "tuple[str, str | None] | None"]
+
+
+def tool_name_of(tool_call: Any) -> str | None:
+    """The tool a call names: its input's ``name``/``tool``, else the first word of its title."""
+    raw_input = getattr(tool_call, "input", None)
+    if raw_input is None:
+        raw_input = getattr(tool_call, "raw_input", None)
+    named = _raw(raw_input, "name", "tool", "toolName", "tool_name")
+    if named:
+        return named
+    title = getattr(tool_call, "title", None)
+    if isinstance(title, str) and title:
+        head = title.split()[0].strip("`'\"():")
+        return head or None
+    return None
+
+
+def action_of_tool_call(
+    tool_call: Any, workspace: Workspace, *, tool_class: ToolClass | None = None
+) -> tuple[Action | None, str | None]:
+    """An ``Action`` from a tool call (a ``ToolCallSaid`` event or a ``ToolCallUpdate``), or none to decide.
+
+    A lent tool the host classes (``tool_class``), or one of the gateway's
+    ``pap_*`` tools, takes its class from that table rather than from the ACP
+    kind the harness reported — a confirmation at a company is a ``buy``
+    whatever kind the harness called it — and names the company as the
+    resource the authorizer is asked about.
+    """
     kind = getattr(tool_call, "kind", None)
     if kind is None:
         return None, "the tool call names no kind"
     action_class = class_of(kind)
+    resource: str | None = None
+    name = tool_name_of(tool_call)
+    if name:
+        classed = tool_class(name) if tool_class is not None else None
+        if classed is not None:
+            action_class, resource = classed[0], classed[1]  # type: ignore[assignment]
+        elif pap_tool_class(name) is not None:
+            action_class = pap_tool_class(name)
     if action_class is None:
         return None, None
     raw_input = getattr(tool_call, "input", None)
@@ -185,12 +227,21 @@ def action_of_tool_call(tool_call: Any, workspace: Workspace) -> tuple[Action | 
     url = _raw(raw_input, "url")
     inside: bool | None = None
     shown = path
-    if path is not None:
+    if path is not None and resource is None:
         placed = workspace.place(path)
         inside, shown = placed.inside, placed.shown
     title = getattr(tool_call, "title", None) or kind
     return (
-        Action(kind=kind, title=title, path=shown, inside=inside, command=command, url=url, **{"class": action_class}),
+        Action(
+            kind=kind,
+            title=title,
+            path=shown if resource is None else None,
+            inside=inside,
+            command=command,
+            url=url,
+            resource=resource,
+            **{"class": action_class},
+        ),
         None,
     )
 
@@ -236,10 +287,16 @@ class ShieldProxy:
         connect_headers: Mapping[str, str] | None = None,
         authorizer: Authorizer | None = None,
         subject: Subject | None = None,
+        tool_class: ToolClass | None = None,
+        companies: Sequence[str] = (),
     ) -> None:
         if not command and not connect_url:
             raise ProxyRefused("no agent command: `agent-shield run -- <command>`")
         self.command = list(command)
+        #: How the host classes a lent tool, and the companies the application
+        #: connects through PAP (§6.10): a fetch to one is refused.
+        self.tool_class = tool_class
+        self.companies = tuple(companies)
         #: The authorizer (§6.11): the one given (IAM's on Datalayer, SH-75), else the one the
         #: strictest policy names under ``authorizer:``; none leaves every class a policy lists
         #: under ``authorize:`` refused. Allows are cached once per proxy, until they expire.
@@ -466,6 +523,7 @@ class ShieldProxy:
             policies=self.policies,
             subject=self.subject,
             authorize=self.authorize_hook,
+            companies=self.companies,
         )
         session.terminals = Terminals(workspace)
         self.sessions[session_id] = session
@@ -688,7 +746,7 @@ class _InnerClient:
             )
         if isinstance(event, ToolCallSaid):
             try:
-                action, problem = action_of_tool_call(event, session.workspace)
+                action, problem = action_of_tool_call(event, session.workspace, tool_class=proxy.tool_class)
             except UnknownKind as exc:
                 await proxy.fail_turn(session, str(exc))
                 return
@@ -756,7 +814,7 @@ class _InnerClient:
         proxy = self.proxy
         session = proxy._session(session_id)
         try:
-            action, problem = action_of_tool_call(tool_call, session.workspace)
+            action, problem = action_of_tool_call(tool_call, session.workspace, tool_class=proxy.tool_class)
         except UnknownKind as exc:
             raise RequestError(REFUSED, str(exc)) from None
         cached = session.decisions.get(tool_call.tool_call_id)

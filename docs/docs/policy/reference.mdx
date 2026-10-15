@@ -16,6 +16,8 @@ One policy document, one scope.
 
 | Field | Type | Required | What it says |
 |---|---|---|---|
+| `authorize` | list of `read` \| `write` \| `send` \| `buy` \| `delete` \| `execute` | no | The classes that need an authorizer's allow beside the Rules (SHIELD §6.11): a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy. |
+| `authorizer` | AuthorizerConfig or null | no | The decision point a standalone Shield asks: local (grants in this file), openfga &#123;url, store, model&#125; or authzen &#123;url&#125;. On Datalayer the authorizer is IAM's and a managed document names none. |
 | `expires` | string or null | no | When a pulled copy stops being honoured (decision 11). |
 | `harnesses` | Harnesses | no |  |
 | `limits` | Limits | no |  |
@@ -24,6 +26,34 @@ One policy document, one scope.
 | `rules` | list of Rule | no |  |
 | `scope` | `organization` \| `team` \| `session` | yes |  |
 | `version` | integer | no |  |
+
+## AuthZenAuthorizerConfig
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `headers` | object | no |  |
+| `url` | string | yes |  |
+
+## AuthorizerConfig
+
+``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone).
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `authzen` | AuthZenAuthorizerConfig or null | no |  |
+| `local` | LocalAuthorizerConfig or null | no |  |
+| `opa` | OpaAuthorizerConfig or null | no |  |
+| `openfga` | OpenFgaAuthorizerConfig or null | no |  |
+
+## Grant
+
+One line of the ``local`` authorizer: who may do what to what, as patterns (fnmatch).
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `object` | string | yes | workspace:*/src/*, tool:earthdata/*, connection:acme.example |
+| `relation` | string | yes | can_read, can_execute, can_call, can_act, or an action class |
+| `subject` | string | yes | user:alice, account:*, deployment:01… |
 
 ## Harnesses
 
@@ -52,6 +82,12 @@ refused and the sentence says what would let it go on.
 | `terminals_open` | Threshold or null | no | Terminals open at once. |
 | `tool_calls` | Threshold or null | no | Classed actions per session. |
 
+## LocalAuthorizerConfig
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `grants` | list of Grant | no |  |
+
 ## Mcp
 
 The MCP servers the agent is lent, by name; everything else is cut from session/new.
@@ -67,6 +103,22 @@ What the agent may reach over the network, through the Shield.
 | Field | Type | Required | What it says |
 |---|---|---|---|
 | `fetch` | list of string | no | Hosts a fetch may reach (exact host, or *.example.com); empty refuses every fetch. |
+
+## OpaAuthorizerConfig
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `headers` | object | no |  |
+| `package` | string | no | The Rego package answering decision and context. |
+| `url` | string | yes | OPA's address: http://opa:8181 |
+
+## OpenFgaAuthorizerConfig
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `model` | string or null | no |  |
+| `store` | string | yes |  |
+| `url` | string | yes |  |
 
 ## Rule
 

@@ -48,6 +48,17 @@
           ],
           "default": null
         },
+        "opa": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OpaAuthorizerConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "openfga": {
           "anyOf": [
             {
@@ -232,6 +243,35 @@
         }
       },
       "title": "Network",
+      "type": "object"
+    },
+    "OpaAuthorizerConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Headers",
+          "type": "object"
+        },
+        "package": {
+          "default": "authzen/evaluation",
+          "description": "The Rego package answering decision and context.",
+          "title": "Package",
+          "type": "string"
+        },
+        "url": {
+          "description": "OPA's address: http://opa:8181",
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "OpaAuthorizerConfig",
       "type": "object"
     },
     "OpenFgaAuthorizerConfig": {

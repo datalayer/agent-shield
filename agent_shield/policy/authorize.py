@@ -402,6 +402,33 @@ class OpenFgaAuthorizer:
         )
 
 
+class OpaAuthorizer(AuthZenAuthorizer):
+    """Open Policy Agent behind the port (SH-78): a second decision point, not OpenFGA-shaped.
+
+    OPA's data API takes a document as ``input`` and answers its ``result``:
+    the AuthZen request is the input, and a Rego package answering
+    ``{"decision": bool, "context": {...}}`` — ``data.<package>`` at
+    ``POST /v1/data/<package>`` — is the evaluation. The adapter is the
+    wrapping and the unwrapping; everything else is the port's.
+    """
+
+    def __init__(self, url: str, *, package: str = "authzen/evaluation", headers: Mapping[str, str] | None = None, timeout: float = 5.0) -> None:
+        base = url.rstrip("/")
+        path = package.strip("/").replace(".", "/")
+        super().__init__(f"{base}/v1/data/{path}", name="opa", headers=headers, timeout=timeout)
+
+    def evaluate(self, request: EvaluationRequest) -> EvaluationResponse:
+        who = f"the authorizer opa at {self.url}"
+        data = _post_json(self.url, {"input": request.model_dump()}, {**self._headers, **self._bearer()}, self.timeout, who)
+        result = data.get("result") if isinstance(data, Mapping) else None
+        if not isinstance(result, Mapping) or not isinstance(result.get("decision"), bool):
+            raise AuthorizerUnreachable(
+                f"{who} answered no boolean 'decision' in its result: the package names none, or Rego refused the input"
+            )
+        context = result.get("context")
+        return EvaluationResponse(decision=result["decision"], context=dict(context) if isinstance(context, Mapping) else {})
+
+
 # -- the file's `authorizer:` section ------------------------------------------------------
 
 
@@ -420,37 +447,50 @@ class AuthZenAuthorizerConfig(_Strict):
     headers: dict[str, str] = Field(default_factory=dict)
 
 
+class OpaAuthorizerConfig(_Strict):
+    url: str = Field(min_length=1, description="OPA's address: http://opa:8181")
+    package: str = Field(default="authzen/evaluation", description="The Rego package answering decision and context.")
+    headers: dict[str, str] = Field(default_factory=dict)
+
+
+AUTHORIZER_KINDS = ("local", "openfga", "authzen", "opa")
+
+
 class AuthorizerConfig(_Strict):
     """``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone)."""
 
     local: LocalAuthorizerConfig | None = None
     openfga: OpenFgaAuthorizerConfig | None = None
     authzen: AuthZenAuthorizerConfig | None = None
+    opa: OpaAuthorizerConfig | None = None
 
     @model_validator(mode="after")
     def _exactly_one(self) -> AuthorizerConfig:
-        named = [name for name in ("local", "openfga", "authzen") if getattr(self, name) is not None]
+        named = [name for name in AUTHORIZER_KINDS if getattr(self, name) is not None]
         if len(named) != 1:
             raise ValueError(
-                f"'authorizer' names exactly one decision point (local, openfga or authzen), not {len(named)}"
+                f"'authorizer' names exactly one decision point ({', '.join(AUTHORIZER_KINDS)}), not {len(named)}"
             )
         return self
 
     @property
     def kind(self) -> str:
-        return next(name for name in ("local", "openfga", "authzen") if getattr(self, name) is not None)
+        return next(name for name in AUTHORIZER_KINDS if getattr(self, name) is not None)
 
     def build(self) -> Authorizer:
         if self.local is not None:
             return LocalAuthorizer(self.local.grants)
         if self.openfga is not None:
             return OpenFgaAuthorizer(self.openfga.url, self.openfga.store, self.openfga.model)
+        if self.opa is not None:
+            return OpaAuthorizer(self.opa.url, package=self.opa.package, headers=self.opa.headers)
         assert self.authzen is not None
         return AuthZenAuthorizer(self.authzen.url, headers=self.authzen.headers)
 
 
 __all__ = [
     "ALLOW_TTL",
+    "AUTHORIZER_KINDS",
     "RELATIONS",
     "ActionName",
     "AllowCache",
@@ -466,6 +506,8 @@ __all__ = [
     "Grant",
     "LocalAuthorizer",
     "LocalAuthorizerConfig",
+    "OpaAuthorizer",
+    "OpaAuthorizerConfig",
     "OpenFgaAuthorizer",
     "OpenFgaAuthorizerConfig",
     "Resource",

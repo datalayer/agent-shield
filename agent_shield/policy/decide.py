@@ -101,6 +101,9 @@ class Context:
     subject: Subject | None = None
     #: The authorizer's hook; ``None`` is a deny for every class a policy lists under ``authorize:``.
     authorize: AuthorizeHook | None = None
+    #: The companies the application connects through PAP (SHIELD §6.10): a fetch to
+    #: one is refused whatever the allow-list says — PAP is the only way to a company.
+    companies: tuple[str, ...] = ()
 
 
 def _rank(policy: Policy) -> int:
@@ -229,7 +232,16 @@ def _host_allowed(host: str, allowed: Sequence[str]) -> bool:
     return False
 
 
-def _fetch_decision(action: Action, policies: Sequence[Policy]) -> Decision | None:
+def _company_of(host: str, companies: Sequence[str]) -> str | None:
+    host = host.lower()
+    for company in companies:
+        company = company.lower().strip()
+        if company and (host == company or host.endswith("." + company)):
+            return company
+    return None
+
+
+def _fetch_decision(action: Action, policies: Sequence[Policy], companies: Sequence[str] = ()) -> Decision | None:
     if action.kind != "fetch" and action.url is None:
         return None
     host = urlsplit(action.url).hostname if action.url else None
@@ -238,6 +250,17 @@ def _fetch_decision(action: Action, policies: Sequence[Policy]) -> Decision | No
             verdict="deny",
             decided_by="network",
             sentence=f"{_subject(action)}: leave it to me — a fetch names no host the allow-list could hold",
+        )
+    company = _company_of(host, companies)
+    if company is not None:
+        return Decision(
+            verdict="deny",
+            decided_by="network",
+            rule="pap",
+            sentence=(
+                f"{_subject(action)}: leave it to me — {company} is a company the application connects through "
+                f"PAP, reached through the gateway's pap tools alone (sign in, ask, propose, confirm), never by a fetch"
+            ),
         )
     for policy in policies:
         if not policy.network.fetch:
@@ -394,7 +417,7 @@ def decide(action: Action, context: Context, policies: Sequence[Policy]) -> Deci
         found = _rule_decision(action, policy)
         if found is not None:
             return _with_authorization(found, authorized)
-    found = _fetch_decision(action, ordered)
+    found = _fetch_decision(action, ordered, context.companies)
     if found is not None:
         return _with_authorization(found, authorized)
     return _with_authorization(

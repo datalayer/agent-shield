@@ -41,6 +41,43 @@ SHIELD_KINDS: dict[str, ActionClass] = {
 }
 
 
+#: The gateway's ``pap`` toolset (SHIELD §6.10, SH-70): what each tool does to the
+#: world, as agentspecs' table of the toolset says it — the strictest class
+#: when a tool may do two things (a confirmation is a ``buy`` when a term moves
+#: money, and the Shield cannot see the terms). A harness is lent these tools
+#: and never speaks PAP itself; the gateway classes them the same.
+PAP_TOOL_CLASSES: dict[str, ActionClass] = {
+    "pap_company": "read",
+    "pap_sign_in": "read",
+    "pap_sign_in_status": "read",
+    "pap_read": "read",
+    "pap_mcp_tools": "read",
+    "pap_ask": "send",
+    "pap_handoff": "send",
+    "pap_propose": "send",
+    "pap_mcp_call": "write",
+    "pap_confirm": "buy",
+    "pap_disconnect": "write",
+}
+
+#: The strictest of several classes, for a tool that may do more than one thing.
+CLASS_STRICTNESS: tuple[ActionClass, ...] = ("read", "write", "send", "delete", "execute", "buy")
+
+
+def strictest(classes: "list[str] | tuple[str, ...]") -> ActionClass | None:
+    """The class that asks the most, of several; ``None`` for none."""
+    found = [cls for cls in CLASS_STRICTNESS if cls in classes]
+    return found[-1] if found else None
+
+
+def pap_tool_class(tool_name: str) -> ActionClass | None:
+    """The class of a ``pap_*`` tool as the model names it, prefixed by its server or not."""
+    for name, cls in PAP_TOOL_CLASSES.items():
+        if tool_name == name or tool_name.endswith("_" + name):
+            return cls
+    return None
+
+
 class UnknownKind(ValueError):
     """A tool kind the protocol does not name: the turn ends with this sentence."""
 
@@ -80,4 +117,15 @@ def flagged(command: str) -> str | None:
     return None
 
 
-__all__ = ["FLAGGED_COMMANDS", "KIND_CLASS", "SHIELD_KINDS", "UnknownKind", "class_of", "flagged"]
+__all__ = [
+    "CLASS_STRICTNESS",
+    "FLAGGED_COMMANDS",
+    "KIND_CLASS",
+    "PAP_TOOL_CLASSES",
+    "SHIELD_KINDS",
+    "UnknownKind",
+    "class_of",
+    "flagged",
+    "pap_tool_class",
+    "strictest",
+]

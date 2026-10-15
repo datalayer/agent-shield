@@ -59,7 +59,9 @@ otel = ["opentelemetry-sdk>=1.26", "opentelemetry-exporter-otlp-proto-http>=1.26
 # the policy engine and the SaaS client (`agent_shield.policy`, `agent_shield.saas`)
 # are what IAM installs to validate a Shield policy, and they must not drag
 # the catalogue's sandbox stack behind them (SH-50).
-register = ["agentspecs>=0.0.104"]
+register = ["agentspecs>=0.0.105"]
+# The company role of PAP (SHIELD §6.10, SH-71): the Shield in front of any agent, on the PAP SDK's company service.
+pap = ["personal-agent-protocol>=0.24"]
 # One extra per harness (SHIELD §5.3). The adapters are Node packages, which
 # pip cannot install: `agent-shield setup --harness <id>` installs the pinned
 # one into the Shield's own prefix. The extras name the choice on the install
@@ -70,9 +72,10 @@ gemini-cli = ["datalayer-agent-shield[register]"]
 goose = ["datalayer-agent-shield[register]"]
 opencode = ["datalayer-agent-shield[register]"]
 openhands = ["datalayer-agent-shield[register]"]
-all = ["datalayer-agent-shield[websocket,serve,otel,register]"]
+all = ["datalayer-agent-shield[websocket,serve,otel,register,pap]"]
 test = [
-  "agentspecs>=0.0.104",
+  "agentspecs>=0.0.105",
+  "personal-agent-protocol>=0.24",
   # tests/test_cli.py reads pyproject.toml; tomllib is 3.11+.
   "tomli>=2; python_version < '3.11'",
   "pytest>=7.0",

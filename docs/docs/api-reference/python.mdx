@@ -70,6 +70,7 @@ The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched
 
 - `ProxyRefused` — What stops the proxy before the agent runs, said in a sentence.
 - `SessionState`
+- `tool_name_of` — The tool a call names: its input's ``name``/``tool``, else the first word of its title.
 - `action_of_tool_call` — An ``Action`` from a tool call (a ``ToolCallSaid`` event or a ``ToolCallUpdate``), or none to decide.
 - `lend_mcp_servers` — The servers the strictest policy that lists any lends, and the names cut.
 - `ShieldProxy` — The ACP agent the client sees (see the module).
@@ -262,6 +263,26 @@ The evidence map: AIUC-1's 55 controls, each with its collectors and its status 
 - `covering_standard` — The standard whose controls cover another's clauses, from the catalogue.
 - `answer_covered` — A clause answered through the controls that cover it (SH-66): the weakest of them, bounded by the coverage.
 
+## `agent_shield.pap`
+
+PAP through the Shield (SHIELD §6.10): the company role, standing in front of any agent (SH-71).
+
+
+## `agent_shield.pap.company`
+
+The Shield as a PAP company, standing in front of any agent (SHIELD §6.10, SH-71).
+
+- `money_moves` — Whether a term carries an amount with a currency, anywhere in the terms.
+- `operation_class` — ``buy`` when a term moves money, or when there are no terms; ``write`` otherwise.
+- `ReviewRefused` — A ticket that is not held, or not this company's.
+- `ReviewTicket` — An operation held for a person of the company to release or refuse.
+- `canonical`
+- `Signer` — The company's signature on what the Shield answers: HMAC-SHA256 over the canonical JSON.
+- `CompanyShield` — The company's policy in front of its agent: decides, holds, releases, signs, records.
+- `ShieldedOperationExecutor` — ``pap.company.operationExecutor`` in front of the application's: decided first.
+- `ShieldedCompanyAgent` — ``pap.company.agent`` in front of the application's: a turn is answered only when the policy lets it.
+- `ShieldCompanyPlugin` — A Reactor plugin wrapping an application's company contributions behind the Shield.
+
 ## `agent_shield.policy`
 
 The policy document and the decision engine (SHIELD §5.1, §6.2, §6.3).
@@ -269,10 +290,38 @@ The policy document and the decision engine (SHIELD §5.1, §6.2, §6.3).
 - `policy_json_schema` — The document's JSON Schema, the one agentspecs carries as ``policies/``.
 - `policy_json_schema_text`
 
+## `agent_shield.policy.authorize`
+
+The authorizer port (SHIELD §6.11, SH-74): *may this principal act on this object?*
+
+- `Subject` — Who acts: ``&#123;type, id&#125;`` as AuthZen names it (``account``, ``deployment``, ``agent``).
+- `ActionName` — What is done: an action class of the policy, or a relation's own name.
+- `Resource` — What it is done to: ``&#123;type, id&#125;`` (``workspace``, ``tool``, ``connection``, ``deployment``, ``host``).
+- `EvaluationRequest` — One AuthZen evaluation request.
+- `EvaluationResponse` — One AuthZen evaluation response: the decision, and what the decision point adds.
+- `AuthorizerUnreachable` — The decision point did not answer; said in a sentence, never read as an allow.
+- `Authorizer` — A policy decision point behind the port.
+- `Authorization` — What the port answered for one action, for the decision and the audit.
+- `AllowCache` — Allows kept until their expiry; a deny is never kept (SHIELD §6.11).
+- `authorize` — Ask the authorizer, with the port's rules: deny wins, unreachable is a deny, allows cached.
+- `hook_for` — The hook a ``Context`` carries: one authorizer, one cache of allows.
+- `Grant` — One line of the ``local`` authorizer: who may do what to what, as patterns (fnmatch).
+- `LocalAuthorizer` — Grants in ``agent-shield.yaml`` (§6.11's ``local``): the standalone proxy's own.
+- `AuthZenAuthorizer` — Any AuthZen evaluation endpoint (``POST &lt;url>``): IAM's on Datalayer, OPA or Cedar elsewhere (SH-78).
+- `OpenFgaAuthorizer` — An organization's own OpenFGA, asked at its check API (``openfga: &#123;url, store, model&#125;``).
+- `OpaAuthorizer` — Open Policy Agent behind the port (SH-78): a second decision point, not OpenFGA-shaped.
+- `LocalAuthorizerConfig`
+- `OpenFgaAuthorizerConfig`
+- `AuthZenAuthorizerConfig`
+- `OpaAuthorizerConfig`
+- `AuthorizerConfig` — ``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone).
+
 ## `agent_shield.policy.classify`
 
 ACP kinds to classes, and the commands the default policy asks about.
 
+- `strictest` — The class that asks the most, of several; ``None`` for none.
+- `pap_tool_class` — The class of a ``pap_*`` tool as the model names it, prefixed by its server or not.
 - `UnknownKind` — A tool kind the protocol does not name: the turn ends with this sentence.
 - `class_of` — The class of an ACP kind or a Shield kind, or ``None`` when nothing is to decide.
 - `flagged` — The name of the first flag a command line raises, or ``None``.
@@ -283,6 +332,7 @@ ACP kinds to classes, and the commands the default policy asks about.
 
 - `LimitState` — What a session has used so far; the caller counts, the engine reads.
 - `Context` — What surrounds an action: the workspace, the session and its state.
+- `request_for` — The AuthZen request an action is: the context's subject, the class, the action's resource.
 - `decide` — Decide one action against the policies in force (see the module).
 - `decide_budget` — Decide the next model request against the model limits alone (SH-32, SH-54).
 - `scopes_present`
@@ -374,6 +424,13 @@ The conformance report, with the Shield report as its Shield section (SHIELD §6
 
 Managed from the SaaS (SHIELD §6.7, SH-50): the policies pulled from IAM.
 
+
+## `agent_shield.saas.authorizer`
+
+OpenFGA through IAM (SHIELD §6.11, SH-75): the ``openfga-through-iam`` contribution to the port.
+
+- `evaluate_url`
+- `IamAuthorizer` — IAM's evaluation route, with the token: the one authorizer on Datalayer.
 
 ## `agent_shield.saas.policies`
 

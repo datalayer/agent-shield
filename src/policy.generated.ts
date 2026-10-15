@@ -27,9 +27,17 @@ export type Relation = string;
  */
 export type Subject = string;
 export type Grants = Grant[];
+/**
+ * The Rego package answering decision and context.
+ */
+export type Package = string;
+/**
+ * OPA's address: http://opa:8181
+ */
+export type Url1 = string;
 export type Model = string | null;
 export type Store = string;
-export type Url1 = string;
+export type Url2 = string;
 /**
  * When a pulled copy stops being honoured (decision 11).
  */
@@ -117,6 +125,7 @@ export interface AgentShieldPolicy {
 export interface AuthorizerConfig {
   authzen?: AuthZenAuthorizerConfig | null;
   local?: LocalAuthorizerConfig | null;
+  opa?: OpaAuthorizerConfig | null;
   openfga?: OpenFgaAuthorizerConfig | null;
 }
 export interface AuthZenAuthorizerConfig {
@@ -137,10 +146,18 @@ export interface Grant {
   relation: Relation;
   subject: Subject;
 }
+export interface OpaAuthorizerConfig {
+  headers?: Headers1;
+  package?: Package;
+  url: Url1;
+}
+export interface Headers1 {
+  [k: string]: string;
+}
 export interface OpenFgaAuthorizerConfig {
   model?: Model;
   store: Store;
-  url: Url1;
+  url: Url2;
 }
 /**
  * The harnesses an organization admits, and whose credentials run them (§6.7).
