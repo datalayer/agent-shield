@@ -6,7 +6,8 @@
 # workflow file (OIDC trusted publishing, through the `pypi` and `npm`
 # environments). The two packages share one version, which the tag must
 # name; a package already published at that version is skipped, so a re-run
-# after a partial upload publishes the rest. See RELEASE.md.
+# after a partial upload publishes the rest. Nothing is built before the
+# tests (py-tests.yaml, called here) pass on the tagged commit. See RELEASE.md.
 
 name: Release
 
@@ -23,7 +24,15 @@ permissions:
   contents: read
 
 jobs:
+  # The tests first, through the Py Tests workflow itself (every supported
+  # Python, the TypeScript package, the ACP TCK): a tag whose tests fail
+  # builds and publishes nothing. v0.1.3, v0.1.4 and v0.1.5 reached PyPI
+  # broken because the tag was published without waiting for them.
+  tests:
+    uses: ./.github/workflows/py-tests.yaml
+
   build:
+    needs: tests
     runs-on: ubuntu-latest
     outputs:
       npm: ${{ steps.plan.outputs.npm }}

@@ -32,6 +32,9 @@ on:
 
   workflow_dispatch:
 
+  # Called by the Release workflow: a tag publishes nothing until these pass.
+  workflow_call:
+
 jobs:
   tests:
     runs-on: ubuntu-latest

@@ -22,7 +22,10 @@ Both carry **one version**, the one the tag names.
    `package.json`) and write the `CHANGELOG.md` entry, on `main` or on a
    branch merged into it.
 
-1. With `Py Tests` green on that head of `main`, tag it and push the tag:
+1. Tag that head of `main` and push the tag. The Release workflow runs `Py
+   Tests` itself first (every supported Python, the TypeScript package, the
+   ACP TCK) and builds and publishes nothing while they fail — so a red tag
+   publishes nothing, and is retagged as the next number once fixed:
 
    ```bash
    git checkout main && git pull
