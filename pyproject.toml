@@ -53,7 +53,7 @@ websocket = ["websockets>=13"]
 # the policy engine and the SaaS client (`agent_shield.policy`, `agent_shield.saas`)
 # are what IAM installs to validate a Shield policy, and they must not drag
 # the catalogue's sandbox stack behind them (SH-50).
-register = ["agentspecs>=0.0.100"]
+register = ["agentspecs>=0.0.104"]
 # One extra per harness (SHIELD §5.3). The adapters are Node packages, which
 # pip cannot install: `agent-shield setup --harness <id>` installs the pinned
 # one into the Shield's own prefix. The extras name the choice on the install
@@ -66,7 +66,7 @@ opencode = ["datalayer-agent-shield[register]"]
 openhands = ["datalayer-agent-shield[register]"]
 all = ["datalayer-agent-shield[websocket,register]"]
 test = [
-  "agentspecs>=0.0.100",
+  "agentspecs>=0.0.104",
   # tests/test_cli.py reads pyproject.toml; tomllib is 3.11+.
   "tomli>=2; python_version < '3.11'",
   "pytest>=7.0",

@@ -6,6 +6,56 @@
 
 # Changelog
 
+## 0.1.3
+
+The conformance side of SHIELD.md Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2026):
+
+- `agent_shield.conformance`: the evidence map for AIUC-1, control by control for
+  all 55 at its 2026.4 version (agentspecs 0.0.104's `standards/` catalogue,
+  SH-60), each with its collectors — the policy document in force and its
+  versions by scope, the rules by class, the limits, the fetch and connection
+  allow-lists; the record's rows by kind, behaviour and what decided them; the
+  OTEL counts; SH-37's drills as a stored report; the Validate gate and the
+  safety set; the benchmarks; the organization's signed documents; a third
+  party's recorded reports; the facts the host asserts of its platform, each
+  with where it was proved; the screens and notices — and the status rule.
+  Five statuses honest by construction: *met by evidence* only when every piece
+  the rule asks for was collected; *partly met* with what is missing named; *the
+  organization's* until a person's document is signed, filled and in date, never
+  auto-met; *a third party's* until a report recorded within the cadence says it
+  passed; *not applicable* with why (the five controls retired in 2026.4). A
+  policy written wider than the organization's (the application's own scope)
+  drops D003 and B006 to partly met with the widening in the reason. Each
+  control machine-readable: status, evidence with links and when collected,
+  missing, crosswalks, the cadence clock. 14 of 14 by-hand mutants of the
+  status rule killed.
+- `agent_shield.report`: the conformance report per deployment and per
+  organization (the weakest answer across deployments), every control with its
+  status, evidence linked, the cadence clocks, the gaps, each control's
+  crosswalk (the EU AI Act article, the NIST AI RMF function, the ISO/IEC 42001
+  clause, the OWASP Agentic threat, and the rest the standard publishes); the
+  Shield report of §6.5 as its Shield section (the policies in force at the
+  three levels, the tests the Rules passed with the drills, the approvals and
+  denials of the period with who decided, the limits reached, the coding
+  agent's register entry); its first page says the Shield evidences and never
+  certifies. Exported as Markdown, as a Lexical document (the Studio's), as
+  JSON; for an assessor (SH-65) the evidence list in AIUC-1's own columns
+  (*Requirement*, *Control activity*, *Evidence*, *Tags*, with the status and
+  the Datalayer evidence beside), as rows and CSV, and an audit-hub JSON with
+  the representative configurations attached.
+- `agent_shield.conformance.continuous` (SH-63): `lapses` compares two
+  assessments and raises a notice per lapse — a cadence clock run out, an
+  application's rules permitting more than the organization's, the
+  organization's rules permitting more than before (the snapshot keeps the
+  documents it decided with), a drill that failed, a document past its review,
+  a control that was met and no longer is — keyed once a day each;
+  `Snapshot` and `Trend` for the line over time, one point a week.
+- ISO/IEC 42001 through the crosswalk (SH-66): each clause answered from the
+  AIUC-1 controls that cover it, the weakest of them, partly met at most where
+  the crosswalk says partial, the organization's where nothing covers it; the
+  same report from the same evidence.
+- The `register` and `test` extras take agentspecs 0.0.104. 16 tests.
+
 ## 0.1.2
 
 The policy side of SHIELD.md Phase 2 (SH-50, SH-31, SH-32, SH-54, SH-35).
