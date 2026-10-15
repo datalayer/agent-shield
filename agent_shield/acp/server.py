@@ -621,23 +621,38 @@ class ShieldServer:
         served.socket = socket
         try:
             async for frame in socket:
-                if frame.type == WSMsgType.BINARY:
-                    continue
-                if frame.type != WSMsgType.TEXT:
+                # A text frame holds one message; a binary frame is UTF-8
+                # NDJSON, a message a line — what marimo's agents panel
+                # (use-acp's ndJsonStream over the socket) writes (SH-49).
+                if frame.type == WSMsgType.TEXT:
+                    texts = [frame.data]
+                elif frame.type == WSMsgType.BINARY:
+                    try:
+                        decoded = bytes(frame.data).decode("utf-8")
+                    except UnicodeDecodeError:
+                        await socket.send_str(json.dumps(_error(None, -32700, "the binary frame is not UTF-8")))
+                        continue
+                    texts = [line for line in decoded.split("\n") if line.strip()]
+                else:
                     break
-                try:
-                    message = json.loads(frame.data)
-                except ValueError:
-                    await socket.send_str(json.dumps(_error(None, -32700, "the frame is not JSON")))
-                    continue
-                if not isinstance(message, dict):
-                    await socket.send_str(json.dumps(_error(None, -32600, "a frame holds one JSON-RPC message")))
-                    continue
-                if not served.authenticated:
-                    if not await self._first_message(served, socket, message):
-                        break
-                    continue
-                await served.feed(message)
+                closing = False
+                for text in texts:
+                    try:
+                        message = json.loads(text)
+                    except ValueError:
+                        await socket.send_str(json.dumps(_error(None, -32700, "the frame is not JSON")))
+                        continue
+                    if not isinstance(message, dict):
+                        await socket.send_str(json.dumps(_error(None, -32600, "a frame holds one JSON-RPC message")))
+                        continue
+                    if not served.authenticated:
+                        if not await self._first_message(served, socket, message):
+                            closing = True
+                            break
+                        continue
+                    await served.feed(message)
+                if closing:
+                    break
         finally:
             served.socket = None
             await served.close()

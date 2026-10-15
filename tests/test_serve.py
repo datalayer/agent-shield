@@ -161,6 +161,28 @@ async def test_the_token_in_the_first_message_authenticates_the_websocket(tokene
         assert answer["id"] == 2 and answer["result"]["protocolVersion"] == 1
 
 
+async def test_binary_frames_are_ndjson_as_marimo_writes_them(tokened: ShieldServer):
+    """marimo's agents panel (use-acp's ndJsonStream over the socket) writes each
+    message as a binary frame of UTF-8 NDJSON; serve reads them as text (SHIELD SH-49)."""
+    from websockets.asyncio.client import connect
+
+    async with connect(ws_url(tokened)) as socket:
+        two = (
+            json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "method": "authenticate", "params": {"methodId": "bearer", "_meta": {"token": TOKEN}}}
+            )
+            + "\n"
+            + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "initialize", "params": {"protocolVersion": 1}})
+            + "\n"
+        )
+        await socket.send(two.encode("utf-8"))
+        assert json.loads(await socket.recv()) == {"jsonrpc": "2.0", "id": 1, "result": {}}
+        answer = json.loads(await socket.recv())
+        assert answer["id"] == 2 and answer["result"]["protocolVersion"] == 1
+        await socket.send(b"\xff\xfe")
+        assert json.loads(await socket.recv())["error"]["message"] == "the binary frame is not UTF-8"
+
+
 async def test_a_websocket_that_does_not_authenticate_first_is_refused_and_closed(tokened: ShieldServer):
     from websockets.asyncio.client import connect
     from websockets.exceptions import ConnectionClosed
