@@ -6,7 +6,7 @@
 
 # Changelog
 
-## Unreleased
+## 0.2.1
 
 - `serve` reads a binary WebSocket frame as UTF-8 NDJSON, a message a line — what marimo's agents panel writes (use-acp's ndJsonStream): marimo's panel stayed on *Initializing agent…* against 0.2.0, and completes a shielded turn with this (SHIELD SH-49).
 - The register refuses, at `setup` and `run`, a harness of agentspecs' listed tier in the sentence *listed, not drilled yet* (SHIELD SH-57: the long tail of the ACP agents page, registered with its documented command and its terms) and an organization's own `org-…` harness, which is served on Datalayer only, where its organization's catalogue holds it and its policy admits the reviewed command (SH-46). agentspecs 0.0.107.
