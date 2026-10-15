@@ -30,7 +30,7 @@ import json
 import logging
 import re
 import sys
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -113,18 +113,27 @@ class SessionState:
     failed: str | None = None
     shield_calls: int = 0
     session_rules: list[Rule] = field(default_factory=list)
+    #: Rules a host keeps for this session beside the Shield's own (a person's,
+    #: added from a panel while it runs, SH-54): read at every decision.
+    rules_from: Callable[[], Sequence[Rule]] | None = None
 
     @property
     def context(self) -> Context:
         return Context(workspace=str(self.workspace.root), session_id=self.session_id, state=self.state)
 
+    def all_session_rules(self) -> list[Rule]:
+        """The session's rules in force: the host's, then the Shield's own (``allow_always``)."""
+        hosted = list(self.rules_from()) if self.rules_from is not None else []
+        return [*hosted, *self.session_rules]
+
     def policies_in_force(self) -> list[Policy]:
-        if not self.session_rules:
+        rules = self.all_session_rules()
+        if not rules:
             return self.policies
         own = [policy for policy in self.policies if policy.scope == "session"]
         others = [policy for policy in self.policies if policy.scope != "session"]
         base = own[0] if own else Policy(scope="session")
-        merged = base.model_copy(update={"rules": [*self.session_rules, *base.rules]})
+        merged = base.model_copy(update={"rules": [*rules, *base.rules]})
         return [*others, merged]
 
     def next_shield_call_id(self) -> str:
@@ -289,7 +298,9 @@ class ShieldProxy:
             "policies": [
                 json.loads(policy.model_dump_json(exclude_none=True)) for policy in session.policies_in_force()
             ],
-            "session_rules": [json.loads(rule.model_dump_json(exclude_none=True)) for rule in session.session_rules],
+            "session_rules": [
+                json.loads(rule.model_dump_json(exclude_none=True)) for rule in session.all_session_rules()
+            ],
             "unavailable": self.unavailable,
         }
 
@@ -611,7 +622,10 @@ class _InnerClient:
                 "plan",
                 session=session_id,
                 steps=len(event.steps),
-                status={status: sum(1 for step in event.steps if step.status == status) for status in sorted({step.status for step in event.steps})},
+                status={
+                    status: sum(1 for step in event.steps if step.status == status)
+                    for status in sorted({step.status for step in event.steps})
+                },
                 by="agent",
             )
         if isinstance(event, ToolCallSaid):

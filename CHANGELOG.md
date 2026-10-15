@@ -10,6 +10,26 @@
 
 The policy side of SHIELD.md Phase 2 (SH-50, SH-31, SH-32, SH-54, SH-35).
 
+The audit side of SHIELD.md Phase 2 (SH-34, SH-51, 15 October 2026):
+
+- `agent_shield.tracing`: the Shield over OTEL (§6.8) — every audit row, after
+  its redaction, a span event on the current span (`observe`, the safe
+  vocabulary only, never a sentence's text beyond the row's fields) and a
+  count: `shield.actions`, `shield.decisions`, `shield.refusals`,
+  `shield.limits`, by harness and deployment (`set_labels`), filed under the
+  account the host exports as; `turn_span` makes one prompt a span under
+  whatever is current — the face's request — so the ACP session is one trace;
+  `with_traceparent` hands the W3C context to the harness in the prompt's
+  `_meta.traceparent`, the key ACP reserves, a caller's own winning;
+  `continued` joins a trace a caller handed in; `trace_headers` for a lent
+  MCP server. OpenTelemetry stays optional: without it nothing is done, and
+  never a `traceparent` nobody opened.
+- The audit: a `plan` event (how many steps, their statuses; never their
+  text); `fs_read` written as a row of its own (the path, the bytes) beside
+  `fs_write`; `redacted_row` for whoever keeps rows elsewhere (agent-runtimes'
+  record); `AuditLog.write` observes each row it writes.
+- The proxy's `prompt` carries the trace in `_meta.traceparent` (§6.8).
+
 - `agent_shield.policy`: the document grows `limits.model_tokens` (the model
   budget, in tokens) and `limits.spend` (the deployment's spend limit, in
   credits, 100 a USD), each soft then hard, and a `harnesses` section — the
