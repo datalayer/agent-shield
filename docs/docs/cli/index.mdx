@@ -1,0 +1,21 @@
+---
+sidebar_position: 4
+title: CLI
+---
+
+# CLI
+
+| Command | What it does |
+|---|---|
+| `agent-shield setup [--harness claude-code] [--local\|--register] [--yes]` | Finds node, the vendor CLIs and credentials; installs the pinned adapter into the Shield's prefix; writes the config and the default policy. |
+| `agent-shield run [--workspace DIR] [--policy FILE] [--audit FILE] [--env NAME] [--verbose] -- <command>` | The proxy: the agent behind the Shield on stdio. |
+| `agent-shield log [--last N] [--json]` | The audit's last rows. |
+| `agent-shield policy show` | Every line of the policy in force and where it came from. |
+| `agent-shield policy schema` | The JSON Schema. |
+| `agent-shield policy init [PATH] [--force]` | The default policy. |
+| `agent-shield harnesses` | The register. |
+| `agent-shield upgrade [--check]` | A newer Shield or adapter; moves the adapters to the pinned versions. |
+| `agent-shield uninstall [--yes]` | Previews by default; keeps the audit and the policy. |
+| `agent-shield serve` | Not built (SH-52): says so. |
+
+`datalayer agent-shield …` is the same application, as a group of the Datalayer CLI.

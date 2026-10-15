@@ -1,0 +1,30 @@
+---
+sidebar_position: 1
+title: Getting started
+---
+
+# Getting started
+
+```bash
+pip install "datalayer-agent-shield[claude-code]"
+agent-shield setup
+agent-shield run -- claude-agent-acp
+```
+
+`setup` finds node (22 or later for the Claude Code and Codex adapters), the vendor CLIs on the path and the credentials present in the environment — by name, never a value — and asks for nothing it found. It installs the harness's pinned adapter into `~/.agent-shield/harnesses/<id>@<version>` with `npm install --prefix` (never a global `npx`), writes `~/.agent-shield/config.yaml` and the default policy `agent-shield.yaml` beside the project, and prints the Zed snippet. Measured on 15 October 2026: 27 seconds from a clean prefix.
+
+`run` starts the agent behind the Shield on the current directory. The first decision is seen in the terminal with the first tool call. Registration with Datalayer (`--register`) is not built yet: `setup` records the wish and stays local.
+
+Then `agent-shield log` shows the audit, `agent-shield policy show` the policy in force and where each line came from.
+
+## In Zed
+
+```json
+"agent_servers": {
+  "Claude Code behind the Shield": { "command": "agent-shield", "args": ["run", "--", "claude-agent-acp"] }
+}
+```
+
+## Credentials
+
+The Shield stores no secret. The harness's declared secrets (`ANTHROPIC_API_KEY` for Claude Code) are passed from the Shield's environment to the agent's, and nothing else of the environment is. A credential the register forbids is refused in a sentence: a Claude Code or ChatGPT subscription login where only an API key serves to third parties, a Google login on Gemini's individuals tier.

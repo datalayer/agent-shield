@@ -24,10 +24,10 @@ the counters arrive in the action and the context.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
-import re
-from typing import Sequence
 from urllib.parse import urlsplit
 
 from .model import (

@@ -1,0 +1,12 @@
+---
+sidebar_position: 3
+title: Protocols
+---
+
+# Protocols
+
+The Shield speaks the **Agent Client Protocol** (ACP, protocol version 1) on both faces: an ACP agent towards the client, an ACP client towards the agent it launched, on the official `agent-client-protocol` SDK. `session/update` is normalised into the package's own events (text, thought, tool call, plan, commands, mode, permission, question); a malformed update ends the turn with a sentence.
+
+What the Shield lends an agent: the MCP servers the policy's `mcp.allow` names, in `session/new`; nothing else. What it answers itself: `fs/read_text_file`, `fs/write_text_file`, `terminal/*`, each a decided and recorded action the client sees as a tool row.
+
+Not yet: the A2A, AG-UI and other faces of the Shield (those are Datalayer's runtimes), and the proxy over WebSocket.

@@ -1,0 +1,30 @@
+---
+sidebar_position: 2
+title: Architecture
+---
+
+# Architecture
+
+The package is the engine of the Shield (SHIELD.md §5.1): what must work without Datalayer's runtimes lives here; the runtimes host it.
+
+## The policy
+
+One document per scope — `organization`, `team`, `session` — with rules, limits, a fetch allow-list and the MCP servers lent. The strictest scope decides first and the first decision wins; a scope that says nothing passes the action down; nothing a rule names falls to *ask me first*. Every action is classed — `read`, `write`, `send`, `buy`, `delete`, `execute` — from ACP's tool kinds (`other` fails closed to `write`). Limits are stateful: a soft threshold asks once, a hard one refuses each call that would cross it and says what would let the session go on.
+
+`agent_shield.policy.decide(action, context, policies)` is pure and returns the verdict, a sentence, and the scope and rule that decided. The schema is published as `schema/policy.schema.json`.
+
+## The proxy
+
+`agent-shield run -- <command>`: an ACP agent on the Shield's stdio in front of the agent it launched. Permissions are decided by the policy; the agent's tool calls are classed and limited; `fs/*` and `terminal/*` are answered against the workspace (a path outside it is refused; a command runs with a trimmed environment); `mcpServers` are rewritten to the allow-list; every action is written to `~/.agent-shield/audit.jsonl` with credentials redacted. `allow_always` chosen by a person becomes a rule for the session, gone with it.
+
+The proxy passes the ACP Test Compatibility Kit in front of the test agent (`VERDICT: CONFORMANT`, 15 October 2026).
+
+## The register
+
+The harness catalogue and the register live in agentspecs (`harnesses/`): each harness with its adapter, the version pinned, licence, terms, credential kind, whether serving it to third parties is permitted, and tier restrictions. The Shield reads them and refuses what the register forbids.
+
+## Built and not built
+
+Built in 0.1.1: the policy engine, the register, the stdio and WebSocket client channels, the normaliser, the proxy, the audit, the command, the TypeScript types.
+
+Not built: `serve` (the proxy over WebSocket), registration with Datalayer and policies from IAM, the OTEL export, the Shield report and conformance, the diff and terminal renderers.

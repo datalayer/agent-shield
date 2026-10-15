@@ -52,15 +52,25 @@ def test_an_image_chunk_is_said_not_dropped():
 
 def test_a_tool_call_carries_kind_status_input_locations_and_awaits_while_pending():
     update = start_tool_call(
-        "c1", "Edit README.md", kind="edit", status="pending",
-        locations=[ToolCallLocation(path="README.md", line=3)], raw_input={"path": "README.md"},
+        "c1",
+        "Edit README.md",
+        kind="edit",
+        status="pending",
+        locations=[ToolCallLocation(path="README.md", line=3)],
+        raw_input={"path": "README.md"},
         content=[tool_diff_content("README.md", "new", "old")],
     )
     event = normalize("s", update)
     assert event == ToolCallSaid(
-        session_id="s", tool_call_id="c1", title="Edit README.md", kind="edit", status="pending",
-        input={"path": "README.md"}, locations=[{"path": "README.md", "line": 3}],
-        displays=[Diff(path="README.md", old_text="old", new_text="new")], awaiting=True,
+        session_id="s",
+        tool_call_id="c1",
+        title="Edit README.md",
+        kind="edit",
+        status="pending",
+        input={"path": "README.md"},
+        locations=[{"path": "README.md", "line": 3}],
+        displays=[Diff(path="README.md", old_text="old", new_text="new")],
+        awaiting=True,
     )
 
 
@@ -80,7 +90,10 @@ def test_a_tool_call_update_carries_the_displays():
     )
     event = normalize("s", update)
     assert event == ToolCallUpdated(
-        session_id="s", tool_call_id="c1", status="completed", output={"ok": 1},
+        session_id="s",
+        tool_call_id="c1",
+        status="completed",
+        output={"ok": 1},
         displays=[Terminal(terminal_id="t1"), Diff(path="a", new_text="n")],
     )
 

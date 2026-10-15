@@ -41,9 +41,7 @@ VERDICT_WORDS: dict[str, str] = {"allow": "do it", "ask": "ask me first", "deny"
 Where = Literal["inside", "outside", "any"]
 
 #: The ACP tool kinds a rule may name (SHIELD §2.3).
-ToolKind = Literal[
-    "read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"
-]
+ToolKind = Literal["read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"]
 
 
 class _Strict(BaseModel):
@@ -64,7 +62,9 @@ class Rule(_Strict):
     )
     where: Where = Field(
         default="any",
-        description="inside: only a path inside the workspace; outside: only one outside; any: both, and actions with no path.",
+        description=(
+            "inside: only a path inside the workspace; outside: only one outside; any: both, and actions with no path."
+        ),
     )
     paths: list[str] = Field(
         default_factory=list,
@@ -127,9 +127,7 @@ class Policy(_Strict):
 
     scope: Scope
     version: int = Field(default=1, ge=1)
-    expires: datetime | None = Field(
-        default=None, description="When a pulled copy stops being honoured (decision 11)."
-    )
+    expires: datetime | None = Field(default=None, description="When a pulled copy stops being honoured (decision 11).")
     rules: list[Rule] = Field(default_factory=list)
     limits: Limits = Field(default_factory=Limits)
     network: Network = Field(default_factory=Network)

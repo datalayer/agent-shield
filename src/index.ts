@@ -4,4 +4,4 @@
  * BSD 3-Clause License
  */
 
-export * from './orchestrationExtension.js';
+export * from './policy.js';

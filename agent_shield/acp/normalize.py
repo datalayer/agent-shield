@@ -86,7 +86,9 @@ def normalize(session_id: str, update: Any) -> Event:
         return UserText(session_id=session_id, text=_text_of(update.content, "user_message_chunk"))
     if kind == "tool_call":
         if update.kind is None:
-            raise MalformedUpdate(f"tool_call {update.tool_call_id!r} ({update.title}) names no kind, so it cannot be classed")
+            raise MalformedUpdate(
+                f"tool_call {update.tool_call_id!r} ({update.title}) names no kind, so it cannot be classed"
+            )
         status = update.status or "pending"
         return ToolCallSaid(
             session_id=session_id,

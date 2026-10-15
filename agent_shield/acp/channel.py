@@ -33,9 +33,9 @@ from typing import Any
 
 from acp import PROTOCOL_VERSION
 from acp.client.router import build_client_router
-from acp.connection import Connection, StreamEvent
+from acp.connection import Connection, StreamDirection, StreamEvent
 from acp.exceptions import RequestError
-from acp.meta import AGENT_METHODS
+from acp.meta import AGENT_METHODS, CLIENT_METHODS
 from acp.schema import (
     AgentCapabilities,
     ClientCapabilities,
@@ -43,7 +43,6 @@ from acp.schema import (
     Implementation,
     InitializeRequest,
     InitializeResponse,
-    Implementation as _Implementation,
     LoadSessionRequest,
     LoadSessionResponse,
     NewSessionRequest,
@@ -52,6 +51,9 @@ from acp.schema import (
     PromptResponse,
     SetSessionModeRequest,
     SetSessionModeResponse,
+)
+from acp.schema import (
+    Implementation as _Implementation,
 )
 from acp.transports import spawn_stdio_transport
 from acp.utils import request_model, request_model_from_dict, serialize_params
@@ -70,17 +72,29 @@ SHIELD_CLIENT_CAPABILITIES = ClientCapabilities(
 SHIELD_CLIENT_INFO = Implementation(name="agent-shield", title="Agent Shield", version=__version__)
 
 RawListener = Callable[[dict[str, Any]], None]
+#: A channel's connection is wired right after construction by ``launch`` / ``connect``.
+_UNBUILT = None
 
 
 class ChannelRefused(RuntimeError):
     """A connection the Shield will not keep, said in a sentence."""
 
 
-def build_handler(handler: Any) -> Callable[[str, Any, bool], Awaitable[Any]]:
-    """The SDK's client router, with ``elicitation/create`` dispatched to ``handler.elicitation``."""
+def build_handler(
+    handler: Any, handled: Callable[[dict[str, Any]], None] | None = None
+) -> Callable[[str, Any, bool], Awaitable[Any]]:
+    """The SDK's client router, with ``elicitation/create`` dispatched to ``handler.elicitation``.
+
+    ``handled`` is told each ``session/update`` once the handler is done with it.
+    """
     router = build_client_router(handler)
 
     async def route(method: str, params: Any, is_notification: bool) -> Any:
+        if method == CLIENT_METHODS["session_update"] and is_notification and handled is not None:
+            try:
+                return await router(method, params, is_notification)
+            finally:
+                handled(params if isinstance(params, dict) else {})
         if method == ELICITATION_CREATE and not is_notification:
             elicitation = getattr(handler, "elicitation", None)
             if elicitation is None:
@@ -179,11 +193,26 @@ class ACPChannel(ABC):
     async def prompt(
         self, session_id: str, prompt: Sequence[Any], *, meta: Mapping[str, Any] | None = None
     ) -> PromptResponse:
-        return await self._request_model(
+        """``session/prompt``; the answer is held until every update received before it was handled.
+
+        The SDK resolves a response as soon as it is read, while the
+        notifications read before it are still queued for dispatch; without
+        this, a turn's last updates would follow its answer.
+        """
+        answer = await self._request_model(
             AGENT_METHODS["session_prompt"],
             PromptRequest(session_id=session_id, prompt=list(prompt), field_meta=dict(meta) if meta else None),
             PromptResponse,
         )
+        await self.drain(session_id)
+        return answer
+
+    async def drain(self, session_id: str, timeout: float = 5.0) -> None:
+        """Wait until the updates received for a session were all handled."""
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        while self._received.get(session_id, 0) > self._handled.get(session_id, 0) and loop.time() < deadline:
+            await asyncio.sleep(0.002)
 
     async def cancel(self, session_id: str) -> None:
         await self.notify(AGENT_METHODS["session_cancel"], {"sessionId": session_id})
@@ -206,18 +235,33 @@ class ACPChannel(ABC):
 
 
 class ConnectionChannel(ACPChannel):
-    """An ``ACPChannel`` over the SDK's :class:`acp.connection.Connection`, whatever carries it."""
+    """An ``ACPChannel`` over the SDK's :class:`acp.connection.Connection`, whatever carries it.
 
-    def __init__(self, connection: Connection) -> None:
-        self._conn = connection
+    Built with :func:`channel_connection`, which wires the handler's router and
+    the update counters ``prompt`` drains on.
+    """
+
+    def __init__(self, connection: Connection | None) -> None:
         self._initialized: InitializeResponse | None = None
         self._listeners: list[RawListener] = []
-        self._conn.add_observer(self._observe)
+        self._received: dict[str, int] = {}
+        self._handled: dict[str, int] = {}
         self._closed = False
+        if connection is not None:
+            self._conn = connection
+            self._conn.add_observer(self._observe)
 
     def _observe(self, event: StreamEvent) -> None:
+        message = event.message
+        if event.direction == StreamDirection.INCOMING and message.get("method") == CLIENT_METHODS["session_update"]:
+            session_id = (message.get("params") or {}).get("sessionId", "")
+            self._received[session_id] = self._received.get(session_id, 0) + 1
         for listener in list(self._listeners):
-            listener({"direction": event.direction.value, **event.message})
+            listener({"direction": event.direction.value, **message})
+
+    def _handled_update(self, params: dict[str, Any]) -> None:
+        session_id = params.get("sessionId", "")
+        self._handled[session_id] = self._handled.get(session_id, 0) + 1
 
     @property
     def initialized(self) -> InitializeResponse | None:
@@ -280,12 +324,15 @@ class StdioACPChannel(ConnectionChannel):
         unless named.
         """
         say = stderr or (lambda line: logger.debug("agent stderr: %s", line.rstrip()))
-        async with spawn_stdio_transport(
-            command, *args, env=env, cwd=cwd, shutdown_timeout=shutdown_timeout
-        ) as (reader, writer, process):
+        async with spawn_stdio_transport(command, *args, env=env, cwd=cwd, shutdown_timeout=shutdown_timeout) as (
+            reader,
+            writer,
+            process,
+        ):
             drain = asyncio.create_task(_drain(process.stderr, say), name="agent-shield.stderr")
-            connection = Connection(build_handler(handler), writer, reader)
-            channel = cls(connection, process)
+            channel = cls(_UNBUILT, process)
+            channel._conn = Connection(build_handler(handler, channel._handled_update), writer, reader)
+            channel._conn.add_observer(channel._observe)
             try:
                 yield channel
             finally:
@@ -348,8 +395,11 @@ class WebSocketACPChannel(ConnectionChannel):
         async with connect(url, additional_headers=dict(headers or {}), max_size=None) as socket:
             reader = asyncio.StreamReader()
             feeder = asyncio.create_task(_feed(socket, reader), name="agent-shield.websocket")
-            connection = Connection(build_handler(handler), _WebSocketWriter(socket), reader)  # type: ignore[arg-type]
-            channel = cls(connection, socket, feeder)
+            channel = cls(_UNBUILT, socket, feeder)
+            channel._conn = Connection(
+                build_handler(handler, channel._handled_update), _WebSocketWriter(socket), reader
+            )  # type: ignore[arg-type]
+            channel._conn.add_observer(channel._observe)
             try:
                 yield channel
             finally:
@@ -380,12 +430,12 @@ def wire(model: Any) -> dict[str, Any]:
 
 
 __all__ = [
-    "ACPChannel",
-    "ChannelRefused",
-    "ConnectionChannel",
     "ELICITATION_CREATE",
     "SHIELD_CLIENT_CAPABILITIES",
     "SHIELD_CLIENT_INFO",
+    "ACPChannel",
+    "ChannelRefused",
+    "ConnectionChannel",
     "StdioACPChannel",
     "WebSocketACPChannel",
     "build_handler",

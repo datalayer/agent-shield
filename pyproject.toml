@@ -13,7 +13,7 @@ authors = [{ name = "Datalayer", email = "info@datalayer.io" }]
 dynamic = ["version"]
 readme = "README.md"
 requires-python = ">=3.10"
-keywords = ["AI", "Agents", "Teams", "A2A", "Orchestration", "Jupyter"]
+keywords = ["AI", "Agents", "Shield", "Firewall", "ACP", "Policy", "Datalayer"]
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: System Administrators",
@@ -23,10 +23,16 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.0",
-    "fastapi>=0.100",
-    "httpx>=0.24",
-    "uvicorn[standard]>=0.20",
+    "pyyaml>=6.0",
     "typer>=0.9",
+    # The official Agent Client Protocol SDK, protocol version 1. The proxy,
+    # the channels and the normaliser are written against 0.7.x's surface
+    # (`acp.connection.Connection`, the client and agent routers, the
+    # schema's camelCase aliases); a newer minor is taken on after it is run.
+    "agent-client-protocol>=0.7.1,<0.8",
+    # The harness catalogue and the register (SHIELD SH-01, SH-04): the Shield
+    # reads them from agentspecs and keeps no copy.
+    "agentspecs>=0.0.100",
 ]
 
 [project.scripts]
@@ -43,66 +49,24 @@ agent-shield = "agent_shield.reactor_extension:plugin"
 agent-shield = "agent_shield.reactor_extension:plugin"
 
 [project.optional-dependencies]
-pydantic-ai = [
-  "pydantic-graph>=1.94.0",
-  "pydantic-ai-slim>=2.35.0,<3",
-]
-a2a = [
-    # No floor and no ceiling left every install resolve to whatever was
-    # newest on PyPI, and somewhere within 2.0.x `A2AClient.__init__`
-    # renamed its worker-URL argument from `base_url` to `agent` — every
-    # remote member in this package was unreachable until it was found.
-    # `<2.1` matches the `agent=` constructor the code is fixed against.
-    "fasta2a>=2.0.0,<2.1",
-]
-mcp = [
-    "mcp[cli]>=2.0",
-]
-# The teams run on Datalayer (`agent-shield list|start|runs|status|…`) and the
-# reactor extension that makes them `datalayer agent-shield`. Not a dependency
-# of the library: the Datalayer CLI that hosts the group always has it.
-datalayer = [
-    "datalayer_core>=1.2.12",
-]
-# The landing's demo team (`agent-shield demo deploy|status|url|stop`): the
-# team and application specs, and agent-runtimes' client and launch helpers,
-# which reserve the runtime and serve the application over A2A. Not in
-# `datalayer`: agent-runtimes depends on this package.
-demo = [
-    "datalayer-agent-shield[datalayer]",
-    # 1.3.71: sends DATALAYER_MAGIC_API_KEY with the runtime it creates, and
-    # reads whether a runtime is unmetered.
-    "agent-runtimes>=1.3.71",
-    "agentspecs>=0.0.37",
-]
-all = [
-    "datalayer-agent-shield[pydantic-ai,a2a,mcp,datalayer]",
-]
+# The WebSocket channel: an agent served at a URL (agent-runtimes' ACP route).
+websocket = ["websockets>=13"]
+# One extra per harness (SHIELD §5.3). The adapters are Node packages, which
+# pip cannot install: `agent-shield setup --harness <id>` installs the pinned
+# one into the Shield's own prefix. The extras name the choice on the install
+# line and carry nothing else.
+claude-code = []
+codex = []
+gemini-cli = []
+goose = []
+opencode = []
+openhands = []
+all = ["datalayer-agent-shield[websocket]"]
 test = [
   "pytest>=7.0",
   "pytest-asyncio>=0.21",
-  "httpx>=0.24",
-  # starlette''s TestClient (imported through fastapi.testclient in
-  # tests/test_routes.py) falls back to raw httpx with a
-  # StarletteDeprecationWarning when httpx2 is absent; filterwarnings turns
-  # that into a collection error above.
-  "httpx2",
-  # Unpinned floor fixed alongside the a2a-sdk pin below: `fasta2a` with no
-  # ceiling is exactly the drift that renamed `A2AClient`''s `base_url`
-  # argument to `agent` mid-air and broke every A2A dispatch in this
-  # package silently (found and fixed in the a2a extra, ORCHESTRATOR.md
-  # O3-02) — the same risk was still sitting here, unpinned, in the test
-  # dependency that installs the same package.
-  "fasta2a>=2.0.0,<2.1",
-  "anyio",
-  # The A2A project''s own reference implementation (a2a-protocol.org),
-  # independent of `fasta2a` — which Datalayer contributes to — used only
-  # to drive `tests/test_standard_client_compatibility.py`
-  # (ORCHESTRATOR.md O3-05): a standard client against this package''s
-  # worker, and a standard, non-Datalayer worker against this package''s
-  # own dispatch pattern. Pinned, not floored: ''against a pinned
-  # third-party implementation'' is this item''s own done-when.
-  "a2a-sdk[all]==0.3.26",
+  "pytest-timeout>=2.0",
+  "websockets>=13",
 ]
 lint = ["mdformat>0.7", "mdformat-gfm>=0.3.5", "ruff"]
 typing = ["mypy>=0.990"]
@@ -112,6 +76,7 @@ file = "LICENSE"
 
 [project.urls]
 Home = "https://github.com/datalayer/agent-shield"
+Documentation = "https://agent-shield.datalayer.tech"
 
 # The distribution is `datalayer-agent-shield` (PyPI refused `agent-shield` as
 # too close to an existing name); the import stays `agent_shield`, so the
@@ -119,25 +84,18 @@ Home = "https://github.com/datalayer/agent-shield"
 [tool.hatch.build.targets.wheel]
 packages = ["agent_shield"]
 
+[tool.hatch.build.targets.sdist]
+include = ["agent_shield", "schema", "tests", "README.md", "CHANGELOG.md", "LICENSE", "pyproject.toml"]
+
 [tool.hatch.version]
 path = "agent_shield/__version__.py"
 
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+timeout = 120
 filterwarnings = [
   "error",
   "ignore:There is no current event loop:DeprecationWarning",
-  # Datalayer core's own import-time notices, raised once the platform commands
-  # (`agent-shield[datalayer]`) import it; nothing of this package's.
-  "ignore:Datalayer is migrating its paths:DeprecationWarning",
-  "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
-  "ignore:datetime.datetime.utcnow:DeprecationWarning",
-  "module:make_current is deprecated:DeprecationWarning",
-  "module:clear_current is deprecated:DeprecationWarning",
-  "module:Jupyter is migrating its paths to use standard platformdirs:DeprecationWarning",
 ]
 
 [tool.mypy]
@@ -153,48 +111,22 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 
 [tool.ruff]
-target-version = "py39"
-line-length = 100
+target-version = "py310"
+line-length = 120
 
 [tool.ruff.lint]
-select = [
-  "A",
-  "B",
-  "C",
-  "E",
-  "F",
-  "FBT",
-  "I",
-  "N",
-  "Q",
-  "RUF",
-  "S",
-  "T",
-  "UP",
-  "W",
-  "YTT",
-]
-ignore = [
-  # FBT001 Boolean positional arg in function definition
-  "FBT001",
-  "FBT002",
-  "FBT003",
-]
+select = ["A", "B", "C", "E", "F", "FBT", "I", "N", "Q", "RUF", "S", "T", "UP", "W", "YTT"]
+# N818: the refusals are named for what they say (PolicyRefused, OutsideWorkspace), not suffixed.
+ignore = ["FBT001", "FBT002", "FBT003", "N818"]
 
 [tool.ruff.lint.per-file-ignores]
-# S101 Use of `assert` detected
-#
-# This glob matched nothing: the suite is `tests/`, at the repository root,
-# not `agent_shield/tests/` — so every test file has been flagged for
-# `assert` since this was written. Fixed, not just for the new conformance
-# suite: `ruff check tests/test_a2a_orchestration_extension.py` alone went
-# from 58 false positives to zero.
-"tests/*" = ["S101"]
-# The Typer command modules. B008: an option's default *is* a call —
-# `typer.Option(...)`, or core's shared `account_option()` / `output_option()`
-# — which is how Typer declares options. UP045: `Optional[X]`, not `X | None`,
-# because Typer reads these annotations at run time and this package still
-# supports Python 3.9, where `X | None` there is a TypeError.
-"agent_shield/cli.py" = ["B008", "UP045"]
-"agent_shield/platform_cli.py" = ["B008", "UP045"]
-"agent_shield/demo_cli.py" = ["B008", "UP045"]
+"tests/*" = ["S101", "S603", "S607", "C408", "E501", "RUF043", "N801"]
+# Typer declares an option as a call in a default (B008); `Optional[X]` is
+# what Typer reads at run time (UP045).
+# S603/S607: `npm install --prefix` and `node --version` are the commands the Shield runs by design;
+# C901/E501: the setup command is one long walk, and its sentences are not wrapped.
+"agent_shield/cli.py" = ["B008", "UP045", "S603", "S607", "C901", "E501"]
+"tests/fixtures/*" = ["T201", "C901", "S101"]
+# The proxy's sentences are not wrapped; the normaliser and the update handler are dispatchers (C901).
+"agent_shield/acp/proxy.py" = ["E501", "C901"]
+"agent_shield/acp/normalize.py" = ["C901"]

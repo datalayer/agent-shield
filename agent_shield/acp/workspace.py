@@ -18,9 +18,9 @@ import contextlib
 import os
 import shlex
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping
 
 from acp.transports import default_environment
 
@@ -162,7 +162,8 @@ class Terminals:
 
     async def _read(self, run: TerminalRun) -> None:
         stream = run.process.stdout
-        assert stream is not None
+        if stream is None:  # pragma: no cover - the process is created with a pipe
+            return
         while True:
             chunk = await stream.read(4096)
             if not chunk:

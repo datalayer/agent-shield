@@ -11,7 +11,7 @@ runtime.
 
 from __future__ import annotations
 
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -63,7 +63,7 @@ class Text(BaseModel):
     text: str
 
 
-Display = Union[Diff, Terminal, Text]
+Display = Diff | Terminal | Text
 
 
 class Location(BaseModel):
@@ -178,21 +178,21 @@ class TurnEnded(_Event):
     stop_reason: str
 
 
-Event = Union[
-    TextDelta,
-    ThoughtDelta,
-    UserText,
-    ToolCallSaid,
-    ToolCallUpdated,
-    PlanUpdated,
-    CommandsUpdated,
-    ModeChanged,
-    SessionInfo,
-    PermissionAsked,
-    Question,
-    ShieldAction,
-    TurnEnded,
-]
+Event = (
+    TextDelta
+    | ThoughtDelta
+    | UserText
+    | ToolCallSaid
+    | ToolCallUpdated
+    | PlanUpdated
+    | CommandsUpdated
+    | ModeChanged
+    | SessionInfo
+    | PermissionAsked
+    | Question
+    | ShieldAction
+    | TurnEnded
+)
 
 __all__ = [
     "Command",

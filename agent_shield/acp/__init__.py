@@ -5,11 +5,11 @@
 """ACP: the client-side channels, the normaliser, the workspace and the proxy (SHIELD §5.1)."""
 
 from .channel import (
+    SHIELD_CLIENT_CAPABILITIES,
+    SHIELD_CLIENT_INFO,
     ACPChannel,
     ChannelRefused,
     ConnectionChannel,
-    SHIELD_CLIENT_CAPABILITIES,
-    SHIELD_CLIENT_INFO,
     StdioACPChannel,
     WebSocketACPChannel,
     build_handler,
@@ -19,14 +19,14 @@ from .normalize import MalformedUpdate, normalize
 from .workspace import OutsideWorkspace, Terminals, Workspace
 
 __all__ = [
+    "SHIELD_CLIENT_CAPABILITIES",
+    "SHIELD_CLIENT_INFO",
     "ACPChannel",
     "ChannelRefused",
     "ConnectionChannel",
     "Event",
     "MalformedUpdate",
     "OutsideWorkspace",
-    "SHIELD_CLIENT_CAPABILITIES",
-    "SHIELD_CLIENT_INFO",
     "StdioACPChannel",
     "Terminals",
     "WebSocketACPChannel",

@@ -1,0 +1,17 @@
+---
+sidebar_position: 5
+title: API
+---
+
+# API
+
+## Python: `agent_shield`
+
+- `agent_shield.policy`: `Policy`, `Rule`, `Limits`, `Action`, `Decision`, `decide`, `default_policy`, `load_policies`, `policy_json_schema`, `class_of`, `flagged`.
+- `agent_shield.acp`: `StdioACPChannel`, `WebSocketACPChannel`, `normalize`, `Workspace`, `Terminals`; `agent_shield.acp.proxy.ShieldProxy`, `serve_stdio`.
+- `agent_shield.audit`: `AuditLog`, `redact`, `diff_summary`.
+- `agent_shield.register`: `catalogue`, `harness`, `credential_refusal`.
+
+## TypeScript: `@datalayer/agent-shield`
+
+The policy document's types (`Policy`, `Rule`, `Limits`, `Decision`), the constants (`SCOPES`, `ACTION_CLASSES`, `VERDICTS`, `TOOL_KINDS`, `KIND_CLASS`, `VERDICT_WORDS`), `classOf` and `describeDecision`; `schema/policy.schema.json` exported. The diff and terminal renderers are not built yet.

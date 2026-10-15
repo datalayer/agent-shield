@@ -1,9 +1,8 @@
 name: Py Tests
 
-# Runs on push/pull_request to main, mirroring agent-runtimes' own
-# py-tests.yml. No secrets: every test here is self-contained (an
-# in-memory reference worker, or a2a-sdk driving it over ASGI with no
-# socket), so this needs nothing like agent-runtimes' TEST_DATALAYER_API_KEY.
+# Python tests on every supported Python, the TypeScript package's tests, and
+# the ACP Test Compatibility Kit against the proxy in front of the fake agent
+# (SHIELD SH-02, SH-08). No secrets: every test is self-contained.
 
 on:
   push:
@@ -12,6 +11,10 @@ on:
     paths:
       - 'agent_shield/**'
       - 'tests/**'
+      - 'schema/**'
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
       - 'pyproject.toml'
       - '.github/workflows/py-tests.yaml'
   pull_request:
@@ -20,6 +23,10 @@ on:
     paths:
       - 'agent_shield/**'
       - 'tests/**'
+      - 'schema/**'
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
       - 'pyproject.toml'
       - '.github/workflows/py-tests.yaml'
 
@@ -42,32 +49,31 @@ jobs:
           activate-environment: true
 
       - name: Install
-        run: |
-          uv pip install .
-          # datalayer: tests/test_platform_cli.py imports datalayer_core.orchestration.
-          uv pip install .[a2a,datalayer,test]
+        run: uv pip install .[test]
 
       - name: Run tests
-        run: |
-          # test_a2a_application.py / channel.py / storage.py / worker.py
-          # collect against an older fasta2a `Part` shape (TextPart with a
-          # `kind` discriminator) the installed fasta2a no longer has —
-          # found and deliberately left unfixed in ORCHESTRATOR.md O3-02,
-          # a real compatibility pass across four files, out of scope
-          # there and here.
-          pytest tests/ \
-            --ignore=tests/test_a2a_application.py \
-            --ignore=tests/test_a2a_channel.py \
-            --ignore=tests/test_a2a_storage.py \
-            --ignore=tests/test_a2a_worker.py
+        run: pytest tests/ -q
 
-  # The demo team against the catalogue as it is published: `.[demo]` brings
-  # agentspecs and agent-runtimes (its base install, which has no fasta2a —
-  # fasta2a is agent-runtimes' `a2a` extra — so the `test` extra's fasta2a pin
-  # still holds). The job above lacks agentspecs, so
-  # test_the_catalogued_team_hosts_accounting skips there; here the catalogue
-  # is asserted first, so that test cannot skip.
-  demo:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install and test (the types against schema/policy.schema.json)
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+
+  tck:
+    # The ACP Test Compatibility Kit (github.com/agentclientprotocol/acp-tck,
+    # experimental, Python 3.14) drives an *agent* over stdio: here the proxy
+    # in front of the fake agent, and the fake agent alone as the baseline.
+    # It tests agents only; the proxy's client face has no kit.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -76,14 +82,29 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
-          python-version: '3.12'
+          python-version: '3.13'
           activate-environment: true
 
-      - name: Install
-        run: uv pip install .[demo,test]
+      - name: Install the Shield
+        run: uv pip install .[test]
 
-      - name: The catalogue has the demo team
-        run: python -c "import agentspecs.teams as teams; assert teams.get_team('sales-and-accounting') is not None"
+      - name: Install the TCK
+        run: uv tool install --python 3.14 "git+https://github.com/agentclientprotocol/acp-tck@fa00ccdc13df"
 
-      - name: Run tests
-        run: pytest tests/test_demo.py -rs
+      - name: The fake agent alone (the baseline)
+        run: |
+          mkdir -p /tmp/wd
+          acp-tck --agent-cwd /tmp/wd --timeout 20 --test-timeout 60 --report-json baseline.json -- python tests/fixtures/fake_agent.py
+
+      - name: The proxy in front of the fake agent
+        run: |
+          agent-shield policy init /tmp/wd/agent-shield.yaml
+          acp-tck --agent-cwd /tmp/wd --timeout 20 --test-timeout 60 --report-json proxy.json -- agent-shield run --policy /tmp/wd/agent-shield.yaml -- python tests/fixtures/fake_agent.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tck-reports
+          path: |
+            baseline.json
+            proxy.json

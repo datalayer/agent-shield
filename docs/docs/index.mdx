@@ -4,6 +4,14 @@ title: Agent Shield
 slug: /
 ---
 
-import DocCardList from '@theme/DocCardList';
-
 # 🤖 🛡️ Agent Shield
+
+**A runtime firewall for every agent.** Deploy a shield with each agent. Enforce permissions before actions execute, manage policies centrally, and retain an audit trail.
+
+`agent-shield run -- <command>` starts any [Agent Client Protocol](https://agentclientprotocol.com) agent — Claude Code, Codex, Gemini CLI, Goose, OpenCode, OpenHands — as its subprocess and stands as an ACP agent in front of it. Any ACP client sees one agent; the Shield decides, confines and records in between.
+
+- [Getting started](getting-started/) — the first five minutes.
+- [Architecture](architecture/) — the policy, the proxy, the audit; what is built and what is not.
+- [Protocols](protocols/) — ACP, and what the Shield lends.
+- [CLI](cli/) — every command.
+- [API](api-reference/) — the Python package and the TypeScript package.

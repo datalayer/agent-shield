@@ -76,7 +76,16 @@ def test_every_acp_kind_has_its_class(kind, cls):
 
 def test_the_kind_table_covers_acp_and_only_acp():
     assert set(KIND_CLASS) == {
-        "read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"
+        "read",
+        "edit",
+        "delete",
+        "move",
+        "search",
+        "execute",
+        "think",
+        "fetch",
+        "switch_mode",
+        "other",
     }
 
 
@@ -185,6 +194,24 @@ def test_a_fetch_on_the_allow_list_is_done(ctx):
     assert "evil.example is not on the session policy's fetch allow-list" in refused.sentence
 
 
+def test_a_wildcard_host_matches_subdomains_only(ctx):
+    policy = Policy(scope="session", network=Network(fetch=["*.github.com"]))
+    assert decide(action("fetch", url="https://api.github.com/x"), ctx, [policy]).verdict == "allow"
+    assert decide(action("fetch", url="https://github.com/x"), ctx, [policy]).verdict == "allow"
+    assert decide(action("fetch", url="https://evilgithub.com/x"), ctx, [policy]).verdict == "deny"
+    assert decide(action("fetch", url="https://github.com.evil.example/x"), ctx, [policy]).verdict == "deny"
+
+
+def test_the_strictest_scope_that_lists_any_host_decides_a_fetch(ctx):
+    org = Policy(scope="organization")
+    team = Policy(scope="team", network=Network(fetch=["pypi.org"]))
+    session = Policy(scope="session", network=Network(fetch=["evil.example"]))
+    allowed = decide(action("fetch", url="https://pypi.org/x"), ctx, [session, org, team])
+    assert (allowed.verdict, allowed.scope) == ("allow", "team")
+    refused = decide(action("fetch", url="https://evil.example/x"), ctx, [session, org, team])
+    assert (refused.verdict, refused.scope) == ("deny", "team")
+
+
 def test_a_fetch_with_no_host_is_refused(ctx):
     decision = decide(action("fetch", url="not a url"), ctx, [Policy(scope="session", network=Network(fetch=["a.b"]))])
     assert decision.verdict == "deny"
@@ -285,8 +312,9 @@ def test_commands_are_regular_expressions_on_the_whole_line(ctx):
 
 
 def test_a_soft_limit_asks_once_then_lets_the_session_run_to_the_hard_one(ctx):
-    policy = Policy(scope="team", limits=Limits(tool_calls=Threshold(soft=2, hard=4)),
-                    rules=[Rule(name="all", decision="allow")])
+    policy = Policy(
+        scope="team", limits=Limits(tool_calls=Threshold(soft=2, hard=4)), rules=[Rule(name="all", decision="allow")]
+    )
     act = action("read", path="a", inside=True)
     verdicts = []
     for _ in range(6):
@@ -341,6 +369,8 @@ def test_counting_follows_the_decision(ctx):
     ctx.state.count(action("fs_write", path="a", inside=True, bytes=7), allowed)
     ctx.state.count(action("read", path="a", inside=True), denied)
     assert (ctx.state.tool_calls, ctx.state.terminals_open, ctx.state.bytes_written) == (2, 1, 7)
+    ctx.state.count(action("fs_read", path="a", inside=True, bytes=300), allowed)
+    assert (ctx.state.tool_calls, ctx.state.bytes_written) == (3, 7)
 
 
 # --- the document, its schema and its files -----------------------------------------
@@ -373,7 +403,9 @@ def test_a_soft_threshold_above_the_hard_one_is_refused():
 
 def test_two_rules_of_one_name_are_refused():
     with pytest.raises(PolicyRefused, match="names the rule 'a' twice"):
-        parse_policies({"scope": "session", "rules": [{"name": "a", "decision": "ask"}, {"name": "a", "decision": "ask"}]}, "f")
+        parse_policies(
+            {"scope": "session", "rules": [{"name": "a", "decision": "ask"}, {"name": "a", "decision": "ask"}]}, "f"
+        )
 
 
 def test_two_documents_of_one_scope_are_refused():

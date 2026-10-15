@@ -6,9 +6,7 @@ SHELL=/bin/bash
 
 .DEFAULT_GOAL := default
 
-.PHONY: clean build test
-
-VERSION = "0.0.3"
+.PHONY: clean build test test-ts tck dev install
 
 default: all ## Default target is all.
 
@@ -21,7 +19,7 @@ install:
 	pip install .
 
 dev:
-	pip install ".[test,lint,typing]"
+	pip install -e ".[test,lint,typing]"
 
 build:
 	pip install build
@@ -30,64 +28,22 @@ build:
 clean: ## clean
 	git clean -fdx
 
-clean-npm: ## clean-npm
-	npm run clean
+test: ## Run the Python tests
+	python -m pytest tests/ -q
 
-build-npm: ## build-npm
-	npm run build
+test-ts: ## Run the TypeScript tests (builds lib/ first)
+	npm install --no-audit --no-fund && npm test
+
+tck: ## Run the ACP Test Compatibility Kit against the proxy in front of the fake agent
+	mkdir -p /tmp/agent-shield-tck && agent-shield policy init --force /tmp/agent-shield-tck/agent-shield.yaml
+	acp-tck --agent-cwd /tmp/agent-shield-tck --timeout 20 --test-timeout 60 -- agent-shield run --policy /tmp/agent-shield-tck/agent-shield.yaml -- python tests/fixtures/fake_agent.py
 
 build-lib: ## build-lib
 	npm run build:lib
 
-warning:
-	echo "\x1b[34m\x1b[43mEnsure you have run \x1b[1;37m\x1b[41m conda deactivate \x1b[22m\x1b[34m\x1b[43m before invoking this.\x1b[0m"
-
-publish-npm: clean-npm build-lib ## publish-npm
+publish-npm: build-lib ## publish-npm
 	npm publish
 	echo open https://www.npmjs.com/package/@datalayer/agent-shield --public
-
-test: ## Run tests
-	python -m pytest tests/ -v
-
-start-agent: ## Start the MCP agent CLI (stdio server). Usage: make start-agent [MODEL=<model>]
-	python examples/agent/agent_cli.py $(if $(MODEL),--model $(MODEL),)
-
-start-agent-shield: ## Start the Agent Shield agent CLI (stdio server). Usage: make start-agent-shield [MODEL=<model>]
-	python examples/agent/agent_cli.py --codemode $(if $(MODEL),--model $(MODEL),)
-
-build-docker:
-	docker buildx build --platform linux/amd64,linux/arm64 -t datalayer/agent-shield:${VERSION} .
-	docker image tag datalayer/agent-shield:${VERSION} datalayer/agent-shield:latest
-
-start-docker:
-	docker run -i --rm \
-	  -e SERVER_URL=http://localhost:8888 \
-	  -e TOKEN=MY_TOKEN \
-	  -e NOTEBOOK_PATH=notebook.ipynb \
-	  --network=host \
-	  datalayer/agent-shield:latest
-
-pull-docker:
-	docker image pull datalayer/agent-shield:latest
-
-push-docker:
-	docker push datalayer/agent-shield:${VERSION}
-	docker push datalayer/agent-shield:latest
-
-claude-linux:
-	NIXPKGS_ALLOW_UNFREE=1 nix run github:k3d3/claude-desktop-linux-flake \
-		--impure \
-		--extra-experimental-features flakes \
-		--extra-experimental-features nix-command
-
-jupyterlab:
-	pip uninstall -y pycrdt datalayer_pycrdt
-	pip install datalayer_pycrdt
-	jupyter lab \
-		--port 8888 \
-		--ip 0.0.0.0 \
-		--ServerApp.root_dir ./dev/content \
-		--IdentityProvider.token MY_TOKEN
 
 publish-pypi: # publish the pypi package
 	git clean -fdx && \

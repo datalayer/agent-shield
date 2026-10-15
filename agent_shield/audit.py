@@ -18,9 +18,10 @@ import hashlib
 import json
 import os
 import re
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 #: The events a row may carry.
 EVENTS = (
@@ -50,7 +51,9 @@ _PATTERNS = [
     re.compile(r"\bxox[abprs]-[A-Za-z0-9\-]{10,}"),
     re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}"),
     re.compile(r"(?i)(bearer\s+)[A-Za-z0-9_\-\.=]{8,}"),
-    re.compile(r"(?i)((?:api[_-]?key|secret|token|password|passwd|credential)[A-Za-z0-9_]*\s*[=:]\s*[\"']?)([^\s\"']{4,})"),
+    re.compile(
+        r"(?i)((?:api[_-]?key|secret|token|password|passwd|credential)[A-Za-z0-9_]*\s*[=:]\s*[\"']?)([^\s\"']{4,})"
+    ),
 ]
 _SECRET_NAME = re.compile(r"(?i)(key|token|secret|password|passwd|credential)")
 
