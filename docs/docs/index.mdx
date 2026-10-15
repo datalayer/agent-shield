@@ -1,0 +1,88 @@
+---
+sidebar_position: 1
+title: Agent Shield
+slug: /
+---
+
+import DocCardList from '@theme/DocCardList';
+
+# 🤖 🛡️ Agent Shield
+
+**Agent Shield** is a Python library for orchestrating teams of AI agents built on [pydantic-ai](https://ai.pydantic.dev/) with coordination over the [A2A protocol](https://a2a-protocol.org). It brings production-grade patterns from distributed systems to multi-agent coordination.
+
+## Key Features
+
+- **Team Lifecycle Management** — Create, start, stop, pause, resume, and delete agent teams via a REST API or CLI.
+- **Execution Modes** — Sequential, parallel, and supervisor-driven task execution.
+- **Health Monitoring** — Heartbeat-based liveness detection, stuck-agent identification, mass death handling, and exponential-backoff restarts.
+- **Reaction Engine** — Automatic event handling with retry logic, escalation, and configurable responses (notify, reassign, restart).
+- **Lifecycle Hooks** — Priority-ordered, short-circuit-capable hooks for every major team event.
+- **A2A Protocol Extensions** — Team coordination metadata as a first-class [A2A extension](https://a2a-protocol.org/latest/topics/extensions).
+- **Typer CLI** — Full-featured command-line interface for managing teams without writing code.
+- **FastAPI REST API** — Embeddable or standalone API server with SSE event streaming.
+
+## Architecture at a Glance
+
+```mermaid
+graph TD
+    CLI["CLI (Typer)"] --> API["FastAPI Server"]
+    API --> TM["TeamManager"]
+    TM --> HM["HealthMonitor"]
+    TM --> RE["ReactionEngine"]
+    TM --> HR["HookRegistry"]
+    TM --> A2A["A2A Bridge"]
+    A2A --> F["fasta2a"]
+    TM --> Types["Types & Models"]
+```
+
+## Installation
+
+```bash
+pip install agent-shield
+```
+
+For development (with test dependencies):
+
+```bash
+pip install -e ".[test]"
+```
+
+## Quick Example
+
+```python
+from agent_shield.types import TeamConfig, AgentMemberConfig, ExecutionMode
+from agent_shield.manager import TeamManager
+
+manager = TeamManager()
+
+# Create a team
+config = TeamConfig(
+    name="research-team",
+    execution_mode=ExecutionMode.PARALLEL,
+    members=[
+        AgentMemberConfig(name="researcher", model="openai:gpt-4o"),
+        AgentMemberConfig(name="writer", model="anthropic:claude-sonnet-4-20250514"),
+    ],
+)
+team = await manager.create_team(config)
+
+# Start and assign work
+await manager.start_team(team.team_id)
+result = await manager.assign_task(team.team_id, "Analyse recent AI papers")
+```
+
+Or use the CLI:
+
+```bash
+# Start the server
+agent-shield serve --port 8765
+
+# Create and run a team
+agent-shield local create team.yaml
+agent-shield local start <team-id>
+agent-shield local assign <team-id> "Analyse recent AI papers"
+```
+
+## Documentation
+
+<DocCardList />

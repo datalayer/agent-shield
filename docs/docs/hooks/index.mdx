@@ -1,0 +1,151 @@
+---
+title: Lifecycle Hooks
+---
+
+# Lifecycle Hooks
+
+The `HookRegistry` lets you attach handlers to team lifecycle events. Hooks are priority-ordered and can block or modify operations.
+
+## Hook Events
+
+| Event | When |
+|-------|------|
+| `PRE_TEAM_START` | Before a team starts |
+| `POST_TEAM_START` | After a team starts |
+| `PRE_TEAM_STOP` | Before a team stops |
+| `POST_TEAM_STOP` | After a team stops |
+| `PRE_MEMBER_START` | Before a member starts |
+| `POST_MEMBER_START` | After a member starts |
+| `PRE_MEMBER_STOP` | Before a member stops |
+| `POST_MEMBER_STOP` | After a member stops |
+| `PRE_TASK_ASSIGN` | Before a task is assigned |
+| `POST_TASK_ASSIGN` | After a task is assigned |
+| `PRE_TASK_EXECUTE` | Before a task runs |
+| `POST_TASK_EXECUTE` | After a task runs |
+| `ON_TASK_COMPLETE` | When a task completes successfully |
+| `ON_TASK_FAILED` | When a task fails |
+| `ON_MEMBER_ERROR` | When a member encounters an error |
+
+## Basic Usage
+
+```python
+from agent_shield.hooks import HookRegistry, HookEvent, HookResult
+
+registry = HookRegistry()
+
+# Register a hook with a decorator
+@registry.on(HookEvent.PRE_TASK_ASSIGN)
+async def validate_task(event, **kwargs):
+    """Block tasks that are missing a description."""
+    task = kwargs.get("task")
+    if task and not task.get("description"):
+        return HookResult(allow=False, reason="Task must have a description")
+    return HookResult(allow=True)
+```
+
+## Priority Ordering
+
+Hooks with lower priority numbers run first:
+
+```python
+from agent_shield.hooks import Hook
+
+registry.register(Hook(
+    event=HookEvent.POST_TEAM_START,
+    name="log-start",
+    handler=log_handler,
+    priority=100,  # Runs after...
+))
+
+registry.register(Hook(
+    event=HookEvent.POST_TEAM_START,
+    name="init-monitoring",
+    handler=init_handler,
+    priority=10,  # ...this one
+))
+```
+
+## Blocking Hooks
+
+`PRE_*` hooks can block the operation by returning `HookResult(allow=False)`:
+
+```python
+@registry.on(HookEvent.PRE_TEAM_START)
+async def capacity_check(event, **kwargs):
+    """Prevent starting if too many teams are running."""
+    active_count = get_active_team_count()
+    if active_count >= 10:
+        return HookResult(
+            allow=False,
+            reason=f"Max team capacity reached ({active_count}/10)",
+        )
+    return HookResult(allow=True)
+```
+
+When a hook blocks, subsequent hooks in the chain are **not** executed.
+
+## Modifying Arguments
+
+Hooks can pass modified arguments to downstream hooks:
+
+```python
+@registry.on(HookEvent.PRE_TASK_ASSIGN, priority=1)
+async def add_metadata(event, **kwargs):
+    return HookResult(
+        allow=True,
+        modified_args={"priority": "high", "tags": ["urgent"]},
+    )
+```
+
+Modified args from multiple hooks are merged (later hooks can override earlier ones).
+
+## Running Hooks
+
+```python
+# Run all hooks for an event
+result = await registry.run(HookEvent.PRE_TASK_ASSIGN, task=my_task)
+
+if not result.allow:
+    print(f"Blocked: {result.reason}")
+else:
+    # Proceed with the operation
+    pass
+```
+
+## Disabling Hooks
+
+Individual hooks can be disabled without unregistering them:
+
+```python
+# Find and disable
+for hook in registry.get_hooks(HookEvent.PRE_TEAM_START):
+    if hook.name == "capacity_check":
+        hook.enabled = False
+```
+
+## Error Handling
+
+If a hook raises an exception, it is caught and logged — subsequent hooks still execute:
+
+```python
+@registry.on(HookEvent.POST_TASK_EXECUTE)
+async def flaky_hook(event, **kwargs):
+    raise RuntimeError("Something went wrong")
+    # This won't block other POST_TASK_EXECUTE hooks
+```
+
+## Integration with TeamManager
+
+The `TeamManager` creates a `HookRegistry` automatically:
+
+```python
+from agent_shield.manager import TeamManager
+
+manager = TeamManager()
+
+# Access the hook registry
+@manager.hooks.on(HookEvent.PRE_TASK_ASSIGN)
+async def audit_task(event, **kwargs):
+    log.info(f"Task being assigned: {kwargs}")
+    return HookResult(allow=True)
+```

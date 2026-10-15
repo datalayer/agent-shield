@@ -1,0 +1,229 @@
+---
+title: API Reference
+---
+
+# API Reference
+
+Agent Shield exposes a REST API built with FastAPI. Below is the full endpoint reference.
+
+## Base URL
+
+When running the server with `agent-shield serve --port 8765`:
+
+```
+http://localhost:8765
+```
+
+## Teams
+
+### `POST /teams`
+
+Create a new team.
+
+**Request Body:**
+
+```json
+{
+  "name": "research-team",
+  "execution_mode": "parallel",
+  "members": [
+    {
+      "name": "researcher",
+      "model": "openai:gpt-4o",
+      "system_prompt": "You are a research analyst."
+    }
+  ],
+  "supervisor": {
+    "member_name": "researcher",
+    "review_required": true
+  }
+}
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "team_id": "abc-123-def",
+  "name": "research-team",
+  "status": "draft",
+  "execution_mode": "parallel",
+  "members": [...],
+  "created_at": "2025-01-15T10:00:00Z"
+}
+```
+
+---
+
+### `GET /teams`
+
+List all teams.
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "team_id": "abc-123-def",
+    "name": "research-team",
+    "status": "running",
+    "members_count": 3,
+    "tasks_active": 2
+  }
+]
+```
+
+---
+
+### `GET /teams/{team_id}`
+
+Get details of a specific team.
+
+**Response:** `200 OK` or `404 Not Found`
+
+---
+
+### `DELETE /teams/{team_id}`
+
+Delete a team. The team must be stopped first.
+
+**Response:** `204 No Content` or `409 Conflict` (if running)
+
+---
+
+## Lifecycle
+
+### `POST /teams/{team_id}/start`
+
+Start a team (transitions from `draft` or `stopped` to `running`).
+
+**Response:** `200 OK`
+
+---
+
+### `POST /teams/{team_id}/stop`
+
+Stop a running or paused team.
+
+**Response:** `200 OK`
+
+---
+
+### `POST /teams/{team_id}/pause`
+
+Pause a running team.
+
+**Response:** `200 OK`
+
+---
+
+### `POST /teams/{team_id}/resume`
+
+Resume a paused team.
+
+**Response:** `200 OK`
+
+---
+
+## Tasks
+
+### `POST /teams/{team_id}/tasks`
+
+Assign a task to a team.
+
+**Request Body:**
+
+```json
+{
+  "title": "Analyse Q4 data",
+  "description": "Review quarterly revenue trends",
+  "priority": "high",
+  "assigned_to": "researcher"
+}
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "task_id": "task-456",
+  "status": "pending",
+  "assigned_to": "researcher",
+  "created_at": "2025-01-15T10:05:00Z"
+}
+```
+
+---
+
+### `GET /teams/{team_id}/tasks`
+
+List all tasks for a team.
+
+**Response:** `200 OK`
+
+---
+
+## Metrics and Events
+
+### `GET /teams/{team_id}/metrics`
+
+Get team metrics.
+
+**Response:** `200 OK`
+
+```json
+{
+  "tasks_total": 10,
+  "tasks_completed": 7,
+  "tasks_failed": 1,
+  "tasks_pending": 2,
+  "members_active": 3,
+  "uptime_seconds": 3600
+}
+```
+
+---
+
+### `GET /teams/{team_id}/events`
+
+Get team events. Supports both JSON responses and Server-Sent Events (SSE).
+
+**Query Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `limit` | `50` | Max events to return |
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "event_type": "task_assigned",
+    "team_id": "abc-123-def",
+    "timestamp": "2025-01-15T10:05:00Z",
+    "data": {"task_id": "task-456", "assigned_to": "researcher"}
+  }
+]
+```
+
+## Embedding the API
+
+Mount Agent Shield inside an existing FastAPI application:
+
+```python
+from fastapi import FastAPI
+from agent_shield.app import create_app
+from agent_shield.manager import TeamManager
+
+parent = FastAPI()
+manager = TeamManager()
+parent.mount("/api/agent-shield/v1", create_app(manager=manager))
+```
+
+## OpenAPI Documentation
+
+When running the server, interactive API docs are available at:
+
+- **Swagger UI:** `http://localhost:8765/docs`
+- **ReDoc:** `http://localhost:8765/redoc`

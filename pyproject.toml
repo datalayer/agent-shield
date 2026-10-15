@@ -1,0 +1,193 @@
+# Copyright (c) 2025-2026 Datalayer, Inc.
+#
+# BSD 3-Clause License
+
+[build-system]
+requires = ["hatchling~=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent_shield"
+authors = [{ name = "Datalayer", email = "info@datalayer.io" }]
+dynamic = ["version"]
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["AI", "Agents", "Teams", "A2A", "Orchestration", "Jupyter"]
+classifiers = [
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "fastapi>=0.100",
+    "httpx>=0.24",
+    "uvicorn[standard]>=0.20",
+    "typer>=0.9",
+]
+
+[project.scripts]
+agent-shield = "agent_shield.cli:main"
+
+# The Datalayer CLI discovers its extensions through this group: installing
+# agent-shield beside it is what makes `datalayer agent-shield` exist there.
+[project.entry-points."datalayer.cli"]
+agent-shield = "agent_shield.reactor_extension:plugin"
+
+# And through the reactor's own CLI group: `reactor agent-shield` wherever both
+# are installed, with the same plugin doing the extending.
+[project.entry-points."datalayer.reactor.cli"]
+agent-shield = "agent_shield.reactor_extension:plugin"
+
+[project.optional-dependencies]
+pydantic-ai = [
+  "pydantic-graph>=1.94.0",
+  "pydantic-ai-slim>=2.35.0,<3",
+]
+a2a = [
+    # No floor and no ceiling left every install resolve to whatever was
+    # newest on PyPI, and somewhere within 2.0.x `A2AClient.__init__`
+    # renamed its worker-URL argument from `base_url` to `agent` — every
+    # remote member in this package was unreachable until it was found.
+    # `<2.1` matches the `agent=` constructor the code is fixed against.
+    "fasta2a>=2.0.0,<2.1",
+]
+mcp = [
+    "mcp[cli]>=2.0",
+]
+# The teams run on Datalayer (`agent-shield list|start|runs|status|…`) and the
+# reactor extension that makes them `datalayer agent-shield`. Not a dependency
+# of the library: the Datalayer CLI that hosts the group always has it.
+datalayer = [
+    "datalayer_core>=1.2.12",
+]
+# The landing's demo team (`agent-shield demo deploy|status|url|stop`): the
+# team and application specs, and agent-runtimes' client and launch helpers,
+# which reserve the runtime and serve the application over A2A. Not in
+# `datalayer`: agent-runtimes depends on this package.
+demo = [
+    "agent_shield[datalayer]",
+    # 1.3.71: sends DATALAYER_MAGIC_API_KEY with the runtime it creates, and
+    # reads whether a runtime is unmetered.
+    "agent-runtimes>=1.3.71",
+    "agentspecs>=0.0.37",
+]
+all = [
+    "agent_shield[pydantic-ai,a2a,mcp,datalayer]",
+]
+test = [
+  "pytest>=7.0",
+  "pytest-asyncio>=0.21",
+  "httpx>=0.24",
+  # starlette''s TestClient (imported through fastapi.testclient in
+  # tests/test_routes.py) falls back to raw httpx with a
+  # StarletteDeprecationWarning when httpx2 is absent; filterwarnings turns
+  # that into a collection error above.
+  "httpx2",
+  # Unpinned floor fixed alongside the a2a-sdk pin below: `fasta2a` with no
+  # ceiling is exactly the drift that renamed `A2AClient`''s `base_url`
+  # argument to `agent` mid-air and broke every A2A dispatch in this
+  # package silently (found and fixed in the a2a extra, ORCHESTRATOR.md
+  # O3-02) — the same risk was still sitting here, unpinned, in the test
+  # dependency that installs the same package.
+  "fasta2a>=2.0.0,<2.1",
+  "anyio",
+  # The A2A project''s own reference implementation (a2a-protocol.org),
+  # independent of `fasta2a` — which Datalayer contributes to — used only
+  # to drive `tests/test_standard_client_compatibility.py`
+  # (ORCHESTRATOR.md O3-05): a standard client against this package''s
+  # worker, and a standard, non-Datalayer worker against this package''s
+  # own dispatch pattern. Pinned, not floored: ''against a pinned
+  # third-party implementation'' is this item''s own done-when.
+  "a2a-sdk[all]==0.3.26",
+]
+lint = ["mdformat>0.7", "mdformat-gfm>=0.3.5", "ruff"]
+typing = ["mypy>=0.990"]
+
+[project.license]
+file = "LICENSE"
+
+[project.urls]
+Home = "https://github.com/datalayer/agent-shield"
+
+[tool.hatch.version]
+path = "agent_shield/__version__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+filterwarnings = [
+  "error",
+  "ignore:There is no current event loop:DeprecationWarning",
+  # Datalayer core's own import-time notices, raised once the platform commands
+  # (`agent-shield[datalayer]`) import it; nothing of this package's.
+  "ignore:Datalayer is migrating its paths:DeprecationWarning",
+  "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
+  "ignore:datetime.datetime.utcnow:DeprecationWarning",
+  "module:make_current is deprecated:DeprecationWarning",
+  "module:clear_current is deprecated:DeprecationWarning",
+  "module:Jupyter is migrating its paths to use standard platformdirs:DeprecationWarning",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+pretty = true
+show_error_context = true
+show_error_codes = true
+strict_equality = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "B",
+  "C",
+  "E",
+  "F",
+  "FBT",
+  "I",
+  "N",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "UP",
+  "W",
+  "YTT",
+]
+ignore = [
+  # FBT001 Boolean positional arg in function definition
+  "FBT001",
+  "FBT002",
+  "FBT003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# S101 Use of `assert` detected
+#
+# This glob matched nothing: the suite is `tests/`, at the repository root,
+# not `agent_shield/tests/` — so every test file has been flagged for
+# `assert` since this was written. Fixed, not just for the new conformance
+# suite: `ruff check tests/test_a2a_orchestration_extension.py` alone went
+# from 58 false positives to zero.
+"tests/*" = ["S101"]
+# The Typer command modules. B008: an option's default *is* a call —
+# `typer.Option(...)`, or core's shared `account_option()` / `output_option()`
+# — which is how Typer declares options. UP045: `Optional[X]`, not `X | None`,
+# because Typer reads these annotations at run time and this package still
+# supports Python 3.9, where `X | None` there is a TypeError.
+"agent_shield/cli.py" = ["B008", "UP045"]
+"agent_shield/platform_cli.py" = ["B008", "UP045"]
+"agent_shield/demo_cli.py" = ["B008", "UP045"]
