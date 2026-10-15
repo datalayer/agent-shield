@@ -9,8 +9,29 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .authorize import (
+    ALLOW_TTL,
+    RELATIONS,
+    ActionName,
+    AllowCache,
+    Authorization,
+    AuthorizeHook,
+    Authorizer,
+    AuthorizerConfig,
+    AuthorizerUnreachable,
+    AuthZenAuthorizer,
+    EvaluationRequest,
+    EvaluationResponse,
+    Grant,
+    LocalAuthorizer,
+    OpenFgaAuthorizer,
+    Resource,
+    Subject,
+    authorize,
+    hook_for,
+)
 from .classify import FLAGGED_COMMANDS, KIND_CLASS, SHIELD_KINDS, UnknownKind, class_of, flagged
-from .decide import MODEL_KIND, Context, LimitState, decide, decide_budget, scopes_present
+from .decide import LOCAL_SUBJECT, MODEL_KIND, Context, LimitState, decide, decide_budget, request_for, scopes_present
 from .default import default_policy
 from .files import LoadedPolicy, PolicyRefused, dump_policy, load_policies, parse_policies, parse_policy
 from .levels import PolicyWidens, admits, check_tightens, credentials_rule, overlaps, widening
@@ -56,6 +77,27 @@ def policy_json_schema_text() -> str:
 
 __all__ = [
     "ACTION_CLASSES",
+    "ALLOW_TTL",
+    "LOCAL_SUBJECT",
+    "RELATIONS",
+    "ActionName",
+    "AllowCache",
+    "Authorization",
+    "AuthorizeHook",
+    "Authorizer",
+    "AuthorizerConfig",
+    "AuthorizerUnreachable",
+    "AuthZenAuthorizer",
+    "EvaluationRequest",
+    "EvaluationResponse",
+    "Grant",
+    "LocalAuthorizer",
+    "OpenFgaAuthorizer",
+    "Resource",
+    "Subject",
+    "authorize",
+    "hook_for",
+    "request_for",
     "FLAGGED_COMMANDS",
     "KIND_CLASS",
     "LIMIT_NAMES",

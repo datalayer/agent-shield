@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from .authorizer import EVALUATE_PATH, IamAuthorizer, evaluate_url
 from .policies import (
     POLL_SECONDS,
     IamPolicySource,
@@ -18,7 +19,10 @@ from .policies import (
 )
 
 __all__ = [
+    "EVALUATE_PATH",
+    "IamAuthorizer",
     "POLL_SECONDS",
+    "evaluate_url",
     "IamPolicySource",
     "ManagedPolicies",
     "PolicySource",

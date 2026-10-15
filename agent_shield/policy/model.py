@@ -24,6 +24,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .authorize import AuthorizerConfig
+
 #: The three scopes, strictest first: the organization decides before the
 #: team, the team before the session (SHIELD §6.3).
 Scope = Literal["organization", "team", "session"]
@@ -178,6 +180,21 @@ class Policy(_Strict):
     network: Network = Field(default_factory=Network)
     mcp: Mcp = Field(default_factory=Mcp)
     harnesses: Harnesses = Field(default_factory=Harnesses)
+    authorize: list[ActionClass] = Field(
+        default_factory=list,
+        description=(
+            "The classes that need an authorizer's allow beside the Rules (SHIELD §6.11): a deny wins over any "
+            "Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents "
+            "name read, write, execute, send and buy."
+        ),
+    )
+    authorizer: AuthorizerConfig | None = Field(
+        default=None,
+        description=(
+            "The decision point a standalone Shield asks: local (grants in this file), openfga {url, store, model} "
+            "or authzen {url}. On Datalayer the authorizer is IAM's and a managed document names none."
+        ),
+    )
 
     @model_validator(mode="after")
     def _rule_names_unique(self) -> Policy:
@@ -206,6 +223,13 @@ class Action(_Strict):
     bytes: int | None = Field(default=None, ge=0, description="Bytes a write carries.")
     tokens: int | None = Field(default=None, ge=0, description="Tokens a model request spent, in and out.")
     credits: int | None = Field(default=None, ge=0, description="Credits a model request cost (100 a USD).")
+    resource: str | None = Field(
+        default=None,
+        description=(
+            "What the authorizer is asked about, as type:id (tool:earthdata/search, connection:acme.example); "
+            "a path's workspace resource, a command's workspace and a URL's host are derived when unset."
+        ),
+    )
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -217,8 +241,13 @@ class Decision(_Strict):
     sentence: str
     scope: Scope | None = Field(default=None, description="The scope that decided; None for the default.")
     rule: str | None = Field(default=None, description="The rule's name, or the limit's, or None for the default.")
-    decided_by: Literal["rule", "limit", "network", "default"]
+    decided_by: Literal["rule", "limit", "network", "default", "authorizer"]
     counted: bool = Field(default=False, description="Whether a session state should count this action.")
+    authorizer: str | None = Field(default=None, description="The authorizer asked (§6.11), when the class needed one.")
+    authorization: str | None = Field(
+        default=None, description="What it answered: allow, cached allow, or deny; with its reason in the sentence."
+    )
+    model_version: str | None = Field(default=None, description="The authorizer's model version, for the audit.")
 
     @property
     def word(self) -> str:

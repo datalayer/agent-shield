@@ -89,6 +89,11 @@ def _parse_served(data: Any, where: str) -> ServedPolicies:
             raise PolicyRefused(f"{where}: a served policy is a mapping, not {type(item).__name__}")
         document = dict(item)
         subject = str(document.pop("subject", "") or "")
+        if document.get("authorizer") is not None:
+            raise PolicyRefused(
+                f"{where}: the {document.get('scope', '?')} document names an authorizer; on Datalayer the "
+                "authorizer is IAM's (OpenFGA through IAM, SHIELD §6.11) and a managed document names none"
+            )
         policy = parse_policy(document, where)
         if policy.expires is None:
             raise PolicyRefused(f"{where}: the {policy.scope} document carries no 'expires'")

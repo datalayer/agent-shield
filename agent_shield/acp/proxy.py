@@ -66,17 +66,22 @@ from agent_shield.__version__ import __version__
 from agent_shield.audit import AuditLog, diff_summary
 from agent_shield.policy import (
     Action,
+    AllowCache,
+    AuthorizeHook,
+    Authorizer,
     Context,
     Decision,
     LimitState,
     LoadedPolicy,
     Policy,
     Rule,
+    Subject,
     UnknownKind,
     check_tightens,
     class_of,
     decide,
     decide_budget,
+    hook_for,
 )
 from agent_shield.tracing import with_traceparent
 
@@ -89,6 +94,8 @@ logger = logging.getLogger(__name__)
 
 #: The JSON-RPC error a refused action answers with.
 REFUSED = -32010
+#: The scopes, strictest first, for the authorizer a policy names.
+SCOPES = ("organization", "team", "session")
 
 #: The options the Shield offers when it asks on its own behalf.
 SHIELD_OPTIONS = [
@@ -116,10 +123,19 @@ class SessionState:
     #: Rules a host keeps for this session beside the Shield's own (a person's,
     #: added from a panel while it runs, SH-54): read at every decision.
     rules_from: Callable[[], Sequence[Rule]] | None = None
+    #: Who acts in this session and the authorizer's hook (SHIELD §6.11), the proxy's.
+    subject: Subject | None = None
+    authorize: AuthorizeHook | None = None
 
     @property
     def context(self) -> Context:
-        return Context(workspace=str(self.workspace.root), session_id=self.session_id, state=self.state)
+        return Context(
+            workspace=str(self.workspace.root),
+            session_id=self.session_id,
+            state=self.state,
+            subject=self.subject,
+            authorize=self.authorize,
+        )
 
     def all_session_rules(self) -> list[Rule]:
         """The session's rules in force: the host's, then the Shield's own (``allow_always``)."""
@@ -218,10 +234,20 @@ class ShieldProxy:
         agent_stderr: Any = None,
         connect_url: str | None = None,
         connect_headers: Mapping[str, str] | None = None,
+        authorizer: Authorizer | None = None,
+        subject: Subject | None = None,
     ) -> None:
         if not command and not connect_url:
             raise ProxyRefused("no agent command: `agent-shield run -- <command>`")
         self.command = list(command)
+        #: The authorizer (§6.11): the one given (IAM's on Datalayer, SH-75), else the one the
+        #: strictest policy names under ``authorizer:``; none leaves every class a policy lists
+        #: under ``authorize:`` refused. Allows are cached once per proxy, until they expire.
+        self.subject = subject
+        self.allow_cache = AllowCache()
+        self._given_authorizer = authorizer
+        self.authorizer: Authorizer | None = None
+        self.authorize_hook: AuthorizeHook | None = None
         #: The agent served at a URL instead of launched here (SH-40: the sidecar
         #: bridge, ``ws://127.0.0.1:<port>/acp/<harness>``): the WebSocket
         #: channel, the same interface, the same decisions.
@@ -237,10 +263,24 @@ class ShieldProxy:
         self._channel: ACPChannel | None = None
         self._launch: Any = None
         self.sessions: dict[str, SessionState] = {}
+        self._set_authorizer(self.policies)
         self.inner = _InnerClient(self)
         #: The sentence refusing every action while no unexpired policy is held
         #: (SHIELD decision 11), or ``None`` while the policies are in force.
         self.unavailable: str | None = None
+
+    def _set_authorizer(self, policies: Sequence[Policy]) -> None:
+        chosen = self._given_authorizer
+        if chosen is None:
+            named = next(
+                (policy.authorizer for policy in sorted(policies, key=lambda p: SCOPES.index(p.scope)) if policy.authorizer),
+                None,
+            )
+            chosen = named.build() if named is not None else None
+        self.authorizer = chosen
+        self.authorize_hook = hook_for(chosen, cache=self.allow_cache) if chosen is not None else None
+        for session in self.sessions.values():
+            session.authorize = self.authorize_hook
 
     # -- the policies while running (SH-50, SH-54) ---------------------------------------
 
@@ -254,6 +294,7 @@ class ShieldProxy:
         self.policies = [item.policy for item in self.loaded]
         for session in self.sessions.values():
             session.policies = self.policies
+        self._set_authorizer(self.policies)
         self.unavailable = None
         self.audit.write("policy", what="replaced", scopes=[policy.scope for policy in self.policies], by="shield")
 
@@ -419,7 +460,13 @@ class ShieldProxy:
             raise RequestError(REFUSED, str(exc)) from None
 
     def _open(self, session_id: str, workspace: Workspace) -> SessionState:
-        session = SessionState(session_id=session_id, workspace=workspace, policies=self.policies)
+        session = SessionState(
+            session_id=session_id,
+            workspace=workspace,
+            policies=self.policies,
+            subject=self.subject,
+            authorize=self.authorize_hook,
+        )
         session.terminals = Terminals(workspace)
         self.sessions[session_id] = session
         return session
@@ -667,6 +714,9 @@ class _InnerClient:
                     rule=decision.rule,
                     scope=decision.scope,
                     decided_by=decision.decided_by,
+                    authorizer=decision.authorizer,
+                    authorization=decision.authorization,
+                    model_version=decision.model_version,
                     by="policy",
                 )
                 if decision.verdict == "deny":

@@ -145,6 +145,13 @@ def _list_widening(lower: Policy, above: Policy) -> list[str]:
                 f"the {lower.scope} policy admits the harness{'es' if len(extra) > 1 else ''} {', '.join(extra)}, "
                 f"which the {above.scope}'s does not; a scope below admits no harness the one above does not"
             )
+    if above.authorize and lower.authorize:
+        dropped = [name for name in above.authorize if name not in lower.authorize]
+        if dropped:
+            found.append(
+                f"the {lower.scope} policy needs no authorizer's allow for {', '.join(dropped)} actions where the "
+                f"{above.scope}'s does; a scope below drops no class the one above authorizes"
+            )
     if above.harnesses.credentials != "either" and lower.harnesses.credentials != above.harnesses.credentials:
         found.append(
             f"the {lower.scope} policy runs harnesses on {lower.harnesses.credentials} credentials where the "

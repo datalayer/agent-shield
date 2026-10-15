@@ -10,6 +10,27 @@
  * `npm run generate` writes it; `npm test` regenerates and refuses a drift (SHIELD SH-53).
  */
 /**
+ * The classes that need an authorizer's allow beside the Rules (SHIELD §6.11): a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy.
+ */
+export type Authorize = ('read' | 'write' | 'send' | 'buy' | 'delete' | 'execute')[];
+export type Url = string;
+/**
+ * workspace:* /src/*, tool:earthdata/*, connection:acme.example
+ */
+export type Object = string;
+/**
+ * can_read, can_execute, can_call, can_act, or an action class
+ */
+export type Relation = string;
+/**
+ * user:alice, account:*, deployment:01…
+ */
+export type Subject = string;
+export type Grants = Grant[];
+export type Model = string | null;
+export type Store = string;
+export type Url1 = string;
+/**
  * When a pulled copy stops being honoured (decision 11).
  */
 export type Expires = string | null;
@@ -76,6 +97,11 @@ export type Version = number;
  * One policy document, one scope.
  */
 export interface AgentShieldPolicy {
+  authorize?: Authorize;
+  /**
+   * The decision point a standalone Shield asks: local (grants in this file), openfga {url, store, model} or authzen {url}. On Datalayer the authorizer is IAM's and a managed document names none.
+   */
+  authorizer?: AuthorizerConfig | null;
   expires?: Expires;
   harnesses?: Harnesses;
   limits?: Limits;
@@ -84,6 +110,37 @@ export interface AgentShieldPolicy {
   rules?: Rules;
   scope: Scope;
   version?: Version;
+}
+/**
+ * ``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone).
+ */
+export interface AuthorizerConfig {
+  authzen?: AuthZenAuthorizerConfig | null;
+  local?: LocalAuthorizerConfig | null;
+  openfga?: OpenFgaAuthorizerConfig | null;
+}
+export interface AuthZenAuthorizerConfig {
+  headers?: Headers;
+  url: Url;
+}
+export interface Headers {
+  [k: string]: string;
+}
+export interface LocalAuthorizerConfig {
+  grants?: Grants;
+}
+/**
+ * One line of the ``local`` authorizer: who may do what to what, as patterns (fnmatch).
+ */
+export interface Grant {
+  object: Object;
+  relation: Relation;
+  subject: Subject;
+}
+export interface OpenFgaAuthorizerConfig {
+  model?: Model;
+  store: Store;
+  url: Url1;
 }
 /**
  * The harnesses an organization admits, and whose credentials run them (§6.7).

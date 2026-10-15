@@ -22,6 +22,7 @@ by name, never by value.
 from __future__ import annotations
 
 import asyncio
+import getpass
 import json
 import logging
 import os
@@ -188,8 +189,9 @@ def run(
             workspace=workspace,
             agent_env=_agent_environment(entry, env),
             agent_stderr=stderr_passthrough if verbose else None,
+            subject=_local_subject(),
         )
-    except ProxyRefused as exc:
+    except (ProxyRefused, ValueError) as exc:
         refuse(str(exc))
     asyncio.run(serve_stdio(proxy))
 
@@ -679,6 +681,8 @@ def serve(
                 workspace=workspace,
                 agent_env=environments[name],
                 agent_stderr=stderr_passthrough if verbose else None,
+                authorizer=_iam_authorizer(registration) if registration is not None else None,
+                subject=_registered_subject(registration) if registration is not None else _local_subject(),
             )
 
         return make
@@ -735,6 +739,31 @@ def serve(
         asyncio.run(main())
     except KeyboardInterrupt:
         say("agent-shield serve: stopped")
+
+
+def _local_subject():
+    """Who acts behind a local-only Shield: the account running it."""
+    from agent_shield.policy import Subject
+
+    try:
+        who = getpass.getuser()
+    except Exception:  # noqa: BLE001 - no login name in some containers
+        who = "local"
+    return Subject(type="account", id=who or "local")
+
+
+def _registered_subject(registration: Registration):
+    """Who acts behind a registered Shield: the service agent it is registered as."""
+    from agent_shield.policy import Subject
+
+    return Subject(type="agent", id=registration.agent_uid)
+
+
+def _iam_authorizer(registration: Registration):
+    """OpenFGA through IAM (SH-75): the registered Shield's authorizer, the token kept fresh."""
+    from agent_shield.saas import IamAuthorizer
+
+    return IamAuthorizer(registration.iam_url, registration.fresh_token)
 
 
 def _registration_or_none() -> Registration | None:

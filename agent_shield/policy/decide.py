@@ -18,8 +18,13 @@ The order (SHIELD §6.3):
 4. Nothing said: **ask me first**. An action with no rule never falls to
    *do it* (R-05).
 
-The engine never touches a filesystem, a clock or a socket: ``inside`` and
-the counters arrive in the action and the context.
+Before all of these, for a class a policy in force lists under
+``authorize:``, the **authorizer** (§6.11, ``authorize.py``) is asked through
+the context's hook: its deny wins over any Rule, no hook is a deny, and an
+allow only lets the rules decide — it loosens nothing.
+
+The engine never touches a filesystem, a clock or a socket: ``inside``, the
+counters and the authorizer's hook arrive in the action and the context.
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from urllib.parse import urlsplit
 
+from .authorize import ActionName, AuthorizeHook, EvaluationRequest, Resource, Subject
 from .model import (
     LIMIT_NAMES,
     LIMIT_RELIEF,
@@ -91,6 +97,10 @@ class Context:
     workspace: str
     session_id: str | None = None
     state: LimitState = field(default_factory=LimitState)
+    #: Who acts, for the authorizer (§6.11); unset, the local account.
+    subject: Subject | None = None
+    #: The authorizer's hook; ``None`` is a deny for every class a policy lists under ``authorize:``.
+    authorize: AuthorizeHook | None = None
 
 
 def _rank(policy: Policy) -> int:
@@ -261,27 +271,140 @@ def _fetch_decision(action: Action, policies: Sequence[Policy]) -> Decision | No
     )
 
 
+LOCAL_SUBJECT = Subject(type="account", id="local")
+
+
+def request_for(action: Action, context: Context) -> EvaluationRequest:
+    """The AuthZen request an action is: the context's subject, the class, the action's resource."""
+    if action.resource:
+        kind, _, ident = action.resource.partition(":")
+        if not kind or not ident:
+            raise ValueError(f"{action.title}: the resource {action.resource!r} is type:id")
+        resource = Resource(type=kind, id=ident)
+    elif action.path is not None:
+        # A path inside the workspace asks about the workspace itself — the folder a
+        # mount, a share or a project made a relationship on; one outside asks
+        # about its own path. OpenFGA holds no path hierarchy, so the relationship
+        # is the folder's, as the platform writes it (SH-75).
+        resource = Resource(
+            type="workspace",
+            id=context.workspace.strip("/") if action.inside else action.path.strip("/"),
+        )
+    elif action.url:
+        host = urlsplit(action.url).hostname or "-"
+        resource = Resource(type="host", id=host)
+    elif action.command is not None:
+        resource = Resource(type="workspace", id=context.workspace.strip("/") or "-")
+    else:
+        resource = Resource(type="session", id=context.session_id or "-")
+    return EvaluationRequest(
+        subject=context.subject or LOCAL_SUBJECT,
+        action=ActionName(name=str(action.action_class)),
+        resource=resource,
+        context={
+            key: value
+            for key, value in (
+                ("kind", action.kind),
+                ("session", context.session_id),
+                ("path", action.path),
+                ("command", action.command),
+                ("url", action.url),
+            )
+            if value is not None
+        },
+    )
+
+
+def _needs_authorizer(action: Action, ordered: Sequence[Policy]) -> Policy | None:
+    """The strictest policy listing the action's class under ``authorize:``, or none."""
+    for policy in ordered:
+        if action.action_class in policy.authorize:
+            return policy
+    return None
+
+
+def _authorizer_decision(action: Action, context: Context, ordered: Sequence[Policy]) -> Decision | None:
+    """A deny from the authorizer, before any rule; ``None`` when none is needed or it allowed."""
+    needing = _needs_authorizer(action, ordered)
+    if needing is None:
+        return None
+    if context.authorize is None:
+        return Decision(
+            verdict="deny",
+            decided_by="authorizer",
+            scope=needing.scope,
+            rule="authorize",
+            authorization="deny",
+            sentence=(
+                f"{_subject(action)}: leave it to me — the {needing.scope} policy needs an authorizer's allow for "
+                f"{action.action_class} actions and no authorizer is configured; nothing is authorized unsaid"
+            ),
+        )
+    request = request_for(action, context)
+    answer = context.authorize(request)
+    if answer.verdict == "deny":
+        return Decision(
+            verdict="deny",
+            decided_by="authorizer",
+            scope=needing.scope,
+            rule="authorize",
+            authorizer=answer.authorizer,
+            authorization="deny",
+            model_version=answer.model_version,
+            sentence=f"{_subject(action)}: leave it to me — {answer.reason}",
+        )
+    return Decision(
+        verdict="allow",
+        decided_by="authorizer",
+        scope=needing.scope,
+        rule="authorize",
+        authorizer=answer.authorizer,
+        authorization="cached allow" if answer.cached else "allow",
+        model_version=answer.model_version,
+        sentence=answer.reason,
+    )
+
+
+def _with_authorization(decision: Decision, allowed: Decision | None) -> Decision:
+    """The rules' decision carrying the authorizer's allow, for the audit."""
+    if allowed is None:
+        return decision
+    return decision.model_copy(
+        update={
+            "authorizer": allowed.authorizer,
+            "authorization": allowed.authorization,
+            "model_version": allowed.model_version,
+        }
+    )
+
+
 def decide(action: Action, context: Context, policies: Sequence[Policy]) -> Decision:
     """Decide one action against the policies in force (see the module)."""
     if action.action_class is None:
         raise ValueError(f"{action.title}: an action with no class has nothing to decide")
     ordered = sorted(policies, key=_rank)
+    authorized = _authorizer_decision(action, context, ordered)
+    if authorized is not None and authorized.verdict == "deny":
+        return authorized
     for policy in ordered:
         found = _limit_decision(action, context, policy)
         if found is not None:
-            return found
+            return _with_authorization(found, authorized)
     for policy in ordered:
         found = _rule_decision(action, policy)
         if found is not None:
-            return found
+            return _with_authorization(found, authorized)
     found = _fetch_decision(action, ordered)
     if found is not None:
-        return found
-    return Decision(
-        verdict="ask",
-        decided_by="default",
-        counted=True,
-        sentence=f"{_subject(action)}: ask me first — no rule names it, and nothing unsaid is done",
+        return _with_authorization(found, authorized)
+    return _with_authorization(
+        Decision(
+            verdict="ask",
+            decided_by="default",
+            counted=True,
+            sentence=f"{_subject(action)}: ask me first — no rule names it, and nothing unsaid is done",
+        ),
+        authorized,
     )
 
 
@@ -315,4 +438,4 @@ def scopes_present(policies: Sequence[Policy]) -> list[Scope]:
     return [policy.scope for policy in sorted(policies, key=_rank)]
 
 
-__all__ = ["MODEL_KIND", "Context", "LimitState", "decide", "decide_budget", "scopes_present"]
+__all__ = ["LOCAL_SUBJECT", "MODEL_KIND", "Context", "LimitState", "decide", "decide_budget", "request_for", "scopes_present"]
