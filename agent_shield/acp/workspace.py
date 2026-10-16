@@ -103,6 +103,8 @@ class TerminalRun:
     process: asyncio.subprocess.Process
     output_byte_limit: int | None
     output: bytearray = field(default_factory=bytearray)
+    #: Every byte read so far, kept past `output_byte_limit`: how a watcher knows the output moved.
+    received: int = 0
     truncated: bool = False
     exit_code: int | None = None
     signal: str | None = None
@@ -169,6 +171,7 @@ class Terminals:
             if not chunk:
                 break
             run.output.extend(chunk)
+            run.received += len(chunk)
             limit = run.output_byte_limit
             if limit is not None and len(run.output) > limit:
                 del run.output[: len(run.output) - limit]

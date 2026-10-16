@@ -6,6 +6,10 @@
 
 # Changelog
 
+## Unreleased
+
+- A terminal's output is pushed to the client while its command runs (SHIELD SH-13, SH-16): the terminal is the Shield's, so the client cannot ask it for its output; the proxy pushes it whole on its own row (`tool_call_update`, `in_progress`, the terminal's reference beside a text block) every 0.2 s while it grows, and once more `completed` when the command ended, before the agent's `terminal/wait_for_exit` or `terminal/release` is answered. `TerminalRun.received` counts every byte read. `test_terminal_stream.py` (2).
+
 ## 0.2.2
 
 - A stdio agent that exits before answering fails the request at once, `ChannelRefused` naming its exit code (*the agent exited (code 3) before answering initialize*), where the SDK's request waited for ever and the caller its own timeout — found by SHIELD SH-45's drill (`agent-shield run` with no policy exits).

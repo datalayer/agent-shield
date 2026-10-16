@@ -25,6 +25,7 @@ session (decision 7). A malformed update ends the turn with a sentence.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import logging
@@ -95,6 +96,19 @@ logger = logging.getLogger(__name__)
 
 #: The JSON-RPC error a refused action answers with.
 REFUSED = -32010
+#: How often a running terminal's output is pushed to the client while it grows (SH-13, SH-16).
+TERMINAL_PUSH_SECONDS = 0.2
+#: Each running terminal's pushes, awaited before its exit or its release is answered,
+#: so the client has the whole output before the agent goes on.
+_PUSHES: dict[str, asyncio.Task[None]] = {}
+
+
+async def _pushed(terminal_id: str) -> None:
+    task = _PUSHES.pop(terminal_id, None)
+    if task is not None:
+        await task
+
+
 #: The scopes, strictest first, for the authorizer a policy names.
 SCOPES = ("organization", "team", "session")
 
@@ -1076,7 +1090,43 @@ class _InnerClient:
             session_id=session_id,
             update=update_tool_call(call_id, status="in_progress", content=[tool_terminal_ref(run.terminal_id)]),
         )
+        # The terminal is the Shield's, so the client cannot ask it for its output:
+        # the output is pushed on the Shield's row as it arrives, and at the end.
+        _PUSHES[run.terminal_id] = asyncio.create_task(
+            self._push_output(session_id, call_id, run), name=f"agent-shield.push.{run.terminal_id}"
+        )
         return CreateTerminalResponse(terminal_id=run.terminal_id)
+
+    async def _push_output(self, session_id: str, call_id: str, run: Any) -> None:
+        """Push a running terminal's output on the Shield's row while it grows, then
+        once more when the command has ended (SH-13, SH-16): `tool_call_update`
+        content replaces what the client shows, so each push carries it whole (within
+        the terminal's byte limit) with the terminal's reference."""
+
+        async def push(status: str) -> None:
+            output = run.output.decode("utf-8", "replace")
+            await self.proxy.client.session_update(
+                session_id=session_id,
+                update=update_tool_call(
+                    call_id,
+                    status=status,
+                    content=[tool_terminal_ref(run.terminal_id), tool_content(text_block(output))],
+                    raw_output={"output": output, "exit": run.exit_code, "truncated": run.truncated},
+                ),
+            )
+
+        try:
+            sent = 0
+            while not run.exited:
+                if run.received != sent:
+                    sent = run.received
+                    await push("in_progress")
+                if run.reader is None:  # pragma: no cover - every run has its reader
+                    break
+                await asyncio.wait({run.reader}, timeout=TERMINAL_PUSH_SECONDS)
+            await push("completed")
+        except Exception as exc:  # a client gone ends the pushes, never the terminal
+            logger.info("The output of %s was no longer pushed: %s", run.terminal_id, exc)
 
     def _terminals(self, session_id: str) -> Terminals:
         session = self.proxy._session(session_id)
@@ -1099,6 +1149,7 @@ class _InnerClient:
             run = await self._terminals(session_id).wait(terminal_id)
         except KeyError as exc:
             raise RequestError(REFUSED, str(exc)) from None
+        await _pushed(terminal_id)
         self.proxy.audit.write(
             "terminal",
             session=session_id,
@@ -1124,6 +1175,7 @@ class _InnerClient:
             run = await self._terminals(session_id).release(terminal_id)
         except KeyError as exc:
             raise RequestError(REFUSED, str(exc)) from None
+        await _pushed(terminal_id)
         session.state.terminal_released()
         self.proxy.audit.write(
             "terminal",
