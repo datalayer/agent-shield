@@ -393,6 +393,34 @@ def test_the_report_says_on_its_first_page_that_the_shield_evidences_and_never_c
     assert state["root"]["children"][0]["children"][0]["text"].startswith("Conformance report: Desk")
 
 
+def test_the_shield_section_says_what_changed_since_the_last_report():
+    """§6.5's last part (SH-36): against the last report's JSON, a sentence per change;
+    none when nothing changed; said plainly when there is no earlier report."""
+    first = build_report(AIUC, full_inputs(), scope="deployment", name="Desk", uid="d1")
+    assert first.shield.changed is None and first.to_json()["shield"]["changed"] is None
+    assert "### What changed since the last report\n\n- No earlier report to compare with." in first.markdown()
+    same = build_report(AIUC, full_inputs(), scope="deployment", name="Desk", uid="d1", previous=first.to_json())
+    assert same.shield.changed == []
+    assert "- Nothing changed since the last report." in same.markdown()
+    later_inputs = full_inputs(
+        record=[
+            *full_inputs().record,
+            row("decision", tool="curl", behaviour="leave it to me", because="rule", classes=["send"]),
+            row("approval", tool="curl", state="denied", by="Ana"),
+        ],
+        validation={**full_inputs().validation, "gate": "failed", "version": 4},
+    )
+    later = build_report(AIUC, later_inputs, scope="deployment", name="Desk", uid="d1", previous=first.to_json())
+    assert later.shield.changed == [
+        "The Validate gate is failed on version 4 (was passed on version 3).",
+        "In decisions: leave it to me 1 → 2.",
+        "In decided by: rule 3 → 4.",
+        "In answers: denied 0 → 1.",
+    ]
+    assert "- In decisions: leave it to me 1 → 2." in later.markdown()
+    assert later.to_json()["shield"]["changed"] == later.shield.changed
+
+
 def test_the_evidence_list_has_aiuc_1s_columns_and_a_row_per_evidence_item():
     report = build_report(AIUC, full_inputs(), scope="deployment", name="Desk", uid="d1")
     rows = report.evidence_rows()

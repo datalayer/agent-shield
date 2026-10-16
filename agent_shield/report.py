@@ -54,9 +54,33 @@ class ShieldSection:
     gate: Mapping[str, Any] | None
     harness: Mapping[str, Any] | None
     weakened: Sequence[str]
+    #: §6.5's last part: what changed since the last report, a sentence each;
+    #: ``None`` when there is no earlier report to compare with.
+    changed: Sequence[str] | None = None
 
     @classmethod
-    def of(cls, inputs: Inputs) -> ShieldSection:
+    def of(cls, inputs: Inputs, previous: Mapping[str, Any] | None = None) -> ShieldSection:
+        """The section over ``inputs``; ``previous`` is the last report's section (its ``to_json``)."""
+        section = cls._of(inputs)
+        if previous is not None:
+            section.changed = section.since(previous)
+        return section
+
+    def since(self, previous: Mapping[str, Any]) -> list[str]:
+        """What changed since ``previous`` (an earlier section's JSON), a sentence each, in a fixed order."""
+        said = _policy_changes(self.policies, previous.get("policies") or {})
+        said += [
+            f"Newly permitting more than the organization: {scope}."
+            for scope in sorted(set(self.weakened) - set(previous.get("weakened") or ()))
+        ]
+        said += _gate_change(self.gate or {}, previous.get("gate") or {})
+        for title, label in _COUNTED:
+            said += _count_change(label, dict(getattr(self, title)), dict(previous.get(title) or {}))
+        said += _harness_change(self.harness or {}, previous.get("harness") or {})
+        return said
+
+    @classmethod
+    def _of(cls, inputs: Inputs) -> ShieldSection:
         decisions: dict[str, int] = {}
         decided_by: dict[str, int] = {}
         limits: dict[str, int] = {}
@@ -117,7 +141,70 @@ class ShieldSection:
             "gate": dict(self.gate) if self.gate else None,
             "harness": dict(self.harness) if self.harness else None,
             "weakened": list(self.weakened),
+            "changed": list(self.changed) if self.changed is not None else None,
         }
+
+
+#: The section's counts, and how a change in each is said.
+_COUNTED = (
+    ("decisions", "decisions"),
+    ("decided_by", "decided by"),
+    ("approvals", "answers"),
+    ("limits_reached", "limits reached"),
+)
+
+
+def _policy_changes(now: Mapping[str, Any], then: Mapping[str, Any]) -> list[str]:
+    said: list[str] = []
+    for scope in ("organization", "team", "session"):
+        current, before = now.get(scope), then.get(scope)
+        if current and not before:
+            said.append(f"The {scope}'s policy is new: v{current['version']}, {current['rules']} rules.")
+        elif before and not current:
+            said.append(f"The {scope}'s policy is no longer in force (it was v{before.get('version')}).")
+        elif current and before:
+            if current.get("version") != before.get("version"):
+                said.append(f"The {scope}'s policy went from v{before.get('version')} to v{current['version']}.")
+            if current.get("rules") != before.get("rules"):
+                said.append(f"The {scope}'s rules went from {before.get('rules')} to {current['rules']}.")
+            if dict(current.get("limits") or {}) != dict(before.get("limits") or {}):
+                said.append(f"The {scope}'s limits changed.")
+    return said
+
+
+def _gate_change(gate: Mapping[str, Any], before: Mapping[str, Any]) -> list[str]:
+    if (gate.get("gate"), gate.get("version")) == (before.get("gate"), before.get("version")):
+        return []
+    if not gate:
+        return ["No Validate run of this version yet (the last report had one)."]
+    was = f" (was {before.get('gate')} on version {before.get('version')})" if before else ""
+    return [f"The Validate gate is {gate.get('gate')} on version {gate.get('version')}{was}."]
+
+
+def _count_change(label: str, now: Mapping[str, int], then: Mapping[str, int]) -> list[str]:
+    moved = [
+        f"{key} {then.get(key, 0)} → {now.get(key, 0)}"
+        for key in sorted(set(now) | set(then))
+        if now.get(key, 0) != then.get(key, 0)
+    ]
+    return [f"In {label}: " + ", ".join(moved) + "."] if moved else []
+
+
+def _changed_lines(changed: Sequence[str] | None) -> list[str]:
+    if changed is None:
+        return ["- No earlier report to compare with."]
+    return [f"- {sentence}" for sentence in changed] or ["- Nothing changed since the last report."]
+
+
+def _harness_change(harness: Mapping[str, Any], before: Mapping[str, Any]) -> list[str]:
+    if (harness.get("adapter"), harness.get("version")) == (before.get("adapter"), before.get("version")):
+        return []
+    was = f"{before.get('adapter')} {before.get('version')}"
+    if not harness:
+        return [f"No coding agent now (was {was})."]
+    return [
+        f"The coding agent is {harness.get('adapter')} {harness.get('version')}" + (f" (was {was})." if before else ".")
+    ]
 
 
 @dataclass
@@ -297,6 +384,7 @@ class ConformanceReport:
                 else "none reached over the period"
             )
         )
+        lines += ["", "### What changed since the last report", "", *_changed_lines(s.changed)]
         if s.harness:
             lines += [
                 "",
@@ -442,9 +530,17 @@ class ConformanceReport:
 
 
 def build_report(
-    standard: Any, inputs: Inputs, *, scope: str, name: str, uid: str, configurations: Mapping[str, Any] | None = None
+    standard: Any,
+    inputs: Inputs,
+    *,
+    scope: str,
+    name: str,
+    uid: str,
+    configurations: Mapping[str, Any] | None = None,
+    previous: Mapping[str, Any] | None = None,
 ) -> ConformanceReport:
-    """Assess ``standard`` on ``inputs`` and write the report of it."""
+    """Assess ``standard`` on ``inputs`` and write the report of it; ``previous`` is the
+    last report's JSON (its ``to_json``), from which the Shield section says what changed."""
     from agent_shield.conformance import assess
 
     return ConformanceReport(
@@ -452,7 +548,7 @@ def build_report(
         name=name,
         uid=uid,
         assessment=assess(standard, inputs),
-        shield=ShieldSection.of(inputs),
+        shield=ShieldSection.of(inputs, (previous or {}).get("shield")),
         configurations=dict(configurations or {}),
         standard=standard,
     )
