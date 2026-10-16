@@ -116,6 +116,12 @@ async def test_a_terminal_can_be_killed_and_a_cwd_outside_is_refused(ws: Workspa
         ("token: ghp_abcdefghijklmnopqrstuvwxyz0123456789", "token: [redacted]"),
         ("password=hunter22 ok", "password=[redacted] ok"),
         ("plain words stay", "plain words stay"),
+        ("key sk-0123456789abcdefghij in a command", "key [redacted] in a command"),
+        ('"sk-ant-api03-abcdefghijk"', '"[redacted]"'),
+        # A credential's prefix inside an identifier is not a credential: a PAP
+        # operation's random id kept whole (SHIELD SH-71, a release run lost it).
+        ("op_Q1-sk-0123456789abcdefXYZ", "op_Q1-sk-0123456789abcdefXYZ"),
+        ("run_xAKIAIOSFODNN7EXAMPLE", "run_xAKIAIOSFODNN7EXAMPLE"),
     ],
 )
 def test_credentials_are_redacted_by_shape(text, expected):

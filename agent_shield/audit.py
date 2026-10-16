@@ -53,13 +53,18 @@ DECIDERS = ("policy", "person", "agent", "shield")
 
 REDACTED = "[redacted]"
 
+#: A credential's prefix starts a token, never the middle of an identifier: a
+#: random id such as a PAP operation's (``…-sk-…``) is not a key, and redacting
+#: it lost the operation from the record now and then.
+_START = r"(?<![A-Za-z0-9_\-])"
+
 _PATTERNS = [
-    re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"),
-    re.compile(r"\bsk-[A-Za-z0-9_\-]{16,}"),
-    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{16,}\b"),
-    re.compile(r"\bxox[abprs]-[A-Za-z0-9\-]{10,}"),
-    re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}"),
+    re.compile(_START + r"sk-ant-[A-Za-z0-9_\-]{8,}"),
+    re.compile(_START + r"sk-[A-Za-z0-9_\-]{16,}"),
+    re.compile(_START + r"AKIA[0-9A-Z]{16}\b"),
+    re.compile(_START + r"gh[pousr]_[A-Za-z0-9]{16,}\b"),
+    re.compile(_START + r"xox[abprs]-[A-Za-z0-9\-]{10,}"),
+    re.compile(_START + r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}"),
     re.compile(r"(?i)(bearer\s+)[A-Za-z0-9_\-\.=]{8,}"),
     re.compile(
         r"(?i)((?:api[_-]?key|secret|token|password|passwd|credential)[A-Za-z0-9_]*\s*[=:]\s*[\"']?)([^\s\"']{4,})"
