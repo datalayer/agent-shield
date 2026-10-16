@@ -6,6 +6,11 @@
 
 # Changelog
 
+## 0.2.5
+
+- The Shield section of the conformance report says **what changed since the last report** (SHIELD §6.5, SH-36): `build_report(..., previous=<the last report's JSON>)` — the policies by level (new, gone, its version, its rules, its limits), a scope newly permitting more than the organization, the Validate gate, each count that moved (decisions, decided by, answers, limits reached), the coding agent; *No earlier report to compare with* without one, *Nothing changed since the last report* when nothing did. In the JSON (`shield.changed`) and the Markdown and Lexical exports. Tests in `test_conformance_map.py`.
+- `IamAuthorizer` held against a fake IAM over HTTP (SHIELD SH-75): the route and the bearer, read at each question; IAM's sentence on a deny; a 403 or a 503 a deny naming `openfga-through-iam`; an allow honoured through an outage until it expires. `test_iam_authorizer.py` (7).
+
 ## 0.2.4
 
 - The audit's credential shapes start a token, never the middle of an identifier: a random id such as a PAP operation's (`…-sk-…`) was redacted now and then, losing the operation from the record (found by the v0.2.3 release run, whose tests failed on it; 0.2.3 was tagged and never published). Tests in `test_workspace_and_audit.py`.
