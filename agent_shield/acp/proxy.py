@@ -16,7 +16,9 @@ to the Shield; the Shield talks to the agent. In between:
   turn and says so;
 - ``fs/*`` and ``terminal/*`` are answered by the Shield against the
   workspace, each a recorded, decided action the client sees as a tool row;
-- ``mcpServers`` are rewritten to the policy's allow-list;
+- ``mcpServers`` are rewritten to the policy's allow-list, and lent with the
+  execution's credential when the caller handed one in
+  ``_meta.datalayer.credential`` — withheld from the agent (SH-33, ``credential``);
 - every action and decision is a row of the audit, nothing secret.
 
 ``allow_always`` chosen by a person becomes a session rule, gone with the
@@ -88,6 +90,7 @@ from agent_shield.policy import (
 from agent_shield.tracing import with_traceparent
 
 from .channel import SHIELD_CLIENT_CAPABILITIES, SHIELD_CLIENT_INFO, ACPChannel, StdioACPChannel, WebSocketACPChannel
+from .credential import CredentialRefused, fingerprint, lent_with, take_credential
 from .events import PlanUpdated, ToolCallSaid, ToolCallUpdated
 from .normalize import MalformedUpdate, normalize
 from .workspace import OutsideWorkspace, Terminals, Workspace
@@ -143,6 +146,9 @@ class SessionState:
     authorize: AuthorizeHook | None = None
     #: The companies the application connects through PAP (§6.10).
     companies: tuple[str, ...] = ()
+    #: Which execution credential the session's MCP servers were lent with
+    #: (its fingerprint, SH-33), or ``None`` when none was handed.
+    lent_credential: str | None = None
 
     @property
     def context(self) -> Context:
@@ -344,7 +350,11 @@ class ShieldProxy:
         chosen = self._given_authorizer
         if chosen is None:
             named = next(
-                (policy.authorizer for policy in sorted(policies, key=lambda p: SCOPES.index(p.scope)) if policy.authorizer),
+                (
+                    policy.authorizer
+                    for policy in sorted(policies, key=lambda p: SCOPES.index(p.scope))
+                    if policy.authorizer
+                ),
                 None,
             )
             chosen = named.build() if named is not None else None
@@ -543,11 +553,25 @@ class ShieldProxy:
         self.sessions[session_id] = session
         return session
 
-    def _lend(self, mcp_servers: Sequence[Any], session_id: str | None) -> list[Any]:
+    def _lend(self, mcp_servers: Sequence[Any], session_id: str | None, credential: str | None = None) -> list[Any]:
         kept, cut = lend_mcp_servers(mcp_servers, self.policies)
+        if credential is not None:
+            # Scoped by the execution's credential (SH-33): every lent HTTP
+            # server carries it, so the gateway decides the agent's calls and
+            # its sub-agents' alike; a stdio server cannot carry it.
+            try:
+                kept = lent_with(kept, credential)
+            except CredentialRefused as exc:
+                self.audit.write("refusal", session=session_id, sentence=str(exc), by="shield")
+                raise RequestError(REFUSED, str(exc)) from None
         for server in kept:
             self.audit.write(
-                "mcp", session=session_id, name=getattr(server, "name", "?"), decision="allow", by="policy"
+                "mcp",
+                session=session_id,
+                name=getattr(server, "name", "?"),
+                decision="allow",
+                by="policy",
+                **({"credential": "lent"} if credential is not None else {}),
             )
         for name in cut:
             self.audit.write(
@@ -562,9 +586,13 @@ class ShieldProxy:
 
     async def new_session(self, cwd: str, mcp_servers: list, **kwargs: Any) -> NewSessionResponse:
         workspace = self._workspace_for(cwd)
-        lent = self._lend(mcp_servers, None)
-        answer = await self.channel.new_session(workspace.root, lent, meta=kwargs or None)
-        self._open(answer.session_id, workspace)
+        # The execution's credential, never the agent's (SH-33): withheld from
+        # the `_meta` it is handed, the lent servers' authority instead.
+        meta, credential = take_credential(kwargs)
+        lent = self._lend(mcp_servers, None, credential)
+        answer = await self.channel.new_session(workspace.root, lent, meta=meta)
+        session = self._open(answer.session_id, workspace)
+        session.lent_credential = fingerprint(credential) if credential is not None else None
         self.audit.write(
             "session",
             session=answer.session_id,
@@ -577,8 +605,10 @@ class ShieldProxy:
 
     async def load_session(self, cwd: str, mcp_servers: list, session_id: str, **kwargs: Any):
         workspace = self._workspace_for(cwd)
-        self._open(session_id, workspace)
-        lent = self._lend(mcp_servers, session_id)
+        _, credential = take_credential(kwargs)
+        lent = self._lend(mcp_servers, session_id, credential)
+        session = self._open(session_id, workspace)
+        session.lent_credential = fingerprint(credential) if credential is not None else None
         answer = await self.channel.load_session(session_id, workspace.root, lent)
         self.audit.write("session", session=session_id, what="load", workspace=str(workspace.root), by="shield")
         return answer or LoadSessionResponse()
@@ -595,10 +625,22 @@ class ShieldProxy:
     async def prompt(self, prompt: list, session_id: str, **kwargs: Any) -> PromptResponse:
         session = self._session(session_id)
         session.failed = None
+        # A credential with the turn is withheld from the agent, and must be the
+        # one the session's servers were lent with (SH-33): its tools would
+        # otherwise act with another authority than the turn's.
+        meta, credential = take_credential(kwargs)
+        if credential is not None and fingerprint(credential) != session.lent_credential:
+            sentence = (
+                "This turn carries an execution credential the session's MCP servers were not lent with, "
+                "so its tools would act with another authority: open a session with it "
+                "(`session/new` with `_meta.datalayer.credential`)."
+            )
+            self.audit.write("refusal", session=session_id, sentence=sentence, by="shield")
+            raise RequestError(REFUSED, sentence)
         self.audit.write("turn", session=session_id, what="prompt", blocks=len(prompt), by="shield")
         # The trace the face arrived on, handed to the harness in the key ACP
         # reserves for it (§6.8, SH-51); a caller's own `_meta.traceparent` wins.
-        answer = await self.channel.prompt(session_id, prompt, meta=with_traceparent(kwargs))
+        answer = await self.channel.prompt(session_id, prompt, meta=with_traceparent(meta or {}))
         if session.failed is not None:
             self.audit.write(
                 "turn", session=session_id, what="ended", stop_reason="refusal", sentence=session.failed, by="shield"

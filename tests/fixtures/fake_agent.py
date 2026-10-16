@@ -10,12 +10,16 @@ client's ``fs/write_text_file`` and reports the diff; ``read`` reads
 ``README.md`` through ``fs/read_text_file``; ``run <command>`` opens a
 terminal through ``terminal/create`` and waits for it; ``push`` asks
 permission for a ``git push``; ``fetch`` says a fetch tool call; ``bad``
-sends an update ACP does not describe; ``slow`` waits until cancelled.
+sends an update ACP does not describe; ``slow`` waits until cancelled;
+``meta`` says the ``_meta`` its prompt was handed; ``lent`` says each MCP
+server its session was lent and the ``Authorization`` it carries (a test's
+token only, SH-33).
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from typing import Any
 
@@ -55,6 +59,8 @@ class FakeAgent(Agent):
         self._sessions: dict[str, str] = {}
         self._cancelled: set[str] = set()
         self._counter = 0
+        self._lent: dict[str, list[tuple[str, str | None]]] = {}
+        self._metas: dict[str, dict[str, Any]] = {}
 
     def on_connect(self, conn: Client) -> None:
         self._client = conn
@@ -80,6 +86,17 @@ class FakeAgent(Agent):
         session_id = f"fake_{self._counter}"
         self._sessions[session_id] = cwd
         names = [getattr(server, "name", "?") for server in mcp_servers]
+        self._lent[session_id] = [
+            (
+                getattr(server, "name", "?"),
+                next(
+                    (h.value for h in getattr(server, "headers", None) or [] if h.name.lower() == "authorization"),
+                    None,
+                ),
+            )
+            for server in mcp_servers
+        ]
+        self._metas[session_id] = dict(kwargs)
         print(f"fake-agent: session {session_id} in {cwd} with mcp {names}", file=sys.stderr, flush=True)
         return NewSessionResponse(session_id=session_id)
 
@@ -113,6 +130,14 @@ class FakeAgent(Agent):
         await say(session_id=session_id, update=update_agent_thought_text("thinking"))
         if "bad" in text:
             await say(session_id=session_id, update=start_tool_call("c0", "Mystery"))
+        if "meta" in text:
+            said = {"new": self._metas.get(session_id, {}), "prompt": dict(kwargs)}
+            await say(session_id=session_id, update=update_agent_message_text(f"meta: {json.dumps(said)}"))
+        if "lent" in text:
+            await say(
+                session_id=session_id,
+                update=update_agent_message_text(f"lent: {json.dumps(self._lent.get(session_id, []))}"),
+            )
         if "plan" in text:
             await say(session_id=session_id, update=update_plan([plan_entry("step one", status="in_progress")]))
         if "edit" in text:

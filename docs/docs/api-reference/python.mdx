@@ -33,6 +33,15 @@ The client-side ``ACPChannel``: stdio and WebSocket, on the official SDK.
 - `stderr_to_our_stderr` — A stderr sink that passes the agent's lines through, for ``agent-shield run --verbose``.
 - `wire` — A schema model as the wire spells it (camelCase, no nulls).
 
+## `agent_shield.acp.credential`
+
+Authority across the chain: the execution credential a caller hands the Shield (SHIELD §2.4, SH-33).
+
+- `take_credential` — The ``_meta`` to hand on, with the credential withheld, and the credential when one was sent.
+- `fingerprint` — Which credential, to compare two: a digest, never kept beside the token.
+- `CredentialRefused` — A credential the Shield cannot lend as asked, said in a sentence.
+- `lent_with` — The lent servers, each HTTP one's ``Authorization`` the credential; a stdio one refused.
+
 ## `agent_shield.acp.events`
 
 The neutral events of the package: SHIELD §4.1's left column, typed.
