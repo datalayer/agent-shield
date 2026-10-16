@@ -6,8 +6,9 @@
 
 # Changelog
 
-## Unreleased
+## 0.2.3
 
+- Authority across the chain (SHIELD SH-33): the execution credential a caller hands in `_meta.datalayer.credential` is withheld from the agent (`"credential": "withheld"` at `session/new` and every prompt), becomes the `Authorization` of every lent HTTP MCP server — so the gateway decides the agent's calls and every sub-agent's alike — a stdio server is refused with it, and a prompt under another credential than the session was lent with is refused in a sentence. The audit writes *lent*, never which. `agent_shield.acp.credential`; `test_credential_chain.py` (5).
 - A terminal's output is pushed to the client while its command runs (SHIELD SH-13, SH-16): the terminal is the Shield's, so the client cannot ask it for its output; the proxy pushes it whole on its own row (`tool_call_update`, `in_progress`, the terminal's reference beside a text block) every 0.2 s while it grows, and once more `completed` when the command ended, before the agent's `terminal/wait_for_exit` or `terminal/release` is answered. `TerminalRun.received` counts every byte read. `test_terminal_stream.py` (2).
 
 ## 0.2.2
