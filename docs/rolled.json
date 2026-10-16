@@ -1,0 +1,13 @@
+{
+  "about": "What each plane runs of the harnesses, as `plane/etc/dockerfiles/datalayer-harnesses/check_register.py --image <image> --markdown` read it inside the image (services). Updated by hand at each roll; the generator refuses a rolled version the register does not pin.",
+  "rolls": [
+    {
+      "plane": "r1",
+      "image": "harnesses:0.0.2",
+      "operator": "1.0.99",
+      "since": "2026-10-16",
+      "sidecar": "off (DATALAYER_RUNTIME_HARNESS_SIDECAR): the image is prepulled on every node, the pod launches the adapters from the runtime image",
+      "harnesses": {"claude-code": "0.91.0", "codex": "2.2.2"}
+    }
+  ]
+}

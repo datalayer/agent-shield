@@ -20,6 +20,17 @@ Every harness of the catalogue (agentspecs `harnesses/`), with its adapter and t
 | **OpenCode** (`opencode`) | `opencode-ai` | 1.19.0 | The provider's key OpenCode is configured with; ANTHROPIC_API_KEY declared | `permitted` | MIT | Node (the opencode-ai package), git |
 | **OpenHands** (`openhands`) | `openhands` | 1.16.0 | The provider's key OpenHands reads as LLM_API_KEY, with LLM_MODEL, under --override-with-envs | `permitted` | MIT | uv (uvx), Python 3.12 or later, git |
 
+## Rolled where
+
+The harnesses are rolled apart from the runtime image, in the `datalayer-harnesses` image, and each roll is read inside the image it ships (`check_register.py --image … --markdown` in Datalayer's services): what each plane runs, against what the register pins.
+
+| Plane | Image | Harness | Rolled | Pinned | Since | Operator |
+|---|---|---|---|---|---|---|
+| r1 | `harnesses:0.0.2` | `claude-code` | 0.91.0 | 0.91.0 | 2026-10-16 | 1.0.99 |
+| r1 | `harnesses:0.0.2` | `codex` | 2.2.2 | 2.2.2 | 2026-10-16 | 1.0.99 |
+
+On r1, the sidecar: off (DATALAYER_RUNTIME_HARNESS_SIDECAR): the image is prepulled on every node, the pod launches the adapters from the runtime image.
+
 ## Terms, as read
 
 ### Claude Code

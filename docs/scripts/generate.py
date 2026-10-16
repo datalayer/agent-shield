@@ -8,7 +8,8 @@
   field, the classes, the scopes, the soft and hard limits;
 - ``docs/docs/harnesses/register.mdx`` from agentspecs' ``register.yaml``
   through the package's register: each harness, its adapter and pin, its
-  licence, its terms, its credential;
+  licence, its terms, its credential, and what each plane rolled (``docs/rolled.json``,
+  refused when it is not what the register pins, SHIELD SH-42);
 - ``docs/docs/api-reference/python.mdx`` from the package's docstrings: each
   module's first paragraph and its public names with their first line.
 
@@ -139,6 +140,7 @@ def register_table() -> str:
             f"{_escape(entry.credential)} | `{served}` | {_escape(entry.licence)} | {_escape(entry.binaries or '')} |"
         )
     out.append("")
+    out += rolled_section({harness_id: harness.version for harness_id, harness in catalogue().items()})
     out.append("## Terms, as read")
     out.append("")
     for harness_id, harness in sorted(catalogue().items()):
@@ -153,6 +155,38 @@ def register_table() -> str:
         out.append(f"Read at {entry.terms_source} and {entry.licence_source}.")
         out.append("")
     return "\n".join(out)
+
+
+def rolled_section(pinned: dict[str, str]) -> list[str]:
+    """What each plane runs (SH-42), from ``docs/rolled.json``; a version the register does not pin is refused."""
+    data = json.loads((ROOT / "docs" / "rolled.json").read_text(encoding="utf8"))
+    out = [
+        "## Rolled where",
+        "",
+        "The harnesses are rolled apart from the runtime image, in the `datalayer-harnesses` image, and each roll is "
+        "read inside the image it ships (`check_register.py --image … --markdown` in Datalayer's services): what each "
+        "plane runs, against what the register pins.",
+        "",
+        "| Plane | Image | Harness | Rolled | Pinned | Since | Operator |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    notes = []
+    for roll in data["rolls"]:
+        for harness_id, version in sorted(roll["harnesses"].items()):
+            if pinned.get(harness_id) != version:
+                raise SystemExit(
+                    f"docs/rolled.json says {roll['plane']} rolled {harness_id} {version}; the register pins "
+                    f"{pinned.get(harness_id) or 'nothing'}: roll the register's, or pin what is rolled"
+                )
+            out.append(
+                f"| {roll['plane']} | `{roll['image']}` | `{harness_id}` | {version} | {pinned[harness_id]} | "
+                f"{roll['since']} | {roll['operator']} |"
+            )
+        if roll.get("sidecar"):
+            notes.append(f"On {roll['plane']}, the sidecar: {_escape(roll['sidecar'])}.")
+    out.append("")
+    out += [*notes, ""] if notes else []
+    return out
 
 
 def python_api() -> str:
