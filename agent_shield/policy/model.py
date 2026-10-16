@@ -8,7 +8,7 @@ A **policy** is one document per scope — ``organization``, ``team`` or
 ``session`` — holding the rules that decide an agent's actions, the stateful
 limits with their soft and hard thresholds, the hosts a fetch may reach and
 the MCP servers the agent is lent. The document is the same whether it comes
-from ``agent-shield.yaml`` beside a project or from IAM (SHIELD §6.7); its
+from ``agent-shield.yaml`` beside a project or from IAM; its
 JSON Schema is published as ``schema/policy.schema.json`` so agentspecs can
 carry it as ``policies/``.
 
@@ -27,11 +27,11 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .authorize import AuthorizerConfig
 
 #: The three scopes, strictest first: the organization decides before the
-#: team, the team before the session (SHIELD §6.3).
+#: team, the team before the session.
 Scope = Literal["organization", "team", "session"]
 SCOPES_STRICTEST_FIRST: tuple[Scope, ...] = ("organization", "team", "session")
 
-#: The action classes of STUDIO F-10, as SHIELD §4.5 takes them.
+#: The action classes (F-10).
 ActionClass = Literal["read", "write", "send", "buy", "delete", "execute"]
 ACTION_CLASSES: tuple[ActionClass, ...] = ("read", "write", "send", "buy", "delete", "execute")
 
@@ -42,7 +42,7 @@ VERDICT_WORDS: dict[str, str] = {"allow": "do it", "ask": "ask me first", "deny"
 #: Where an action's path lies, against the workspace.
 Where = Literal["inside", "outside", "any"]
 
-#: The ACP tool kinds a rule may name (SHIELD §2.3).
+#: The ACP tool kinds a rule may name.
 ToolKind = Literal["read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"]
 
 
@@ -122,7 +122,7 @@ LIMIT_WORDS: dict[str, str] = {
     "model_tokens": "model tokens spent",
     "spend": "credits spent",
 }
-#: What would let the session go on past each hard limit (§6.3): said in the sentence.
+#: What would let the session go on past each hard limit: said in the sentence.
 LIMIT_RELIEF: dict[str, str] = {
     "tool_calls": "a person can widen the limit or start a new session",
     "terminals_open": "a terminal can be released, or a person can widen the limit",
@@ -149,7 +149,7 @@ class Mcp(_Strict):
     allow: list[str] = Field(default_factory=list)
 
 
-#: Whose key may run a harness (SHIELD decision 3): the account's own declared
+#: Whose key may run a harness: the account's own declared
 #: secret, the platform's, or either.
 Credentials = Literal["account", "platform", "either"]
 
@@ -164,7 +164,7 @@ class Harnesses(_Strict):
     credentials: Credentials = Field(
         default="account",
         description=(
-            "Whose key runs a harness: the account's own declared secret (decision 3), the platform's, or either."
+            "Whose key runs a harness: the account's own declared secret, the platform's, or either."
         ),
     )
 
@@ -174,7 +174,7 @@ class Policy(_Strict):
 
     scope: Scope
     version: int = Field(default=1, ge=1)
-    expires: datetime | None = Field(default=None, description="When a pulled copy stops being honoured (decision 11).")
+    expires: datetime | None = Field(default=None, description="When a pulled copy stops being honoured.")
     rules: list[Rule] = Field(default_factory=list)
     limits: Limits = Field(default_factory=Limits)
     network: Network = Field(default_factory=Network)
@@ -243,7 +243,7 @@ class Decision(_Strict):
     rule: str | None = Field(default=None, description="The rule's name, or the limit's, or None for the default.")
     decided_by: Literal["rule", "limit", "network", "default", "authorizer"]
     counted: bool = Field(default=False, description="Whether a session state should count this action.")
-    authorizer: str | None = Field(default=None, description="The authorizer asked (§6.11), when the class needed one.")
+    authorizer: str | None = Field(default=None, description="The authorizer asked, when the class needed one.")
     authorization: str | None = Field(
         default=None, description="What it answered: allow, cached allow, or deny; with its reason in the sentence."
     )

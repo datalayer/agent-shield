@@ -2,10 +2,10 @@
 #
 # BSD 3-Clause License
 
-"""``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP (SHIELD §5.2, SH-52, SH-56).
+"""``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP (SH-52, SH-56).
 
 One listener, two transports on one path, as the ecosystem's bridges speak
-them (§2.5: ``acp_rpc_bridge``'s Streamable HTTP, ACP Remote's WebSocket, and
+them (``acp_rpc_bridge``'s Streamable HTTP, ACP Remote's WebSocket, and
 the ACP project's RFD *streamable-http-websocket-transport*):
 
 - **WebSocket** — ``GET /acp`` with ``Upgrade: websocket`` (and ``/acp/ws``,

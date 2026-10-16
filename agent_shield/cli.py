@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The ``agent-shield`` command (SHIELD §5.2, §5.3).
+"""The ``agent-shield`` command.
 
     agent-shield setup [--harness claude-code] [--local|--register]
     agent-shield run [--workspace DIR] [--policy FILE] -- claude-agent-acp
@@ -410,7 +410,7 @@ def setup(
         say(f"  policy kept: {project_policy}")
     else:
         project_policy.write_text(dump_policy(default_policy()), encoding="utf-8")
-        say(f"  policy written (the default of decision 5): {project_policy}")
+        say(f"  policy written (the default): {project_policy}")
     command = f"agent-shield run -- {entry.command}"
     say(f"  run: {command}")
     say(
@@ -520,7 +520,7 @@ def policy_schema() -> None:
 
 @policy_app.command("init")
 def policy_init(path: Path = typer.Argument(Path(POLICY_FILE)), force: bool = typer.Option(False, "--force")) -> None:
-    """Write the default policy of decision 5."""
+    """Write the default policy."""
     if path.exists() and not force:
         refuse(f"{path} exists; --force overwrites it")
     path.write_text(dump_policy(default_policy()), encoding="utf-8")

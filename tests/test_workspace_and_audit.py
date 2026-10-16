@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The workspace (SHIELD §4.6) and the audit (§6.4)."""
+"""The workspace and the audit."""
 
 from __future__ import annotations
 

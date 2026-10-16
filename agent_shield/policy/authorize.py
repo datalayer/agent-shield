@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The authorizer port (SHIELD §6.11, SH-74): *may this principal act on this object?*
+"""The authorizer port (SH-74): *may this principal act on this object?*
 
 Policy and authorization are two questions. The policy document says what
 kind of action needs what decision; it does not say whether this person may
@@ -41,7 +41,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-#: The relation each action class asks for, in OpenFGA's vocabulary (§6.11's model).
+#: The relation each action class asks for, in OpenFGA's vocabulary (the authorization model).
 RELATIONS: dict[str, str] = {
     "read": "can_read",
     "write": "can_write",
@@ -162,7 +162,7 @@ class Authorization:
 
 
 class AllowCache:
-    """Allows kept until their expiry; a deny is never kept (SHIELD §6.11)."""
+    """Allows kept until their expiry; a deny is never kept."""
 
     def __init__(self, ttl: timedelta = ALLOW_TTL) -> None:
         self.ttl = ttl
@@ -272,7 +272,7 @@ class Grant(_Strict):
 
 
 class LocalAuthorizer:
-    """Grants in ``agent-shield.yaml`` (§6.11's ``local``): the standalone proxy's own."""
+    """Grants in ``agent-shield.yaml`` (the ``local`` authorizer): the standalone proxy's own."""
 
     name = "local"
 

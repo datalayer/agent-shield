@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The harness register, read from agentspecs (SHIELD §3.3, SH-04).
+"""The harness register, read from agentspecs (SH-04).
 
 The catalogue of harnesses and the register — every harness with its
 adapter, the version pinned, its licence and where that was read, the
@@ -200,7 +200,7 @@ def credential_refusal(
     """The sentence that refuses the credentials at hand, or ``None`` when an API key serves.
 
     The register says ``api_key_only`` for the harnesses whose vendors refuse
-    subscription credentials for third parties (SHIELD §3.3): with the key
+    subscription credentials for third parties: with the key
     absent and a subscription login present, the Shield refuses rather than
     letting the adapter use the login; Gemini's login is only served on a
     Code Assist Standard or Enterprise tier, which the Shield cannot see, so

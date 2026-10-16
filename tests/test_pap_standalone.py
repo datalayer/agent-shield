@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The standalone proxy and PAP (SHIELD §6.10, SH-73): a registered Shield lends the gateway's
+"""The standalone proxy and PAP (SH-73): a registered Shield lends the gateway's
 ``pap`` toolset at a company with its own token; local-only, PAP is refused in a sentence."""
 
 from __future__ import annotations

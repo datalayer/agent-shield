@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield as a PAP company, standing in front of any agent (SHIELD §6.10, SH-71).
+"""The Shield as a PAP company, standing in front of any agent (SH-71).
 
 A company puts *any* agent behind the Personal Agent Protocol by running it
 behind the Shield in the company role: the PAP SDK's company service does
@@ -43,7 +43,7 @@ from typing import Any
 from agent_shield.audit import AuditLog
 from agent_shield.policy import Action, Context, Decision, LimitState, Policy, Subject, decide
 
-#: The classes of a company's actions (§6.10): the company's own words.
+#: The classes of a company's actions: the company's own words.
 OPERATION_WRITE = "write"
 OPERATION_BUY = "buy"
 ANSWER_SEND = "send"

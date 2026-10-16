@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The workspace: where ``fs/*`` and ``terminal/*`` are answered (SHIELD §4.6).
+"""The workspace: where ``fs/*`` and ``terminal/*`` are answered.
 
 A path is inside the workspace when, resolved (symlinks followed), it lies
 under the workspace's root; everything else is *outside* and the policy says

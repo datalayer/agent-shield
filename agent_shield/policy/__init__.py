@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The policy document and the decision engine (SHIELD §5.1, §6.2, §6.3)."""
+"""The policy document and the decision engine."""
 
 from __future__ import annotations
 

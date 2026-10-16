@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Authority across the chain: the execution credential a caller hands the Shield (SHIELD §2.4, SH-33).
+"""Authority across the chain: the execution credential a caller hands the Shield (SH-33).
 
 A caller that delegates work — an orchestrator, a person's runtime, Datalayer's
 control plane — hands the execution's own token in ``_meta.datalayer.credential``

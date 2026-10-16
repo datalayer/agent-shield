@@ -2,14 +2,14 @@
 #
 # BSD 3-Clause License
 
-"""The conformance report, with the Shield report as its Shield section (SHIELD §6.5, §6.9, SH-36, SH-62, SH-65).
+"""The conformance report, with the Shield report as its Shield section (SH-36, SH-62, SH-65).
 
 Per deployment or per organization: every control of the standard with its
 status, its evidence linked, the cadence clocks, the gaps, and each
 control's crosswalk (the EU AI Act article, the NIST AI RMF function, the
 ISO/IEC 42001 clause, the OWASP Agentic threat, and the rest the standard
 publishes). Its first page says the Shield evidences and never certifies.
-The **Shield section** is §6.5's report: the policies in force at the three
+The **Shield section** is the Shield's report: the policies in force at the three
 levels, the tests the Rules passed (the Validate gate with SH-37's drills),
 the approvals and denials of the period with who decided, the limits and what
 they stopped, the harness's register entry.
@@ -42,7 +42,7 @@ NAMED_FRAMEWORKS = ("eu-ai-act", "nist-ai-rmf", "iso-42001", "owasp-agentic-top-
 
 @dataclass
 class ShieldSection:
-    """§6.5: what the Shield decided with, and what it decided, over the period."""
+    """What the Shield decided with, and what it decided, over the period."""
 
     policies: Mapping[str, Mapping[str, Any]]
     period_days: int
@@ -54,7 +54,7 @@ class ShieldSection:
     gate: Mapping[str, Any] | None
     harness: Mapping[str, Any] | None
     weakened: Sequence[str]
-    #: §6.5's last part: what changed since the last report, a sentence each;
+    #: What changed since the last report, a sentence each;
     #: ``None`` when there is no earlier report to compare with.
     changed: Sequence[str] | None = None
 

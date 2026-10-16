@@ -4,7 +4,7 @@
 
 """ACP kinds to classes, and the commands the default policy asks about.
 
-SHIELD §4.5: ``read``, ``search``, ``fetch`` → **read**; ``edit``, ``move`` →
+The classes: ``read``, ``search``, ``fetch`` → **read**; ``edit``, ``move`` →
 **write**; ``delete`` → **delete**; ``execute`` → **execute**; ``think`` and
 ``switch_mode`` → none (nothing to decide); ``other`` → **write**, because a
 kind the agent could not name fails closed.
@@ -33,7 +33,7 @@ KIND_CLASS: dict[str, ActionClass | None] = {
     "other": "write",
 }
 
-#: The Shield's own kinds for what it answers itself (SHIELD §4.6).
+#: The Shield's own kinds for what it answers itself.
 SHIELD_KINDS: dict[str, ActionClass] = {
     "fs_read": "read",
     "fs_write": "write",
@@ -41,7 +41,7 @@ SHIELD_KINDS: dict[str, ActionClass] = {
 }
 
 
-#: The gateway's ``pap`` toolset (SHIELD §6.10, SH-70): what each tool does to the
+#: The gateway's ``pap`` toolset (SH-70): what each tool does to the
 #: world, as agentspecs' table of the toolset says it — the strictest class
 #: when a tool may do two things (a confirmation is a ``buy`` when a term moves
 #: money, and the Shield cannot see the terms). A harness is lent these tools
@@ -91,7 +91,7 @@ def class_of(kind: str) -> ActionClass | None:
     raise UnknownKind(f"'{kind}' is not a tool kind ACP names, so it cannot be classed")
 
 
-#: The commands that ask first whatever the execute rule says (decision 5),
+#: The commands that ask first whatever the execute rule says,
 #: each a name the sentence uses and a regular expression on the command line.
 FLAGGED_COMMANDS: dict[str, str] = {
     "a command naming a credential": (

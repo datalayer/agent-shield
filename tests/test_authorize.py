@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The authorizer port (SHIELD §6.11, SH-74): AuthZen's shape, the local grants,
+"""The authorizer port (SH-74): AuthZen's shape, the local grants,
 deny wins over any Rule, unreachable is a deny, allows cached until expiry."""
 
 from __future__ import annotations

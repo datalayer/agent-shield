@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule (SHIELD §6.9, SH-61).
+"""The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule (SH-61).
 
 A rule answers ``(status, reason, evidence, missing, last)``: the status, why
 in a sentence, the evidence attached, what is missing named, and when the

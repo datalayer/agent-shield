@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""A second decision point through the port (SHIELD §6.11, SH-78): Open Policy Agent.
+"""A second decision point through the port (SH-78): Open Policy Agent.
 
 The port is not OpenFGA-shaped: the same ``EvaluationRequest`` goes to OPA as
 its ``input``, a Rego package answers ``decision`` and ``context``, and

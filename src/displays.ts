@@ -5,7 +5,7 @@
  */
 
 /**
- * The `diff` and `terminal` display contracts (SHIELD §4.3, SH-53): what a
+ * The `diff` and `terminal` display contracts (SH-53): what a
  * tool result of a shielded harness carries for the page, read strictly for
  * any renderer, and the unified diff drawn from it.
  *

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The evidence map (SHIELD §6.9, SH-61), the report (SH-62, SH-65), continuous conformance (SH-63),
+"""The evidence map (SH-61), the report (SH-62, SH-65), continuous conformance (SH-63),
 and ISO/IEC 42001 through the crosswalk (SH-66): five statuses honest by construction."""
 
 from __future__ import annotations
@@ -394,7 +394,7 @@ def test_the_report_says_on_its_first_page_that_the_shield_evidences_and_never_c
 
 
 def test_the_shield_section_says_what_changed_since_the_last_report():
-    """§6.5's last part (SH-36): against the last report's JSON, a sentence per change;
+    """The report's last part (SH-36): against the last report's JSON, a sentence per change;
     none when nothing changed; said plainly when there is no earlier report."""
     first = build_report(AIUC, full_inputs(), scope="deployment", name="Desk", uid="d1")
     assert first.shield.changed is None and first.to_json()["shield"]["changed"] is None

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield's authorizer on Datalayer, against a fake IAM over HTTP (SHIELD §6.11, SH-75).
+"""The Shield's authorizer on Datalayer, against a fake IAM over HTTP (SH-75).
 
 ``IamAuthorizer`` asks IAM's evaluation route (``POST /api/iam/v1/authz/evaluate``)
 with the runtime's token, read afresh at each question; IAM answers AuthZen's

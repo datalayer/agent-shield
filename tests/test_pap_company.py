@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield as a PAP company in front of any agent (SHIELD §6.10, SH-71): an
+"""The Shield as a PAP company in front of any agent (SH-71): an
 operation decided by the company's policy, held for review and released by a
 person, refused in a sentence, answered signed and recorded; the agent never
 sees a credential or the protocol."""

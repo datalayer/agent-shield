@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched (SHIELD §5.2).
+"""The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched.
 
 Any ACP client — Zed, ``vscode-acp``, Marimo, agent-runtimes' adapter — talks
 to the Shield; the Shield talks to the agent. In between:
@@ -22,7 +22,7 @@ to the Shield; the Shield talks to the agent. In between:
 - every action and decision is a row of the audit, nothing secret.
 
 ``allow_always`` chosen by a person becomes a session rule, gone with the
-session (decision 7). A malformed update ends the turn with a sentence.
+session. A malformed update ends the turn with a sentence.
 """
 
 from __future__ import annotations
@@ -141,10 +141,10 @@ class SessionState:
     #: Rules a host keeps for this session beside the Shield's own (a person's,
     #: added from a panel while it runs, SH-54): read at every decision.
     rules_from: Callable[[], Sequence[Rule]] | None = None
-    #: Who acts in this session and the authorizer's hook (SHIELD §6.11), the proxy's.
+    #: Who acts in this session and the authorizer's hook, the proxy's.
     subject: Subject | None = None
     authorize: AuthorizeHook | None = None
-    #: The companies the application connects through PAP (§6.10).
+    #: The companies the application connects through PAP.
     companies: tuple[str, ...] = ()
     #: Which execution credential the session's MCP servers were lent with
     #: (its fingerprint, SH-33), or ``None`` when none was handed.
@@ -190,7 +190,7 @@ def _raw(value: Any, *names: str) -> str | None:
     return None
 
 
-#: What a host says of a lent tool (SHIELD §6.10, SH-70): the class of the tool as
+#: What a host says of a lent tool (SH-70): the class of the tool as
 #: the model names it and the resource the authorizer is asked about
 #: (``connection:<company>``), or ``None`` for a tool of no company.
 ToolClass = Callable[[str], "tuple[str, str | None] | None"]
@@ -315,14 +315,14 @@ class ShieldProxy:
             raise ProxyRefused("no agent command: `agent-shield run -- <command>`")
         self.command = list(command)
         #: How the host classes a lent tool, and the companies the application
-        #: connects through PAP (§6.10): a fetch to one is refused.
+        #: connects through PAP: a fetch to one is refused.
         self.tool_class = tool_class
         self.companies = tuple(companies)
         #: The MCP servers the Shield lends itself, made at each session (SH-73:
         #: a registered Shield's PAP toolsets, with its token as it is then),
         #: beside the client's and held to the same allow-list.
         self.own_servers = own_servers
-        #: The authorizer (§6.11): the one given (IAM's on Datalayer, SH-75), else the one the
+        #: The authorizer: the one given (IAM's on Datalayer, SH-75), else the one the
         #: strictest policy names under ``authorizer:``; none leaves every class a policy lists
         #: under ``authorize:`` refused. Allows are cached once per proxy, until they expire.
         self.subject = subject
@@ -347,8 +347,8 @@ class ShieldProxy:
         self.sessions: dict[str, SessionState] = {}
         self._set_authorizer(self.policies)
         self.inner = _InnerClient(self)
-        #: The sentence refusing every action while no unexpired policy is held
-        #: (SHIELD decision 11), or ``None`` while the policies are in force.
+        #: The sentence refusing every action while no unexpired policy is held,
+        #: or ``None`` while the policies are in force.
         self.unavailable: str | None = None
 
     def _set_authorizer(self, policies: Sequence[Policy]) -> None:
@@ -385,12 +385,12 @@ class ShieldProxy:
         self.audit.write("policy", what="replaced", scopes=[policy.scope for policy in self.policies], by="shield")
 
     def refuse_all(self, sentence: str) -> None:
-        """Hold every further action to ``sentence`` until the policies are in force again (decision 11)."""
+        """Hold every further action to ``sentence`` until the policies are in force again."""
         self.unavailable = sentence
         self.audit.write("policy", what="unavailable", sentence=sentence, by="shield")
 
     def add_session_rule(self, session_id: str, rule: Rule) -> list[Rule]:
-        """A rule a person adds to a running session (§6.3): in force at once, gone with the session.
+        """A rule a person adds to a running session: in force at once, gone with the session.
 
         It may only tighten what the organization's documents say: a rule that
         would permit more is refused with :class:`PolicyWidens`'s sentences.
@@ -656,7 +656,7 @@ class ShieldProxy:
             raise RequestError(REFUSED, sentence)
         self.audit.write("turn", session=session_id, what="prompt", blocks=len(prompt), by="shield")
         # The trace the face arrived on, handed to the harness in the key ACP
-        # reserves for it (§6.8, SH-51); a caller's own `_meta.traceparent` wins.
+        # reserves for it (SH-51); a caller's own `_meta.traceparent` wins.
         answer = await self.channel.prompt(session_id, prompt, meta=with_traceparent(meta or {}))
         if session.failed is not None:
             self.audit.write(
@@ -879,7 +879,7 @@ class _InnerClient:
                 )
         await proxy.client.session_update(session_id=session_id, update=update, **kwargs)
 
-    # -- permissions (§4.5) -------------------------------------------------------------
+    # -- permissions -------------------------------------------------------------
 
     async def request_permission(
         self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
@@ -959,7 +959,7 @@ class _InnerClient:
             return RequestPermissionResponse(outcome=DeniedOutcome(outcome="cancelled"))
         return RequestPermissionResponse(outcome=AllowedOutcome(outcome="selected", option_id=option.option_id))
 
-    # -- the Shield's own actions (§4.6) --------------------------------------------------
+    # -- the Shield's own actions --------------------------------------------------
 
     async def _decide_own(
         self,
@@ -971,7 +971,7 @@ class _InnerClient:
         """Decide an action the Shield answers itself; a row the client sees; a refusal raised.
 
         A path outside the workspace is refused before any rule: the Shield
-        answers files only inside it (§4.6); the policy's *outside* rules are
+        answers files only inside it; the policy's *outside* rules are
         for what an agent reaches by itself.
         """
         proxy = self.proxy

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""``session/update`` → neutral events (SHIELD §4.1); a malformed update is a sentence."""
+"""``session/update`` → neutral events; a malformed update is a sentence."""
 
 from __future__ import annotations
 

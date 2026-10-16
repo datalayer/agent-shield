@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""PAP through the Shield (SHIELD §6.10, SH-70, SH-72): the gateway's ``pap_*`` tools
+"""PAP through the Shield (SH-70, SH-72): the gateway's ``pap_*`` tools
 classed and decided by the Rules, a company named as the authorizer's resource,
 the harness's own fetch to a connected company refused."""
 

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""PAP through the Shield (SHIELD §6.10): the company role, standing in front of any agent (SH-71).
+"""PAP through the Shield: the company role, standing in front of any agent (SH-71).
 
 The personal-agent role is not here: a harness is **lent** the gateway's
 ``pap`` tools through the lent MCP (SH-70, agent-runtimes), and the

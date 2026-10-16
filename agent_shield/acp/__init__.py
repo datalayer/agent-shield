@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""ACP: the client-side channels, the normaliser, the workspace and the proxy (SHIELD §5.1)."""
+"""ACP: the client-side channels, the normaliser, the workspace and the proxy."""
 
 from .channel import (
     SHIELD_CLIENT_CAPABILITIES,

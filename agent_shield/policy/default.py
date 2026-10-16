@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The default policy of decision 5, as a session document.
+"""The default policy of as a session document.
 
 Read and search inside the workspace — do it; edit and move inside it — do
 it, shown as diffs; delete, execute, and any path outside the workspace —

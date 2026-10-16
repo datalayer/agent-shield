@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The model budget and the spend limit, soft then hard (SHIELD §6.3, SH-32, SH-54)."""
+"""The model budget and the spend limit, soft then hard (SH-32, SH-54)."""
 
 from __future__ import annotations
 

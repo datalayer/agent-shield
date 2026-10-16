@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""``agent-shield connect <url>``: a remote Shield (``serve``) as a local stdio agent (SHIELD SH-56).
+"""``agent-shield connect <url>``: a remote Shield (``serve``) as a local stdio agent (SH-56).
 
 Any ACP client that only knows how to start a command — an editor, a
 notebook, the TCK — reaches a Shield served elsewhere through this: one

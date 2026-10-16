@@ -60,9 +60,9 @@ otel = ["opentelemetry-sdk>=1.26", "opentelemetry-exporter-otlp-proto-http>=1.26
 # are what IAM installs to validate a Shield policy, and they must not drag
 # the catalogue's sandbox stack behind them (SH-50).
 register = ["agentspecs>=0.0.107"]
-# The company role of PAP (SHIELD §6.10, SH-71): the Shield in front of any agent, on the PAP SDK's company service.
+# The company role of PAP (SH-71): the Shield in front of any agent, on the PAP SDK's company service.
 pap = ["personal-agent-protocol>=0.24"]
-# One extra per harness (SHIELD §5.3). The adapters are Node packages, which
+# One extra per harness. The adapters are Node packages, which
 # pip cannot install: `agent-shield setup --harness <id>` installs the pinned
 # one into the Shield's own prefix. The extras name the choice on the install
 # line and bring the register the setup reads.

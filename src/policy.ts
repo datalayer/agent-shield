@@ -77,7 +77,7 @@ export const VERDICT_WORDS: Record<Verdict, string> = {
   deny: 'leave it to me',
 };
 
-/** ACP kind → F-10 class; null means nothing to decide (SHIELD §4.5). */
+/** ACP kind → F-10 class; null means nothing to decide. */
 export const KIND_CLASS: Record<ToolKind, ActionClass | null> = {
   read: 'read',
   search: 'read',
@@ -103,7 +103,7 @@ export const LIMIT_WORDS: Record<LimitName, string> = {
   spend: 'credits spent',
 };
 
-/** Whose key may run a harness (SHIELD decision 3). */
+/** Whose key may run a harness. */
 export const CREDENTIALS = ['account', 'platform', 'either'] as const satisfies readonly Credentials[];
 
 export type DecidedBy = 'rule' | 'limit' | 'network' | 'default';

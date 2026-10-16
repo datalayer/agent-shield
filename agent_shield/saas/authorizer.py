@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""OpenFGA through IAM (SHIELD §6.11, SH-75): the ``openfga-through-iam`` contribution to the port.
+"""OpenFGA through IAM (SH-75): the ``openfga-through-iam`` contribution to the port.
 
 On Datalayer the Shield never holds OpenFGA's address or credentials: it asks
 IAM's evaluation route — ``POST /api/iam/v1/authz/evaluate``, AuthZen's shape

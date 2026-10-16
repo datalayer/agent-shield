@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield over OTEL: one trace across the chain, counts under the account (SHIELD §6.8, SH-51).
+"""The Shield over OTEL: one trace across the chain, counts under the account (SH-51).
 
 The ACP session is a trace, each prompt a span (:func:`turn_span`), and every
 audit row a span event and a count (:func:`observe`) in the audit's safe

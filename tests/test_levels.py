@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Three levels, the strictest answer in every order, nothing loosening below the organization's (SHIELD §6.3, SH-31)."""
+"""Three levels, the strictest answer in every order, nothing loosening below the organization's (SH-31)."""
 
 from __future__ import annotations
 

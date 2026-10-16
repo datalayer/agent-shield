@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Continuous conformance (SHIELD §6.9, SH-63): recomputed as the inputs change, a lapse raised as a notice.
+"""Continuous conformance (SH-63): recomputed as the inputs change, a lapse raised as a notice.
 
 The host recomputes an :class:`Assessment` on the events that already flow —
 a policy replaced from IAM, a record row written, a drill report recorded, a

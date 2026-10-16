@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Registration with Datalayer, for a Shield that runs outside its runtimes (SHIELD §5.3, SH-47, SH-73).
+"""Registration with Datalayer, for a Shield that runs outside its runtimes (SH-47, SH-73).
 
 A standalone Shield registers with a **service-agent key** of an
 organization — made by its administrator with
@@ -20,7 +20,7 @@ neither it nor the token is ever printed.
 What a registered standalone Shield **cannot** have is said in one sentence
 (:func:`cannot_have`): the operator's network boundary and the companion's
 mounts are a Datalayer runtime's, and nothing here pretends to them. PAP
-(§6.10) is said unavailable while local-only (:func:`pap_sentence`); once
+ is said unavailable while local-only (:func:`pap_sentence`); once
 registered, ``run --pap <company>`` lends the gateway's ``pap`` toolset at
 that company (:func:`pap_servers`), reached with the registered Shield's own
 token, exchanged again as it nears its end — the gateway's custody and
@@ -75,7 +75,7 @@ def cannot_have() -> str:
 
 
 def pap_sentence(registered: bool) -> str:
-    """PAP through the Shield (§6.10, SH-73): once registered, said unavailable while local-only."""
+    """PAP through the Shield (SH-73): once registered, said unavailable while local-only."""
     if registered:
         return (
             "PAP: available — `run --pap <company>` lends the gateway's pap toolset at that company, reached "

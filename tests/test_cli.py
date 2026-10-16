@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The command (SHIELD §5.3, SH-09) and the entry points."""
+"""The command (SH-09) and the entry points."""
 
 from __future__ import annotations
 

@@ -18,7 +18,7 @@ One policy document, one scope.
 |---|---|---|---|
 | `authorize` | list of `read` \| `write` \| `send` \| `buy` \| `delete` \| `execute` | no | The classes that need an authorizer's allow beside the Rules: a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy. |
 | `authorizer` | AuthorizerConfig or null | no | The decision point a standalone Shield asks: local (grants in this file), openfga &#123;url, store, model&#125; or authzen &#123;url&#125;. On Datalayer the authorizer is IAM's and a managed document names none. |
-| `expires` | string or null | no | When a pulled copy stops being honoured (decision 11). |
+| `expires` | string or null | no | When a pulled copy stops being honoured. |
 | `harnesses` | Harnesses | no |  |
 | `limits` | Limits | no |  |
 | `mcp` | Mcp | no |  |
@@ -62,7 +62,7 @@ The harnesses an organization admits, and whose credentials run them.
 | Field | Type | Required | What it says |
 |---|---|---|---|
 | `admit` | list of string | no | Harness ids of the catalogue this scope admits; empty admits every registered harness. |
-| `credentials` | `account` \| `platform` \| `either` | no | Whose key runs a harness: the account's own declared secret (decision 3), the platform's, or either. |
+| `credentials` | `account` \| `platform` \| `either` | no | Whose key runs a harness: the account's own declared secret, the platform's, or either. |
 
 ## Limits
 

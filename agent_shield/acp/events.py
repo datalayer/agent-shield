@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The neutral events of the package: SHIELD §4.1's left column, typed.
+"""The neutral events of the package: the ACP updates' neutral form, typed.
 
 These are the package's own, small on purpose: agent-runtimes maps them onto
 its ``ProtocolEvent``s, the landing onto its rows. Nothing here imports the
@@ -142,7 +142,7 @@ class SessionInfo(_Event):
 
 
 class PermissionAsked(_Event):
-    """``session/request_permission``: the row awaits an approval (§4.5)."""
+    """``session/request_permission``: the row awaits an approval."""
 
     event: Literal["permission"] = "permission"
     tool_call_id: str

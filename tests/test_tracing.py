@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield over OTEL (SHIELD.md §6.8, SH-51): rows as events and counts, the trace handed on."""
+"""The Shield over OTEL (SH-51): rows as events and counts, the trace handed on."""
 
 from __future__ import annotations
 

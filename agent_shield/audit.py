@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The audit: every action and decision, one JSON line each, nothing secret (SHIELD §6.4).
+"""The audit: every action and decision, one JSON line each, nothing secret.
 
 The vocabulary is A-01's safe one, extended with ACP's kinds: a row says the
 event, the kind and class, the decision and who decided it, a path or a
@@ -38,11 +38,11 @@ EVENTS = (
     "limit",
     "mcp",
     "refusal",
-    # The policies themselves: replaced from IAM, unavailable (decision 11), a session rule added or removed.
+    # The policies themselves: replaced from IAM, unavailable, a session rule added or removed.
     "policy",
-    # The agent's plan: how many steps, their status (§6.4); never their text.
+    # The agent's plan: how many steps, their status; never their text.
     "plan",
-    # PAP's vocabulary, the company role (§6.10, SH-71): an operation performed
+    # PAP's vocabulary, the company role (SH-71): an operation performed
     # for a person, signed; a review held for a person of the company, released or refused.
     "operation",
     "review",
@@ -147,7 +147,7 @@ class AuditLog:
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row, separators=(",", ":"), ensure_ascii=False) + "\n")
         self.rows_written += 1
-        # The same row, after the same redaction, to the trace and the counts (§6.8).
+        # The same row, after the same redaction, to the trace and the counts.
         observe(row)
         return row
 

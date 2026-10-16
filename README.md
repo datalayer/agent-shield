@@ -50,7 +50,7 @@ Measured on 15 October 2026 from a clean prefix: `setup` took **27 s**
 `npm install --prefix`, never a global `npx`); `run` initialized the adapter
 and opened a session in **1.5 s**; the first decision followed the first tool
 call. The whole, from `pip install` to a decision seen in the terminal, is
-under a minute, five times under the five minutes of SHIELD §5.3.
+under a minute, five times under the five-minute target.
 
 `setup` asks for nothing it finds: it says which credentials are present by
 name (never a value), which are missing and how to export them, and stores
@@ -158,7 +158,7 @@ mcp:
 `agent_shield.policy.decide(action, context, policies)` is pure: it answers
 `allow | ask | deny`, the sentence, and the scope and rule that decided.
 
-Three levels hold (SHIELD.md §6.3): on Datalayer the **organization's**
+Three levels hold: on Datalayer the **organization's**
 document comes from IAM, the **Appspec's** Rules are the team's, and the
 **session's** is the default above plus what a person allows or tightens
 while it runs. A lower document only tightens: `agent_shield.policy.widening`
@@ -176,7 +176,7 @@ copy, the harness is refused in a sentence naming IAM.
 
 ## What is built, and what is not
 
-Built (0.1.2, SHIELD.md Phase 0 and the policy side of Phase 2): the policy
+Built (0.1.2, Phase 0 and the policy side of Phase 2): the policy
 engine and its schema, the three levels with `widening`, the model limits and
 `decide_budget`, the `harnesses` section, the SaaS client pulling from IAM
 and failing closed; the
@@ -188,7 +188,7 @@ register read from [agentspecs](https://github.com/datalayer/agentspecs)
 in front of the test agent (`VERDICT: CONFORMANT`); the audit; the
 `agent-shield` command; `@datalayer/agent-shield`'s policy types.
 
-Built in 0.1.7 (SHIELD Phase 3's standalone side): `agent-shield serve` over
+Built in 0.1.7 (Phase 3's standalone side): `agent-shield serve` over
 WebSocket and ACP Streamable HTTP, one harness per connection, the token in the
 header or the first message (SH-52, SH-56); `agent-shield connect`; the bridge
 of the `datalayer-harnesses` sidecar (SH-40); `setup --register` through a

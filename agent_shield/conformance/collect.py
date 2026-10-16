@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The collectors: each reads one kind of evidence out of :class:`Inputs` (SHIELD §6.9, SH-61).
+"""The collectors: each reads one kind of evidence out of :class:`Inputs` (SH-61).
 
 A collector answers an :class:`Evidence` when the evidence is there, and
 ``None`` when it is not — never a guess. The map's rules compose them and

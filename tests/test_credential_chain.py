@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Authority across the chain (SHIELD §2.4, SH-33): the execution credential a caller hands the Shield.
+"""Authority across the chain (SH-33): the execution credential a caller hands the Shield.
 
 Handed in ``_meta.datalayer.credential``, it never reaches the agent (``withheld``
 in the ``_meta`` it is handed), it is the authority of every HTTP MCP server the

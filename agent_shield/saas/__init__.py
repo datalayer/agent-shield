@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Managed from the SaaS (SHIELD §6.7, SH-50): the policies pulled from IAM."""
+"""Managed from the SaaS (SH-50): the policies pulled from IAM."""
 
 from __future__ import annotations
 

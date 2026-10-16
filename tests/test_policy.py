@@ -49,7 +49,7 @@ def one(verdict: str, name: str = "r", **fields) -> Policy:
     return Policy(scope="session", rules=[Rule(name=name, decision=verdict, **fields)])
 
 
-# --- classes (§4.5) ---------------------------------------------------------
+# --- classes ---------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -99,7 +99,7 @@ def test_an_action_without_a_class_has_nothing_to_decide():
         decide(Action(kind="think", title="Thinking"), Context(workspace="/w"), [default_policy()])
 
 
-# --- the flagged commands (decision 5) ---------------------------------------
+# --- the flagged commands ---------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -135,7 +135,7 @@ def test_the_default_policy_carries_every_flag_as_a_rule():
     assert set(FLAGGED_COMMANDS) <= names
 
 
-# --- the default policy of decision 5 --------------------------------------------
+# --- the default policy --------------------------------------------
 
 
 @pytest.fixture
@@ -244,7 +244,7 @@ def test_no_policies_at_all_still_ask(ctx):
     assert decide(action("read", path="a", inside=True), ctx, []).verdict == "ask"
 
 
-# --- first decision wins, strictest scope first (§6.3) ------------------------------
+# --- first decision wins, strictest scope first ------------------------------
 
 
 def test_the_first_matching_rule_of_a_policy_wins(ctx):
@@ -308,7 +308,7 @@ def test_commands_are_regular_expressions_on_the_whole_line(ctx):
     assert decide(action("execute"), ctx, [policy]).verdict == "ask"
 
 
-# --- the stateful limits (§6.3) -----------------------------------------------------
+# --- the stateful limits -----------------------------------------------------
 
 
 def test_a_soft_limit_asks_once_then_lets_the_session_run_to_the_hard_one(ctx):

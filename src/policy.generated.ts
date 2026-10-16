@@ -39,7 +39,7 @@ export type Model = string | null;
 export type Store = string;
 export type Url2 = string;
 /**
- * When a pulled copy stops being honoured (decision 11).
+ * When a pulled copy stops being honoured.
  */
 export type Expires = string | null;
 /**
@@ -47,7 +47,7 @@ export type Expires = string | null;
  */
 export type Admit = string[];
 /**
- * Whose key runs a harness: the account's own declared secret (decision 3), the platform's, or either.
+ * Whose key runs a harness: the account's own declared secret, the platform's, or either.
  */
 export type Credentials = 'account' | 'platform' | 'either';
 export type Hard = number;

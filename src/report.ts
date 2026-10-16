@@ -5,7 +5,7 @@
  */
 
 /**
- * The report document's renderer (SHIELD §6.5, §6.9, SH-53): the conformance
+ * The report document's renderer (SH-53): the conformance
  * report's JSON — what `agent_shield.conformance`'s `Assessment.to_json()`
  * writes: the standard, every control with its status, evidence, gaps,
  * crosswalks and cadence, and the disclaimer on the first page — rendered as
@@ -17,7 +17,7 @@
  * and refuses, in a sentence, a document that is not one.
  */
 
-/** The five honest statuses a control can have (§6.9), in the order a report lists them. */
+/** The five honest statuses a control can have, in the order a report lists them. */
 export const STATUSES = ['partly', 'organizations', 'third_party', 'met', 'not_applicable'] as const;
 export type ControlStatus = (typeof STATUSES)[number];
 

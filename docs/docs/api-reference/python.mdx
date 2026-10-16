@@ -17,7 +17,7 @@ Datalayer Agent Shield: a runtime firewall for every agent.
 
 ## `agent_shield.acp`
 
-ACP: the client-side channels, the normaliser, the workspace and the proxy (SHIELD §5.1).
+ACP: the client-side channels, the normaliser, the workspace and the proxy.
 
 
 ## `agent_shield.acp.channel`
@@ -35,7 +35,7 @@ The client-side ``ACPChannel``: stdio and WebSocket, on the official SDK.
 
 ## `agent_shield.acp.credential`
 
-Authority across the chain: the execution credential a caller hands the Shield (SHIELD §2.4, SH-33).
+Authority across the chain: the execution credential a caller hands the Shield (SH-33).
 
 - `take_credential` — The ``_meta`` to hand on, with the credential withheld, and the credential when one was sent.
 - `fingerprint` — Which credential, to compare two: a digest, never kept beside the token.
@@ -44,7 +44,7 @@ Authority across the chain: the execution credential a caller hands the Shield (
 
 ## `agent_shield.acp.events`
 
-The neutral events of the package: SHIELD §4.1's left column, typed.
+The neutral events of the package: the ACP updates' neutral form, typed.
 
 - `TextDelta` — ``agent_message_chunk``: the answer, streamed.
 - `ThoughtDelta` — ``agent_thought_chunk``: reasoning, kept in the record, folded on the page.
@@ -61,7 +61,7 @@ The neutral events of the package: SHIELD §4.1's left column, typed.
 - `CommandsUpdated` — ``available_commands_update``: slash commands for the composer.
 - `ModeChanged` — ``current_mode_update``: the mode in the header.
 - `SessionInfo` — ``session_info_update``: a title, a timestamp.
-- `PermissionAsked` — ``session/request_permission``: the row awaits an approval (§4.5).
+- `PermissionAsked` — ``session/request_permission``: the row awaits an approval.
 - `Question` — ``elicitation/create``: a question the person answers.
 - `ShieldAction` — An ``fs/*`` or ``terminal/*`` the Shield answered: visible, decided, recorded.
 - `TurnEnded` — ``session/prompt``'s answer: why the turn stopped.
@@ -75,7 +75,7 @@ The neutral events of the package: SHIELD §4.1's left column, typed.
 
 ## `agent_shield.acp.proxy`
 
-The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched (SHIELD §5.2).
+The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched.
 
 - `ProxyRefused` — What stops the proxy before the agent runs, said in a sentence.
 - `SessionState`
@@ -89,7 +89,7 @@ The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched
 
 ## `agent_shield.acp.remote`
 
-``agent-shield connect &lt;url>``: a remote Shield (``serve``) as a local stdio agent (SHIELD SH-56).
+``agent-shield connect &lt;url>``: a remote Shield (``serve``) as a local stdio agent (SH-56).
 
 - `RemoteRefused` — A remote the mirror will not connect to, said in a sentence.
 - `remote_url` — The URL checked: ``ws``/``wss``, no token in it.
@@ -97,7 +97,7 @@ The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched
 
 ## `agent_shield.acp.server`
 
-``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP (SHIELD §5.2, SH-52, SH-56).
+``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP (SH-52, SH-56).
 
 - `ServeRefused` — What stops the server before it listens, said in a sentence.
 - `ShieldBackend` — A connection's Shield: a proxy of its own, the SDK's agent router in front of it.
@@ -107,7 +107,7 @@ The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched
 
 ## `agent_shield.acp.workspace`
 
-The workspace: where ``fs/*`` and ``terminal/*`` are answered (SHIELD §4.6).
+The workspace: where ``fs/*`` and ``terminal/*`` are answered.
 
 - `OutsideWorkspace` — A path the workspace does not hold, said in a sentence.
 - `Placed` — A path, placed against the workspace.
@@ -118,7 +118,7 @@ The workspace: where ``fs/*`` and ``terminal/*`` are answered (SHIELD §4.6).
 
 ## `agent_shield.audit`
 
-The audit: every action and decision, one JSON line each, nothing secret (SHIELD §6.4).
+The audit: every action and decision, one JSON line each, nothing secret.
 
 - `redact` — The text with every credential-looking span replaced by ``[redacted]``.
 - `redacted_row` — A row with every string of it redacted, however deep: what any audit writes, whoever keeps it.
@@ -128,7 +128,7 @@ The audit: every action and decision, one JSON line each, nothing secret (SHIELD
 
 ## `agent_shield.cli`
 
-The ``agent-shield`` command (SHIELD §5.2, §5.3).
+The ``agent-shield`` command.
 
 - `say`
 - `refuse`
@@ -138,7 +138,7 @@ The ``agent-shield`` command (SHIELD §5.2, §5.3).
 - `log` — The audit: the last rows, one line each.
 - `policy_show` — Every line of the policy in force, and where it came from.
 - `policy_schema` — The policy document's JSON Schema.
-- `policy_init` — Write the default policy of decision 5.
+- `policy_init` — Write the default policy.
 - `harnesses` — The register: every harness with its terms.
 - `yaml_checked_on`
 - `upgrade` — Move the adapters to the register's pinned versions; say whether a newer Shield exists.
@@ -160,7 +160,7 @@ Where the Shield keeps its things: ``~/.agent-shield`` (or ``$AGENT_SHIELD_HOME`
 
 ## `agent_shield.conformance`
 
-Conformance: a standard's controls answered from the Shield's evidence (SHIELD §6.9, SH-61).
+Conformance: a standard's controls answered from the Shield's evidence (SH-61).
 
 - `ConformanceError` — What cannot be assessed, said in a sentence.
 - `Evidence` — One piece of evidence a collector attached to a control.
@@ -177,7 +177,7 @@ Conformance: a standard's controls answered from the Shield's evidence (SHIELD �
 
 ## `agent_shield.conformance.collect`
 
-The collectors: each reads one kind of evidence out of :class:`Inputs` (SHIELD §6.9, SH-61).
+The collectors: each reads one kind of evidence out of :class:`Inputs` (SH-61).
 
 - `policies_by_scope`
 - `policy_in_force` — The documents in force, each scope with its version: the configuration the Shield decides with.
@@ -215,7 +215,7 @@ The collectors: each reads one kind of evidence out of :class:`Inputs` (SHIELD �
 
 ## `agent_shield.conformance.continuous`
 
-Continuous conformance (SHIELD §6.9, SH-63): recomputed as the inputs change, a lapse raised as a notice.
+Continuous conformance (SH-63): recomputed as the inputs change, a lapse raised as a notice.
 
 - `Notice` — One lapse, for the organization's owners.
 - `Snapshot` — What an assessment amounted to, kept for the line over time.
@@ -225,7 +225,7 @@ Continuous conformance (SHIELD §6.9, SH-63): recomputed as the inputs change, a
 
 ## `agent_shield.conformance.map`
 
-The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule (SHIELD §6.9, SH-61).
+The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule (SH-61).
 
 - `a001`
 - `a002`
@@ -274,12 +274,12 @@ The evidence map: AIUC-1's 55 controls, each with its collectors and its status 
 
 ## `agent_shield.pap`
 
-PAP through the Shield (SHIELD §6.10): the company role, standing in front of any agent (SH-71).
+PAP through the Shield: the company role, standing in front of any agent (SH-71).
 
 
 ## `agent_shield.pap.company`
 
-The Shield as a PAP company, standing in front of any agent (SHIELD §6.10, SH-71).
+The Shield as a PAP company, standing in front of any agent (SH-71).
 
 - `money_moves` — Whether a term carries an amount with a currency, anywhere in the terms.
 - `operation_class` — ``buy`` when a term moves money, or when there are no terms; ``write`` otherwise.
@@ -294,14 +294,14 @@ The Shield as a PAP company, standing in front of any agent (SHIELD §6.10, SH-7
 
 ## `agent_shield.policy`
 
-The policy document and the decision engine (SHIELD §5.1, §6.2, §6.3).
+The policy document and the decision engine.
 
 - `policy_json_schema` — The document's JSON Schema, the one agentspecs carries as ``policies/``.
 - `policy_json_schema_text`
 
 ## `agent_shield.policy.authorize`
 
-The authorizer port (SHIELD §6.11, SH-74): *may this principal act on this object?*
+The authorizer port (SH-74): *may this principal act on this object?*
 
 - `Subject` — Who acts: ``&#123;type, id&#125;`` as AuthZen names it (``account``, ``deployment``, ``agent``).
 - `ActionName` — What is done: an action class of the policy, or a relation's own name.
@@ -311,11 +311,11 @@ The authorizer port (SHIELD §6.11, SH-74): *may this principal act on this obje
 - `AuthorizerUnreachable` — The decision point did not answer; said in a sentence, never read as an allow.
 - `Authorizer` — A policy decision point behind the port.
 - `Authorization` — What the port answered for one action, for the decision and the audit.
-- `AllowCache` — Allows kept until their expiry; a deny is never kept (SHIELD §6.11).
+- `AllowCache` — Allows kept until their expiry; a deny is never kept.
 - `authorize` — Ask the authorizer, with the port's rules: deny wins, unreachable is a deny, allows cached.
 - `hook_for` — The hook a ``Context`` carries: one authorizer, one cache of allows.
 - `Grant` — One line of the ``local`` authorizer: who may do what to what, as patterns (fnmatch).
-- `LocalAuthorizer` — Grants in ``agent-shield.yaml`` (§6.11's ``local``): the standalone proxy's own.
+- `LocalAuthorizer` — Grants in ``agent-shield.yaml`` (the ``local`` authorizer): the standalone proxy's own.
 - `AuthZenAuthorizer` — Any AuthZen evaluation endpoint (``POST &lt;url>``): IAM's on Datalayer, OPA or Cedar elsewhere (SH-78).
 - `OpenFgaAuthorizer` — An organization's own OpenFGA, asked at its check API (``openfga: &#123;url, store, model&#125;``).
 - `OpaAuthorizer` — Open Policy Agent behind the port (SH-78): a second decision point, not OpenFGA-shaped.
@@ -348,7 +348,7 @@ ACP kinds to classes, and the commands the default policy asks about.
 
 ## `agent_shield.policy.default`
 
-The default policy of decision 5, as a session document.
+The default policy of as a session document.
 
 - `default_policy` — The document ``agent-shield setup`` writes beside a project.
 
@@ -365,7 +365,7 @@ Policy documents on disk: ``agent-shield.yaml``.
 
 ## `agent_shield.policy.levels`
 
-Three levels, nothing loosening below the one above (SHIELD §6.3, SH-31).
+Three levels, nothing loosening below the one above (SH-31).
 
 - `PolicyWidens` — A lower document that would permit more than the one above it, in sentences.
 - `overlaps` — Whether some action both rules match. Conservative: a pattern is taken to overlap.
@@ -399,7 +399,7 @@ What agent-shield contributes to the Datalayer CLI, as a reactor plugin.
 
 ## `agent_shield.register`
 
-The harness register, read from agentspecs (SHIELD §3.3, SH-04).
+The harness register, read from agentspecs (SH-04).
 
 - `RegisterRefused` — A harness the Shield will not set up or run, said in a sentence.
 - `Harness` — A catalogue harness with its register entry, as the Shield uses it.
@@ -410,11 +410,11 @@ The harness register, read from agentspecs (SHIELD §3.3, SH-04).
 
 ## `agent_shield.registration`
 
-Registration with Datalayer, for a Shield that runs outside its runtimes (SHIELD §5.3, SH-47, SH-73).
+Registration with Datalayer, for a Shield that runs outside its runtimes (SH-47, SH-73).
 
 - `RegistrationRefused` — What stops a registration, said in a sentence; never the key.
 - `cannot_have`
-- `pap_sentence` — PAP through the Shield (§6.10, SH-73): once registered, said unavailable while local-only.
+- `pap_sentence` — PAP through the Shield (SH-73): once registered, said unavailable while local-only.
 - `Registration` — ``credentials.yaml``: where the Shield is registered and with what.
 - `pap_server_name` — A company's server as the runtime names it: ``pap_`` and its domain in plain characters.
 - `pap_servers` — The gateway's ``pap`` toolset at each company, lent with the registered Shield's token.
@@ -422,9 +422,9 @@ Registration with Datalayer, for a Shield that runs outside its runtimes (SHIELD
 
 ## `agent_shield.report`
 
-The conformance report, with the Shield report as its Shield section (SHIELD §6.5, §6.9, SH-36, SH-62, SH-65).
+The conformance report, with the Shield report as its Shield section (SH-36, SH-62, SH-65).
 
-- `ShieldSection` — §6.5: what the Shield decided with, and what it decided, over the period.
+- `ShieldSection` — What the Shield decided with, and what it decided, over the period.
 - `ConformanceReport` — One report: the scope it is of, the assessment, the Shield section.
 - `build_report` — Assess ``standard`` on ``inputs`` and write the report of it; ``previous`` is the
 - `merge_assessments` — An organization's assessment from its deployments': each control at the weakest of them, the evidence of all.
@@ -433,19 +433,19 @@ The conformance report, with the Shield report as its Shield section (SHIELD §6
 
 ## `agent_shield.saas`
 
-Managed from the SaaS (SHIELD §6.7, SH-50): the policies pulled from IAM.
+Managed from the SaaS (SH-50): the policies pulled from IAM.
 
 
 ## `agent_shield.saas.authorizer`
 
-OpenFGA through IAM (SHIELD §6.11, SH-75): the ``openfga-through-iam`` contribution to the port.
+OpenFGA through IAM (SH-75): the ``openfga-through-iam`` contribution to the port.
 
 - `evaluate_url`
 - `IamAuthorizer` — IAM's evaluation route, with the token: the one authorizer on Datalayer.
 
 ## `agent_shield.saas.policies`
 
-The Shield's policy, pulled from IAM and honoured until it expires (SHIELD §6.7, decisions 10 and 11).
+The Shield's policy, pulled from IAM and honoured until it expires.
 
 - `shield_policies_path`
 - `PolicyUnavailable` — No policy can be honoured: IAM did not answer and no unexpired copy is held.
@@ -457,7 +457,7 @@ The Shield's policy, pulled from IAM and honoured until it expires (SHIELD §6.7
 
 ## `agent_shield.tracing`
 
-The Shield over OTEL: one trace across the chain, counts under the account (SHIELD §6.8, SH-51).
+The Shield over OTEL: one trace across the chain, counts under the account (SH-51).
 
 - `set_labels` — The labels every count and span carries from now on: ``harness``, ``deployment``, ``usage_account_uid``.
 - `labels`

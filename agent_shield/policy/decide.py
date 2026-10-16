@@ -4,7 +4,7 @@
 
 """``decide(action, context, policies)``: pure, strictest scope first, first decision wins.
 
-The order (SHIELD §6.3):
+The order:
 
 1. The **limits**, strictest scope first. A hard threshold the action would
    cross refuses it, and the sentence says what would let it go on; a soft
@@ -19,7 +19,7 @@ The order (SHIELD §6.3):
    *do it* (R-05).
 
 Before all of these, for a class a policy in force lists under
-``authorize:``, the **authorizer** (§6.11, ``authorize.py``) is asked through
+``authorize:``, the **authorizer** (``authorize.py``) is asked through
 the context's hook: its deny wins over any Rule, no hook is a deny, and an
 allow only lets the rules decide — it loosens nothing.
 
@@ -97,11 +97,11 @@ class Context:
     workspace: str
     session_id: str | None = None
     state: LimitState = field(default_factory=LimitState)
-    #: Who acts, for the authorizer (§6.11); unset, the local account.
+    #: Who acts, for the authorizer; unset, the local account.
     subject: Subject | None = None
     #: The authorizer's hook; ``None`` is a deny for every class a policy lists under ``authorize:``.
     authorize: AuthorizeHook | None = None
-    #: The companies the application connects through PAP (SHIELD §6.10): a fetch to
+    #: The companies the application connects through PAP: a fetch to
     #: one is refused whatever the allow-list says — PAP is the only way to a company.
     companies: tuple[str, ...] = ()
 

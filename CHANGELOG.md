@@ -6,14 +6,18 @@
 
 # Changelog
 
+## 0.2.7
+
+- Docstrings, comments, the policy schema's descriptions, the docs site and this changelog no longer cite private design-note sections or decision numbers; they say what the thing is. The refusal sentences are unchanged since 0.2.6's successor commit (no decision number in them).
+
 ## 0.2.6
 
-- The registered standalone proxy lends PAP (SHIELD §6.10, SH-73): `agent-shield run --pap <company> -- <agent>` lends the gateway's `pap` toolset at that company as the MCP server `pap_<domain>` (`?only=pap&pap-company=<domain>` on `$DATALAYER_MCP_SERVER_URL`, else `https://mcp.datalayer.run/mcp`), reached with the registered Shield's own token — made at each session, so a token near its end is exchanged first, and written nowhere. It is held to the policy's `mcp.allow` like any lent server, so a flag never lends what the policy does not; local-only, or not allowed, `run` refuses before the agent starts, in a sentence. The harness's own fetch to that company is refused. `ShieldProxy(own_servers=…)`, `registration.pap_servers`, `pap_server_name`; `test_pap_standalone.py` (5).
+- The registered standalone proxy lends PAP (SH-73): `agent-shield run --pap <company> -- <agent>` lends the gateway's `pap` toolset at that company as the MCP server `pap_<domain>` (`?only=pap&pap-company=<domain>` on `$DATALAYER_MCP_SERVER_URL`, else `https://mcp.datalayer.run/mcp`), reached with the registered Shield's own token — made at each session, so a token near its end is exchanged first, and written nowhere. It is held to the policy's `mcp.allow` like any lent server, so a flag never lends what the policy does not; local-only, or not allowed, `run` refuses before the agent starts, in a sentence. The harness's own fetch to that company is refused. `ShieldProxy(own_servers=…)`, `registration.pap_servers`, `pap_server_name`; `test_pap_standalone.py` (5).
 - The docs site's generated pages at the package's version, the register page listing the *listed* tier, and no *Not built* line naming a built part.
 
 ## 0.2.5
 
-- The Shield section of the conformance report says **what changed since the last report** (SHIELD §6.5, SH-36): `build_report(..., previous=<the last report's JSON>)` — the policies by level (new, gone, its version, its rules, its limits), a scope newly permitting more than the organization, the Validate gate, each count that moved (decisions, decided by, answers, limits reached), the coding agent; *No earlier report to compare with* without one, *Nothing changed since the last report* when nothing did. In the JSON (`shield.changed`) and the Markdown and Lexical exports. Tests in `test_conformance_map.py`.
+- The Shield section of the conformance report says **what changed since the last report** (SH-36): `build_report(..., previous=<the last report's JSON>)` — the policies by level (new, gone, its version, its rules, its limits), a scope newly permitting more than the organization, the Validate gate, each count that moved (decisions, decided by, answers, limits reached), the coding agent; *No earlier report to compare with* without one, *Nothing changed since the last report* when nothing did. In the JSON (`shield.changed`) and the Markdown and Lexical exports. Tests in `test_conformance_map.py`.
 - `IamAuthorizer` held against a fake IAM over HTTP (SHIELD SH-75): the route and the bearer, read at each question; IAM's sentence on a deny; a 403 or a 503 a deny naming `openfga-through-iam`; an allow honoured through an outage until it expires. `test_iam_authorizer.py` (7).
 
 ## 0.2.4
@@ -37,7 +41,7 @@
 
 ## 0.2.0
 
-External authorization and PAP through the Shield (SHIELD.md §6.10, §6.11; SH-74, SH-75's client
+External authorization and PAP through the Shield (SH-74, SH-75's client
 side, SH-78, SH-70, SH-71, SH-72, SH-73; 16 October 2026). **The schema changed** — the
 document gains `authorize:` and `authorizer:` — so IAM and agentspecs follow (agentspecs
 0.0.105 carries it):
@@ -75,7 +79,7 @@ document gains `authorize:` and `authorizer:` — so IAM and agentspecs follow (
 
 ## 0.1.7
 
-The standalone side of SHIELD.md Phase 3 (SH-52, SH-56, SH-55, SH-53, SH-40, SH-47, SH-73,
+The standalone side of Phase 3 (SH-52, SH-56, SH-55, SH-53, SH-40, SH-47, SH-73,
 SH-22; 15 October 2026):
 
 - `agent-shield serve` (`agent_shield.acp.server.ShieldServer`): the proxy as a server, one
@@ -126,7 +130,7 @@ caught), then the words moved out of it to a name that was not defined (a latent
 on a partially covered clause with no note, which no clause of the catalogue has — tested
 now). 0.1.6 is the same release, compiled on 3.10, 17 tests.
 
-The conformance side of SHIELD.md Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2026):
+The conformance side of Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2026):
 
 - `agent_shield.conformance`: the evidence map for AIUC-1, control by control for
   all 55 at its 2026.4 version (agentspecs 0.0.104's `standards/` catalogue,
@@ -152,7 +156,7 @@ The conformance side of SHIELD.md Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15
   status, evidence linked, the cadence clocks, the gaps, each control's
   crosswalk (the EU AI Act article, the NIST AI RMF function, the ISO/IEC 42001
   clause, the OWASP Agentic threat, and the rest the standard publishes); the
-  Shield report of §6.5 as its Shield section (the policies in force at the
+  Shield report as its Shield section (the policies in force at the
   three levels, the tests the Rules passed with the drills, the approvals and
   denials of the period with who decided, the limits reached, the coding
   agent's register entry); its first page says the Shield evidences and never
@@ -176,11 +180,11 @@ The conformance side of SHIELD.md Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15
 
 ## 0.1.2
 
-The policy side of SHIELD.md Phase 2 (SH-50, SH-31, SH-32, SH-54, SH-35).
+The policy side of Phase 2 (SH-50, SH-31, SH-32, SH-54, SH-35).
 
-The audit side of SHIELD.md Phase 2 (SH-34, SH-51, 15 October 2026):
+The audit side of Phase 2 (SH-34, SH-51, 15 October 2026):
 
-- `agent_shield.tracing`: the Shield over OTEL (§6.8) — every audit row, after
+- `agent_shield.tracing`: the Shield over OTEL — every audit row, after
   its redaction, a span event on the current span (`observe`, the safe
   vocabulary only, never a sentence's text beyond the row's fields) and a
   count: `shield.actions`, `shield.decisions`, `shield.refusals`,
@@ -196,13 +200,13 @@ The audit side of SHIELD.md Phase 2 (SH-34, SH-51, 15 October 2026):
   text); `fs_read` written as a row of its own (the path, the bytes) beside
   `fs_write`; `redacted_row` for whoever keeps rows elsewhere (agent-runtimes'
   record); `AuditLog.write` observes each row it writes.
-- The proxy's `prompt` carries the trace in `_meta.traceparent` (§6.8).
+- The proxy's `prompt` carries the trace in `_meta.traceparent`.
 
 - `agent_shield.policy`: the document grows `limits.model_tokens` (the model
   budget, in tokens) and `limits.spend` (the deployment's spend limit, in
   credits, 100 a USD), each soft then hard, and a `harnesses` section — the
   harnesses a scope admits and whose credentials run them (`account`,
-  `platform`, `either`; decision 3). `decide_budget(context, policies,
+  `platform`, `either`). `decide_budget(context, policies,
   tokens=, cost=)` decides the next model request against the model limits
   alone; a hard limit's sentence says what would let the session go on (a
   cheaper model, a wider budget, a person's word). `LimitState.spent` counts
@@ -216,14 +220,14 @@ The audit side of SHIELD.md Phase 2 (SH-34, SH-51, 15 October 2026):
   `admits` and `credentials_rule` read the `harnesses` section strictest
   scope first. The engine's order is proved in every order the three levels
   are given.
-- `agent_shield.saas` (§6.7, decisions 10 and 11): `ManagedPolicies` pulls
+- `agent_shield.saas`: `ManagedPolicies` pulls
   the documents of an account from IAM (`GET
   /mcp-policies/shield/accounts/{account_uid}`, `IamPolicySource`), keeps
   them until their `expires`, takes one pushed over a socket, and polls while
   a watcher runs (30 s); **fail closed** — with IAM unreachable and no
   unexpired copy, `PolicyUnavailable` names IAM in a sentence.
 - The proxy: `replace_policies` (a changed set in force at once in every open
-  session, the session's own rules kept), `refuse_all` (decision 11 while
+  session, the session's own rules kept), `refuse_all` (while
   running), `add_session_rule` / `remove_session_rule` / `rules_in_force`
   (a person tightening a running session; a rule that would permit more
   than the organization's documents refused with the sentences),
@@ -238,13 +242,13 @@ The audit side of SHIELD.md Phase 2 (SH-34, SH-51, 15 October 2026):
 
 ## 0.1.1
 
-The package made real (SHIELD.md Phase 0: SH-07, SH-02, SH-08, SH-09, SH-04).
+The package made real (Phase 0: SH-07, SH-02, SH-08, SH-09, SH-04).
 
 - `agent_shield.policy`: the policy document (one schema, published as
   `schema/policy.schema.json`), the six classes of STUDIO F-10, three scopes
   strictest first, *first decision wins*, stateful limits with soft and hard
   thresholds, `decide(action, context, policies) -> Decision` pure and tested;
-  the default policy of decision 5.
+  the default policy.
 - `agent_shield.register`: the harness register read from spec-shaped
   documents, with `claude-code`, `codex`, `gemini-cli`, `goose`, `opencode`
   and `openhands`, each with its terms, credential kind, pinned version and

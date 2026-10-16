@@ -4,7 +4,7 @@
 
 """Datalayer Agent Shield: a runtime firewall for every agent.
 
-The engine of the Shield (SHIELD.md §5.1): ``policy`` decides, ``acp`` runs
+The engine of the Shield: ``policy`` decides, ``acp`` runs
 an ACP agent behind the Shield and answers its files and terminals against
 the workspace, ``audit`` writes every action, ``register`` says which
 harnesses are served and on what terms, ``cli`` is ``agent-shield``.

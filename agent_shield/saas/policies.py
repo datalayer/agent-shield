@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield's policy, pulled from IAM and honoured until it expires (SHIELD §6.7, decisions 10 and 11).
+"""The Shield's policy, pulled from IAM and honoured until it expires.
 
 IAM serves one document per scope at ``/mcp-policies/{scope}/{subject_uid}``,
 its ``shield`` part the policy document of :mod:`agent_shield.policy`, and
@@ -37,7 +37,7 @@ from agent_shield.policy import Policy, PolicyRefused, parse_policy
 
 logger = logging.getLogger(__name__)
 
-#: How often a Shield that holds no socket asks IAM again (§6.7: polled otherwise).
+#: How often a Shield that holds no socket asks IAM again (polled otherwise).
 POLL_SECONDS = 30.0
 
 #: IAM's route for an account's documents, under its API prefix.

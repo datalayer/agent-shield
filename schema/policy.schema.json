@@ -119,7 +119,7 @@
         },
         "credentials": {
           "default": "account",
-          "description": "Whose key runs a harness: the account's own declared secret (decision 3), the platform's, or either.",
+          "description": "Whose key runs a harness: the account's own declared secret, the platform's, or either.",
           "enum": [
             "account",
             "platform",
@@ -476,7 +476,7 @@
         }
       ],
       "default": null,
-      "description": "When a pulled copy stops being honoured (decision 11).",
+      "description": "When a pulled copy stops being honoured.",
       "title": "Expires"
     },
     "harnesses": {

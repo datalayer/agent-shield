@@ -2,10 +2,10 @@
 #
 # BSD 3-Clause License
 
-"""Conformance: a standard's controls answered from the Shield's evidence (SHIELD §6.9, SH-61).
+"""Conformance: a standard's controls answered from the Shield's evidence (SH-61).
 
 A standard is a spec of agentspecs' ``standards/`` catalogue (``aiuc-1``
-first, decision 15; ``iso-42001`` through its crosswalk, SH-66). For each
+first; ``iso-42001`` through its crosswalk, SH-66). For each
 control the **evidence map** (:mod:`agent_shield.conformance.map`) says which
 evidence kinds it takes, which **collectors** read that evidence
 (:mod:`agent_shield.conformance.collect` — the policy document in force and
@@ -46,7 +46,7 @@ from agent_shield.policy import Policy
 
 Status = Literal["met", "partly", "organizations", "third_party", "not_applicable"]
 
-#: Each status in the words of §6.9.
+#: Each status in the report's words.
 STATUS_WORDS: dict[str, str] = {
     "met": "met by evidence",
     "partly": "partly met",
@@ -284,7 +284,7 @@ class Assessment:
         }
 
 
-#: The sentence on every report's first page (§6.9): the Shield evidences, it never certifies.
+#: The sentence on every report's first page: the Shield evidences, it never certifies.
 DISCLAIMER = (
     "This report evidences: it collects, for each control of the standard, what Datalayer's Shield can "
     "show of this deployment, says what is met by evidence, what is partly met and what is missing, what "

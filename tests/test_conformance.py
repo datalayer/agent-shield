@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The conformance table (SHIELD §6.3, SH-35): the same action, the same answer whichever way it came.
+"""The conformance table (SH-35): the same action, the same answer whichever way it came.
 
 An action reaches the Shield over one of five faces — MCP through the gateway,
 A2A, ACP, AG-UI, the embed — and each face builds the same :class:`Action` for

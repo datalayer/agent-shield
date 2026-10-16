@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Managed from the SaaS: pulled from IAM, cached until it expires, fail closed (SHIELD §6.7, SH-50)."""
+"""Managed from the SaaS: pulled from IAM, cached until it expires, fail closed (SH-50)."""
 
 from __future__ import annotations
 
