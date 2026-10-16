@@ -10,7 +10,7 @@
  * `npm run generate` writes it; `npm test` regenerates and refuses a drift (SHIELD SH-53).
  */
 /**
- * The classes that need an authorizer's allow beside the Rules (SHIELD §6.11): a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy.
+ * The classes that need an authorizer's allow beside the Rules: a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy.
  */
 export type Authorize = ('read' | 'write' | 'send' | 'buy' | 'delete' | 'execute')[];
 export type Url = string;
@@ -120,7 +120,7 @@ export interface AgentShieldPolicy {
   version?: Version;
 }
 /**
- * ``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone).
+ * ``authorizer:`` in a policy document: exactly one decision point (standalone).
  */
 export interface AuthorizerConfig {
   authzen?: AuthZenAuthorizerConfig | null;
@@ -160,14 +160,14 @@ export interface OpenFgaAuthorizerConfig {
   url: Url2;
 }
 /**
- * The harnesses an organization admits, and whose credentials run them (§6.7).
+ * The harnesses an organization admits, and whose credentials run them.
  */
 export interface Harnesses {
   admit?: Admit;
   credentials?: Credentials;
 }
 /**
- * The stateful limits of a session (SHIELD §6.3).
+ * The stateful limits of a session.
  *
  * Three count the harness's actions; two count what its model costs: the
  * **model budget** in tokens and the **spend** in credits (the deployment's

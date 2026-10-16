@@ -457,7 +457,7 @@ AUTHORIZER_KINDS = ("local", "openfga", "authzen", "opa")
 
 
 class AuthorizerConfig(_Strict):
-    """``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone)."""
+    """``authorizer:`` in a policy document: exactly one decision point (standalone)."""
 
     local: LocalAuthorizerConfig | None = None
     openfga: OpenFgaAuthorizerConfig | None = None

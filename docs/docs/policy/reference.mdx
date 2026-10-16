@@ -16,7 +16,7 @@ One policy document, one scope.
 
 | Field | Type | Required | What it says |
 |---|---|---|---|
-| `authorize` | list of `read` \| `write` \| `send` \| `buy` \| `delete` \| `execute` | no | The classes that need an authorizer's allow beside the Rules (SHIELD §6.11): a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy. |
+| `authorize` | list of `read` \| `write` \| `send` \| `buy` \| `delete` \| `execute` | no | The classes that need an authorizer's allow beside the Rules: a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy. |
 | `authorizer` | AuthorizerConfig or null | no | The decision point a standalone Shield asks: local (grants in this file), openfga &#123;url, store, model&#125; or authzen &#123;url&#125;. On Datalayer the authorizer is IAM's and a managed document names none. |
 | `expires` | string or null | no | When a pulled copy stops being honoured (decision 11). |
 | `harnesses` | Harnesses | no |  |
@@ -36,7 +36,7 @@ One policy document, one scope.
 
 ## AuthorizerConfig
 
-``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone).
+``authorizer:`` in a policy document: exactly one decision point (standalone).
 
 | Field | Type | Required | What it says |
 |---|---|---|---|
@@ -57,7 +57,7 @@ One line of the ``local`` authorizer: who may do what to what, as patterns (fnma
 
 ## Harnesses
 
-The harnesses an organization admits, and whose credentials run them (§6.7).
+The harnesses an organization admits, and whose credentials run them.
 
 | Field | Type | Required | What it says |
 |---|---|---|---|
@@ -66,7 +66,7 @@ The harnesses an organization admits, and whose credentials run them (§6.7).
 
 ## Limits
 
-The stateful limits of a session (SHIELD §6.3).
+The stateful limits of a session.
 
 Three count the harness's actions; two count what its model costs: the
 **model budget** in tokens and the **spend** in credits (the deployment's

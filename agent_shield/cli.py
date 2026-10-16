@@ -837,7 +837,7 @@ def _managed_loaded(managed, registration: Registration) -> list[LoadedPolicy]:
         raise RegistrationRefused(
             f"IAM at {registration.iam_url} serves no Shield document for service agent {registration.agent_uid}: "
             "its organization has written none, or IAM does not answer a service agent's organization yet; "
-            "with no document nothing is decided (SHIELD decision 11), so the Shield does not start"
+            "with no document nothing is decided, so the Shield does not start"
         )
     return [LoadedPolicy(policy=item, origin=f"IAM {registration.iam_url}") for item in pulled]
 

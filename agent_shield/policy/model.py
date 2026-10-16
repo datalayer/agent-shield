@@ -93,7 +93,7 @@ class Threshold(_Strict):
 
 
 class Limits(_Strict):
-    """The stateful limits of a session (SHIELD §6.3).
+    """The stateful limits of a session.
 
     Three count the harness's actions; two count what its model costs: the
     **model budget** in tokens and the **spend** in credits (the deployment's
@@ -155,7 +155,7 @@ Credentials = Literal["account", "platform", "either"]
 
 
 class Harnesses(_Strict):
-    """The harnesses an organization admits, and whose credentials run them (§6.7)."""
+    """The harnesses an organization admits, and whose credentials run them."""
 
     admit: list[str] = Field(
         default_factory=list,
@@ -183,7 +183,7 @@ class Policy(_Strict):
     authorize: list[ActionClass] = Field(
         default_factory=list,
         description=(
-            "The classes that need an authorizer's allow beside the Rules (SHIELD §6.11): a deny wins over any "
+            "The classes that need an authorizer's allow beside the Rules: a deny wins over any "
             "Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents "
             "name read, write, execute, send and buy."
         ),

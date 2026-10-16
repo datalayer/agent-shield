@@ -92,7 +92,7 @@ def _parse_served(data: Any, where: str) -> ServedPolicies:
         if document.get("authorizer") is not None:
             raise PolicyRefused(
                 f"{where}: the {document.get('scope', '?')} document names an authorizer; on Datalayer the "
-                "authorizer is IAM's (OpenFGA through IAM, SHIELD §6.11) and a managed document names none"
+                "authorizer is IAM's (OpenFGA through IAM) and a managed document names none"
             )
         policy = parse_policy(document, where)
         if policy.expires is None:
@@ -182,7 +182,7 @@ class ManagedPolicies:
         held = f"its copy expired at {self.kept.expires.isoformat()}" if self.kept is not None else "it holds no copy"
         return (
             f"The Shield cannot read its policy from {self.source.where} ({reason}) and {held}: "
-            f"no unexpired policy is held, so nothing is decided (SHIELD decision 11)"
+            f"no unexpired policy is held, so nothing is decided"
         )
 
     def pull(self) -> list[Policy]:

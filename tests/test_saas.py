@@ -86,7 +86,7 @@ def test_iam_unreachable_with_no_unexpired_copy_fails_closed_in_a_sentence_namin
         managed.pull()
     assert str(refused.value) == (
         "The Shield cannot read its policy from IAM at https://iam.test (IAM at https://iam.test could not be reached "
-        "(timed out)) and it holds no copy: no unexpired policy is held, so nothing is decided (SHIELD decision 11)"
+        "(timed out)) and it holds no copy: no unexpired policy is held, so nothing is decided"
     )
     clock = Clock()
     managed = ManagedPolicies(

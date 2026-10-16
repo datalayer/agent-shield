@@ -323,7 +323,7 @@ The authorizer port (SHIELD §6.11, SH-74): *may this principal act on this obje
 - `OpenFgaAuthorizerConfig`
 - `AuthZenAuthorizerConfig`
 - `OpaAuthorizerConfig`
-- `AuthorizerConfig` — ``authorizer:`` in a policy document: exactly one decision point (§6.11, standalone).
+- `AuthorizerConfig` — ``authorizer:`` in a policy document: exactly one decision point (standalone).
 
 ## `agent_shield.policy.classify`
 
@@ -380,10 +380,10 @@ The policy document: one schema, three scopes, first decision wins.
 
 - `Rule` — One line of a policy: what it matches and what it decides.
 - `Threshold` — A soft threshold asks once; a hard one refuses each call that would cross it.
-- `Limits` — The stateful limits of a session (SHIELD §6.3).
+- `Limits` — The stateful limits of a session.
 - `Network` — What the agent may reach over the network, through the Shield.
 - `Mcp` — The MCP servers the agent is lent, by name; everything else is cut from session/new.
-- `Harnesses` — The harnesses an organization admits, and whose credentials run them (§6.7).
+- `Harnesses` — The harnesses an organization admits, and whose credentials run them.
 - `Policy` — One policy document, one scope.
 - `Action` — What the agent wants to do, as the engine sees it.
 - `Decision` — What the engine answered, and from where.
