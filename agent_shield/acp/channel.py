@@ -305,6 +305,44 @@ class StdioACPChannel(ConnectionChannel):
         super().__init__(connection)
         self.process = process
 
+    async def _answered(self, method: str, waiting: Awaitable[Any]) -> Any:
+        """The answer, or `ChannelRefused` as soon as the agent's process ends without one.
+
+        The SDK's requests wait for an answer for ever: an agent that exited (a
+        command refused, no policy, a crash) would leave the caller waiting its own
+        timeout. A dead agent fails at once, in a sentence naming its exit code.
+        """
+        answer = asyncio.ensure_future(waiting)
+        exited = asyncio.ensure_future(self.process.wait())
+        try:
+            done, _ = await asyncio.wait({answer, exited}, return_when=asyncio.FIRST_COMPLETED)
+            if answer in done:
+                return answer.result()
+            # The answer may have been read just before the end of the stream.
+            await asyncio.sleep(0)
+            if answer.done():
+                return answer.result()
+            answer.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await answer
+            raise ChannelRefused(
+                f"the agent exited (code {self.process.returncode}) before answering {method}"
+            )
+        finally:
+            if not exited.done():
+                exited.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await exited
+
+    async def request(self, method: str, params: Mapping[str, Any] | None = None) -> Any:
+        return await self._answered(method, super().request(method, params))
+
+    async def _request_model(self, method: str, params: Any, model: type) -> Any:
+        return await self._answered(method, super()._request_model(method, params, model))
+
+    async def _request_model_from_dict(self, method: str, params: Any, model: type) -> Any:
+        return await self._answered(method, super()._request_model_from_dict(method, params, model))
+
     @classmethod
     @asynccontextmanager
     async def launch(

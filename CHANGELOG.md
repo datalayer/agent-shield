@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.2
+
+- A stdio agent that exits before answering fails the request at once, `ChannelRefused` naming its exit code (*the agent exited (code 3) before answering initialize*), where the SDK's request waited for ever and the caller its own timeout — found by SHIELD SH-45's drill (`agent-shield run` with no policy exits).
+
 ## 0.2.1
 
 - `serve` reads a binary WebSocket frame as UTF-8 NDJSON, a message a line — what marimo's agents panel writes (use-acp's ndJsonStream): marimo's panel stayed on *Initializing agent…* against 0.2.0, and completes a shielded turn with this (SHIELD SH-49).

@@ -203,3 +203,16 @@ async def test_the_websocket_channel_speaks_the_same_interface(tmp_path: Path):
             session = await channel.new_session(tmp_path)
             turn = await channel.prompt(session.session_id, [text_block("please edit")])
             assert turn.stop_reason == "end_turn" and handler.permissions == ["Edit hello.txt"]
+
+
+async def test_an_agent_that_exits_fails_the_request_at_once_not_at_a_timeout(tmp_path: Path):
+    """SH-45's finding: `agent-shield run` with no policy exits, and the caller waited its
+    request timeout. A dead agent is a refusal naming its exit code, at once."""
+    dead = tmp_path / "dead.py"
+    dead.write_text("import sys\nsys.stderr.write('no policy\\n')\nsys.exit(3)\n")
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    async with StdioACPChannel.launch(Handler(), sys.executable, str(dead), cwd=tmp_path, stderr=lambda line: None) as channel:
+        with pytest.raises(ChannelRefused, match=r"the agent exited \(code 3\) before answering initialize"):
+            await asyncio.wait_for(channel.initialize(), timeout=20)
+    assert loop.time() - started < 10
