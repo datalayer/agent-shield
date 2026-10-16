@@ -6,6 +6,11 @@
 
 # Changelog
 
+## 0.2.6
+
+- The registered standalone proxy lends PAP (SHIELD §6.10, SH-73): `agent-shield run --pap <company> -- <agent>` lends the gateway's `pap` toolset at that company as the MCP server `pap_<domain>` (`?only=pap&pap-company=<domain>` on `$DATALAYER_MCP_SERVER_URL`, else `https://mcp.datalayer.run/mcp`), reached with the registered Shield's own token — made at each session, so a token near its end is exchanged first, and written nowhere. It is held to the policy's `mcp.allow` like any lent server, so a flag never lends what the policy does not; local-only, or not allowed, `run` refuses before the agent starts, in a sentence. The harness's own fetch to that company is refused. `ShieldProxy(own_servers=…)`, `registration.pap_servers`, `pap_server_name`; `test_pap_standalone.py` (5).
+- The docs site's generated pages at the package's version, the register page listing the *listed* tier, and no *Not built* line naming a built part.
+
 ## 0.2.5
 
 - The Shield section of the conformance report says **what changed since the last report** (SHIELD §6.5, SH-36): `build_report(..., previous=<the last report's JSON>)` — the policies by level (new, gone, its version, its rules, its limits), a scope newly permitting more than the organization, the Validate gate, each count that moved (decisions, decided by, answers, limits reached), the coding agent; *No earlier report to compare with* without one, *Nothing changed since the last report* when nothing did. In the JSON (`shield.changed`) and the Markdown and Lexical exports. Tests in `test_conformance_map.py`.
