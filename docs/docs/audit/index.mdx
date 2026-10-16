@@ -35,4 +35,4 @@ Every string of a row goes through `agent_shield.audit.redact` before it is writ
 
 Each prompt is a span (`agent_shield.tracing.turn_span`) under whatever span is current — the face's request on a Datalayer runtime —, each row an event of it after redaction, and four counts carry the labels `harness`, `deployment` and `usage_account_uid`: `shield.actions`, `shield.decisions`, `shield.refusals`, `shield.limits`. The W3C trace context is handed to the harness in the prompt's `_meta.traceparent`, the key ACP reserves, and to a lent MCP server as headers. A registered standalone Shield exports all of it to Datalayer's observability with its token (`agent_shield.tracing.configure_export`); without the OpenTelemetry SDK nothing is exported and the Shield keeps deciding.
 
-**Built:** the rows, the redaction, the span events and counts, the export. **Not built:** the Shield report reading its numbers from the dashboard (SH-36).
+**Built:** the rows, the redaction, the span events and counts, the export. **Not built:** the Shield report reading its numbers from the dashboard (SH-51); the report reads the record today.

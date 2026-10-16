@@ -25,4 +25,4 @@ The [Python reference](python) is generated from the package's docstrings: every
 - The report document's renderer: `readConformanceReport`, `renderReportMarkdown`, `renderReportHtml`, `controlsByStatus`, `STATUSES`, `STATUS_WORDS`.
 - `schema/policy.schema.json` exported.
 
-**Built:** everything above, at the package's version. **Not built:** `@datalayer/agent-shield` is not on npm yet (the scaffold's 1.1.3 holds `latest` until it is unpublished), so agent-runtimes' dependency on it waits.
+**Built:** everything above, at the package's version. On npm as `@datalayer/agent-shield` (0.2.5 is `latest`). **Not built:** agent-runtimes still reads the sibling checkout rather than the npm package (SHIELD SH-53).

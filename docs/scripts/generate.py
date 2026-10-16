@@ -126,8 +126,9 @@ def register_table() -> str:
         "register `agent-shield harnesses` prints and `agent-shield setup` installs from.",
         "",
         "**Built:** the catalogue and the register come from agentspecs; `agent-shield setup --harness <id>` installs "
-        "the pinned adapter of any npm-packaged one. **Not built:** the long tail of ACP agents beyond this table "
-        "is a register tier listed on request (SHIELD SH-57).",
+        "the pinned adapter of any npm-packaged one; the long tail of ACP agents is registered *listed* below, "
+        "with its terms, and refused by `setup` and `run` until drilled (SHIELD SH-57). **Not built:** a listed "
+        "agent drilled and moved to the catalogue (none yet).",
         "",
         "| Harness | Adapter | Pinned | Credential | Third parties | Licence | Needs |",
         "|---|---|---|---|---|---|---|",
@@ -154,7 +155,33 @@ def register_table() -> str:
         out.append("")
         out.append(f"Read at {entry.terms_source} and {entry.licence_source}.")
         out.append("")
+    out += listed_section()
     return "\n".join(out)
+
+
+def listed_section() -> list[str]:
+    """The register's *listed* tier (SH-57): registered with its terms, offered by nothing until drilled."""
+    from agentspecs.harnesses import LISTED_HARNESSES, LISTED_NOT_DRILLED  # noqa: PLC0415
+
+    out = [
+        "## Listed, not drilled yet",
+        "",
+        "Every other agent of the Agent Client Protocol's agents page, registered with its documented command, its "
+        "licence, its terms and the credential it takes. Nothing offers them: `agent-shield setup` and `run` refuse "
+        f"each one as *{LISTED_NOT_DRILLED}* until it is drilled and moved to the catalogue above.",
+        "",
+        "| Agent | Command | Credential | Third parties | Licence |",
+        "|---|---|---|---|---|",
+    ]
+    for harness_id, entry in sorted(LISTED_HARNESSES.items()):
+        served = getattr(entry.served_to_third_parties, "value", entry.served_to_third_parties)
+        command = f"`{entry.command}`" if entry.command else "not documented"
+        out.append(
+            f"| **{_escape(entry.name)}** (`{harness_id}`) | {command} | {_escape(entry.credential)} | `{served}` | "
+            f"{_escape(entry.licence)} |"
+        )
+    out.append("")
+    return out
 
 
 def rolled_section(pinned: dict[str, str]) -> list[str]:
