@@ -112,8 +112,10 @@ pulls its policies from IAM, fails closed without them, and exports its spans
 and counts to Datalayer's observability with that token. What a standalone
 Shield cannot have — the operator's network boundary and the companion's
 mounts, a Datalayer runtime's — is said in a sentence by `setup` and
-`policy show`; PAP is available once registered and said unavailable while
-local-only.
+`policy show`; PAP is said unavailable while local-only, and once registered
+`agent-shield run --pap <company> -- <agent>` lends the gateway's PAP toolset
+at that company with the Shield's own token, when the policy's `mcp.allow`
+names `pap_<company>`.
 
 ## The policy
 

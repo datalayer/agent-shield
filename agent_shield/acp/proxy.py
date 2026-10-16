@@ -309,6 +309,7 @@ class ShieldProxy:
         subject: Subject | None = None,
         tool_class: ToolClass | None = None,
         companies: Sequence[str] = (),
+        own_servers: Callable[[], Sequence[Any]] | None = None,
     ) -> None:
         if not command and not connect_url:
             raise ProxyRefused("no agent command: `agent-shield run -- <command>`")
@@ -317,6 +318,10 @@ class ShieldProxy:
         #: connects through PAP (§6.10): a fetch to one is refused.
         self.tool_class = tool_class
         self.companies = tuple(companies)
+        #: The MCP servers the Shield lends itself, made at each session (SH-73:
+        #: a registered Shield's PAP toolsets, with its token as it is then),
+        #: beside the client's and held to the same allow-list.
+        self.own_servers = own_servers
         #: The authorizer (§6.11): the one given (IAM's on Datalayer, SH-75), else the one the
         #: strictest policy names under ``authorizer:``; none leaves every class a policy lists
         #: under ``authorize:`` refused. Allows are cached once per proxy, until they expire.
@@ -553,6 +558,18 @@ class ShieldProxy:
         self.sessions[session_id] = session
         return session
 
+    def _with_own(self, mcp_servers: Sequence[Any]) -> list[Any]:
+        """The client's servers and the Shield's own; a name the client already lends is the Shield's."""
+        from agent_shield.registration import RegistrationRefused
+
+        try:
+            own = list(self.own_servers()) if self.own_servers is not None else []
+        except RegistrationRefused as exc:
+            self.audit.write("refusal", sentence=str(exc), by="shield")
+            raise RequestError(REFUSED, str(exc)) from None
+        names = {getattr(server, "name", None) for server in own}
+        return [server for server in mcp_servers if getattr(server, "name", None) not in names] + own
+
     def _lend(self, mcp_servers: Sequence[Any], session_id: str | None, credential: str | None = None) -> list[Any]:
         kept, cut = lend_mcp_servers(mcp_servers, self.policies)
         if credential is not None:
@@ -589,7 +606,7 @@ class ShieldProxy:
         # The execution's credential, never the agent's (SH-33): withheld from
         # the `_meta` it is handed, the lent servers' authority instead.
         meta, credential = take_credential(kwargs)
-        lent = self._lend(mcp_servers, None, credential)
+        lent = self._lend(self._with_own(mcp_servers), None, credential)
         answer = await self.channel.new_session(workspace.root, lent, meta=meta)
         session = self._open(answer.session_id, workspace)
         session.lent_credential = fingerprint(credential) if credential is not None else None
@@ -606,7 +623,7 @@ class ShieldProxy:
     async def load_session(self, cwd: str, mcp_servers: list, session_id: str, **kwargs: Any):
         workspace = self._workspace_for(cwd)
         _, credential = take_credential(kwargs)
-        lent = self._lend(mcp_servers, session_id, credential)
+        lent = self._lend(self._with_own(mcp_servers), session_id, credential)
         session = self._open(session_id, workspace)
         session.lent_credential = fingerprint(credential) if credential is not None else None
         answer = await self.channel.load_session(session_id, workspace.root, lent)

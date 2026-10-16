@@ -20,14 +20,18 @@ neither it nor the token is ever printed.
 What a registered standalone Shield **cannot** have is said in one sentence
 (:func:`cannot_have`): the operator's network boundary and the companion's
 mounts are a Datalayer runtime's, and nothing here pretends to them. PAP
-(§6.10) is available once registered and said unavailable while local-only
-(:func:`pap_sentence`); lending it is SH-72's, not this module's.
+(§6.10) is said unavailable while local-only (:func:`pap_sentence`); once
+registered, ``run --pap <company>`` lends the gateway's ``pap`` toolset at
+that company (:func:`pap_servers`), reached with the registered Shield's own
+token, exchanged again as it nears its end — the gateway's custody and
+identity, never a company's key here.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -47,6 +51,10 @@ KEY_ENV = "AGENT_SHIELD_SERVICE_KEY"
 TOKEN_PATH = "/api/iam/v1/oauth/token"  # noqa: S105 - a path, not a secret
 #: The default IAM, and where the telemetry goes when nothing else is said.
 DEFAULT_IAM_URL = "https://prod1.datalayer.run"
+#: Datalayer's MCP gateway, where a registered Shield's PAP toolsets are lent from.
+DEFAULT_GATEWAY_URL = "https://mcp.datalayer.run/mcp"
+#: The environment variable naming another gateway.
+GATEWAY_ENV = "DATALAYER_MCP_SERVER_URL"
 #: A token this close to its end is exchanged again before use.
 RENEW_MARGIN = timedelta(seconds=120)
 
@@ -69,7 +77,10 @@ def cannot_have() -> str:
 def pap_sentence(registered: bool) -> str:
     """PAP through the Shield (§6.10, SH-73): once registered, said unavailable while local-only."""
     if registered:
-        return "PAP: available once an application lends it through the gateway (SH-72); the Shield is registered."
+        return (
+            "PAP: available — `run --pap <company>` lends the gateway's pap toolset at that company, reached "
+            "with this Shield's registered token; the policy's mcp.allow names it (pap_<company>)."
+        )
     return (
         "PAP: unavailable while local-only — a personal agent reaches a company through Datalayer's gateway and "
         "custody; `agent-shield setup --register` offers it."
@@ -216,6 +227,47 @@ class Registration:
         }
 
 
+def pap_server_name(company: str) -> str:
+    """A company's server as the runtime names it: ``pap_`` and its domain in plain characters."""
+    name = re.sub(r"[^a-z0-9]+", "_", f"pap_{company.strip().lower()}").strip("_")
+    if name == "pap":
+        raise RegistrationRefused("a company is named by its domain, e.g. `--pap manzanita.examples.datalayer.run`")
+    return name
+
+
+def pap_servers(
+    registration: Registration | None,
+    companies: list[str] | tuple[str, ...],
+    *,
+    gateway_url: str = "",
+    now: datetime | None = None,
+) -> list[Any]:
+    """The gateway's ``pap`` toolset at each company, lent with the registered Shield's token.
+
+    Made at each session, so a token near its end is exchanged first. Refused
+    in :func:`pap_sentence`'s words while local-only.
+    """
+    if not companies:
+        return []
+    if registration is None:
+        raise RegistrationRefused(pap_sentence(False))
+    from acp.schema import HttpHeader, HttpMcpServer
+
+    gateway = (gateway_url or os.environ.get(GATEWAY_ENV) or DEFAULT_GATEWAY_URL).rstrip("/")
+    if not gateway.startswith(("https://", "http://")):
+        raise RegistrationRefused(f"the gateway {gateway!r} is not an http(s) address")
+    token = registration.fresh_token(now=now)
+    return [
+        HttpMcpServer(
+            type="http",
+            name=pap_server_name(company),
+            url=f"{gateway}?only=pap&pap-company={urllib.parse.quote(company.strip().lower(), safe='')}",
+            headers=[HttpHeader(name="Authorization", value=f"Bearer {token}")],
+        )
+        for company in companies
+    ]
+
+
 def register(
     *,
     org_uid: str,
@@ -250,7 +302,9 @@ def register(
 __all__ = [
     "CANNOT_HAVE",
     "CREDENTIALS_FILE",
+    "DEFAULT_GATEWAY_URL",
     "DEFAULT_IAM_URL",
+    "GATEWAY_ENV",
     "KEY_ENV",
     "RENEW_MARGIN",
     "TOKEN_PATH",
@@ -258,5 +312,7 @@ __all__ = [
     "RegistrationRefused",
     "cannot_have",
     "pap_sentence",
+    "pap_server_name",
+    "pap_servers",
     "register",
 ]

@@ -148,7 +148,7 @@ def test_a_loose_credentials_file_is_not_read(iam: str, shield_home: Path):
 def test_the_sentences():
     assert "cannot have the operator's network boundary" in cannot_have()
     assert "unavailable while local-only" in pap_sentence(False) and "setup --register" in pap_sentence(False)
-    assert "available once" in pap_sentence(True)
+    assert "`run --pap <company>`" in pap_sentence(True) and "registered token" in pap_sentence(True)
 
 
 def test_setup_register_reads_the_key_from_the_environment_and_policy_show_says_so(
@@ -164,13 +164,13 @@ def test_setup_register_reads_the_key_from_the_environment_and_policy_show_says_
     assert "registered with Datalayer: organization org-1, service agent agent-1" in result.output
     assert KEY not in result.output and TOKEN_ONE not in result.output
     assert "cannot have the operator's network boundary" in result.output
-    assert "PAP: available once" in result.output
+    assert "PAP: available" in result.output
     assert Config.load(shield_home).data["registered"] is True
     shown = runner.invoke(app, ["policy", "show"])
     assert shown.exit_code == 0, shown.output
     assert "registration: organization org-1, service agent agent-1" in shown.output
     assert "token held until" in shown.output and KEY not in shown.output and TOKEN_ONE not in shown.output
-    assert "PAP: available once" in shown.output
+    assert "PAP: available" in shown.output
     # The key named by another variable, and a missing one, each said.
     monkeypatch.delenv(KEY_ENV)
     refused = runner.invoke(

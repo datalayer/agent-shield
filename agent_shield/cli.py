@@ -31,8 +31,9 @@ import subprocess
 import sys
 import time
 import urllib.request
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import typer
 
@@ -158,6 +159,11 @@ def run(
         [], "--env", help="An environment variable name to pass to the agent, besides its declared secrets."
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Pass the agent's stderr through and log at DEBUG."),
+    pap: list[str] = typer.Option(
+        [],
+        "--pap",
+        help="A company (its domain) to lend the gateway's PAP toolset at; registered Shields only (repeatable).",
+    ),
 ) -> None:
     """Run an ACP agent behind the Shield: `agent-shield run -- claude-agent-acp`."""
     from agent_shield.acp.proxy import ProxyRefused, ShieldProxy, serve_stdio, stderr_passthrough
@@ -178,8 +184,10 @@ def run(
     except PolicyRefused as exc:
         refuse(str(exc))
     command, entry = _resolve_command(command, config)
+    own_servers = _pap_lending(pap, [item.policy for item in loaded])
     say(
         f"agent-shield {__version__}: {' '.join(command)} behind the Shield; policy {policy_path}; audit {audit or home() / AUDIT_FILE}"
+        + (f"; PAP lent at {', '.join(pap)}" if pap else "")
     )
     try:
         proxy = ShieldProxy(
@@ -190,10 +198,47 @@ def run(
             agent_env=_agent_environment(entry, env),
             agent_stderr=stderr_passthrough if verbose else None,
             subject=_local_subject(),
+            companies=[company.strip().lower() for company in pap],
+            own_servers=own_servers,
         )
     except (ProxyRefused, ValueError) as exc:
         refuse(str(exc))
     asyncio.run(serve_stdio(proxy))
+
+
+def _pap_lending(companies: list[str], policies: list) -> Callable[[], Sequence[Any]] | None:
+    """What lends the gateway's PAP toolsets (SH-73), or ``None``; refused before the agent starts.
+
+    Local-only, PAP is refused in :func:`pap_sentence`'s words; registered, each
+    company's server must be named on the strictest policy's ``mcp.allow`` —
+    a flag never lends what the policy does not.
+    """
+    if not companies:
+        return None
+    from types import SimpleNamespace
+
+    from agent_shield.acp.proxy import lend_mcp_servers
+    from agent_shield.registration import (
+        RegistrationRefused,
+        pap_sentence,
+        pap_server_name,
+        pap_servers,
+    )
+
+    registration = _registration_or_none()
+    if registration is None:
+        refuse(pap_sentence(False))
+    try:
+        names = [pap_server_name(company) for company in companies]
+    except RegistrationRefused as exc:
+        refuse(str(exc))
+    _, cut = lend_mcp_servers([SimpleNamespace(name=name) for name in names], policies)
+    if cut:
+        refuse(
+            f"PAP at {', '.join(cut)} is not on the policy's mcp.allow list: the policy names it, "
+            "or the Shield does not lend it"
+        )
+    return lambda: pap_servers(registration, companies)
 
 
 # -- setup -----------------------------------------------------------------------------------
