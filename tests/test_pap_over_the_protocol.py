@@ -137,6 +137,9 @@ async def test_a_personal_agent_s_exchange_is_held_for_review_released_by_a_pers
         tenant_id=TENANT,
         pairwise_user_id=PAIRWISE,
         session_id=session.session_id,
+        # PAP draft 0.2 §4.6: the link is shown only on the company's hosts, named with it.
+        organization=company.document.organization,
+        poppy_domains=metadata.poppy_domains,
     )
     await service.approve_device(started.user_code, account_id="acct_ada")
     clock.advance(started.poll_interval)

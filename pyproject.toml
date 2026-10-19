@@ -75,7 +75,8 @@ openhands = ["datalayer-agent-shield[register]"]
 all = ["datalayer-agent-shield[websocket,serve,otel,register,pap]"]
 test = [
   "agentspecs>=0.0.107",
-  "personal-agent-protocol>=0.24",
+  # 0.25: PAP draft 0.2 (Device Sign-In names the company), which the PAP tests use.
+  "personal-agent-protocol>=0.25",
   # tests/test_cli.py reads pyproject.toml; tomllib is 3.11+.
   "tomli>=2; python_version < '3.11'",
   "pytest>=7.0",
