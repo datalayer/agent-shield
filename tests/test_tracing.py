@@ -112,3 +112,47 @@ def test_the_catalogue_names_what_a_count_carries():
     assert set(tracing.CATALOGUE) == {"shield.actions", "shield.decisions", "shield.refusals", "shield.limits"}
     for labels in tracing.CATALOGUE.values():
         assert {"harness", "deployment", "usage_account_uid"} <= set(labels)
+
+
+async def test_each_proxied_prompt_is_a_turn_span(recording, tmp_path: Path):
+    """A Shield in front of an agent sends each prompt as a `shield.turn` span, with how it stopped."""
+    import sys
+
+    pytest.importorskip("aiohttp", reason="`serve` needs the serve extra")
+    pytest.importorskip("websockets", reason="the WebSocket channel needs the websocket extra")
+    from acp import text_block
+
+    from agent_shield.acp import WebSocketACPChannel
+    from agent_shield.acp.proxy import ShieldProxy
+    from agent_shield.acp.server import ACP_PATH, ShieldServer
+    from agent_shield.policy import LoadedPolicy, default_policy
+
+    exporter, _ = recording
+    fake = str(Path(__file__).parent / "fixtures" / "fake_agent.py")
+    audit = AuditLog(tmp_path / "audit.jsonl", environment={})
+
+    def make() -> ShieldProxy:
+        return ShieldProxy(
+            [sys.executable, fake],
+            policies=[LoadedPolicy(policy=default_policy(), origin="the default")],
+            audit=audit,
+            workspace=tmp_path,
+        )
+
+    class Client:
+        async def session_update(self, session_id, update, **kw):
+            return None
+
+    served = ShieldServer({"": make}, audit=audit, idle_seconds=5.0)
+    await served.start("127.0.0.1", 0)
+    try:
+        async with WebSocketACPChannel.connect(Client(), f"ws://127.0.0.1:{served.port}{ACP_PATH}") as channel:
+            await channel.initialize()
+            session = await channel.new_session(tmp_path)
+            await channel.prompt(session.session_id, [text_block("hello")])
+    finally:
+        await served.stop()
+    turns = [span for span in exporter.get_finished_spans() if span.name == "shield.turn"]
+    assert len(turns) == 1
+    assert turns[0].attributes["shield.stop_reason"] == "end_turn"
+    assert {event.name for event in turns[0].events} >= {"shield.turn"}

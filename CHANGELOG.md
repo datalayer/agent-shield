@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.9
+
+- Each prompt through the Shield is a `shield.turn` span with how it stopped (`shield.stop_reason`), the turn's own rows its events: a registered `serve` or `run` now exports its turns to Datalayer's observability, beside the counts it already sent.
+
 ## 0.2.8
 
 - A harness that writes with its own tool (Claude Code's Write and Edit: the diff shown, then a permission asked, never `fs/write_text_file`) is held to `bytes_written`: the permission is decided with the size of the diff the tool call carries, or the one its earlier update showed; an allowed write counts toward the limit, and a write over the hard limit is refused in its sentence and ends the turn. `test_bytes_at_permission.py` (2).

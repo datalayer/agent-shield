@@ -87,7 +87,7 @@ from agent_shield.policy import (
     hook_for,
     pap_tool_class,
 )
-from agent_shield.tracing import with_traceparent
+from agent_shield.tracing import turn_span, with_traceparent
 
 from .channel import SHIELD_CLIENT_CAPABILITIES, SHIELD_CLIENT_INFO, ACPChannel, StdioACPChannel, WebSocketACPChannel
 from .credential import CredentialRefused, fingerprint, lent_with, take_credential
@@ -658,17 +658,28 @@ class ShieldProxy:
             )
             self.audit.write("refusal", session=session_id, sentence=sentence, by="shield")
             raise RequestError(REFUSED, sentence)
-        self.audit.write("turn", session=session_id, what="prompt", blocks=len(prompt), by="shield")
-        # The trace the face arrived on, handed to the harness in the key ACP
-        # reserves for it (SH-51); a caller's own `_meta.traceparent` wins.
-        answer = await self.channel.prompt(session_id, prompt, meta=with_traceparent(meta or {}))
-        if session.failed is not None:
-            self.audit.write(
-                "turn", session=session_id, what="ended", stop_reason="refusal", sentence=session.failed, by="shield"
-            )
-            return PromptResponse(stop_reason="refusal")
-        self.audit.write("turn", session=session_id, what="ended", stop_reason=answer.stop_reason, by="shield")
-        return answer
+        # Each prompt a span (`shield.turn`), exported when the Shield is registered:
+        # the turn's own rows its events, the decisions counted beside it.
+        with turn_span(session_id) as span:
+            self.audit.write("turn", session=session_id, what="prompt", blocks=len(prompt), by="shield")
+            # The trace the face arrived on, handed to the harness in the key ACP
+            # reserves for it (SH-51); a caller's own `_meta.traceparent` wins.
+            answer = await self.channel.prompt(session_id, prompt, meta=with_traceparent(meta or {}))
+            stop_reason = "refusal" if session.failed is not None else answer.stop_reason
+            if span is not None:
+                span.set_attribute("shield.stop_reason", str(stop_reason))
+            if session.failed is not None:
+                self.audit.write(
+                    "turn",
+                    session=session_id,
+                    what="ended",
+                    stop_reason="refusal",
+                    sentence=session.failed,
+                    by="shield",
+                )
+                return PromptResponse(stop_reason="refusal")
+            self.audit.write("turn", session=session_id, what="ended", stop_reason=answer.stop_reason, by="shield")
+            return answer
 
     async def cancel(self, session_id: str, **kwargs: Any) -> None:
         await self.channel.cancel(session_id)
