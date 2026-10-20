@@ -166,6 +166,16 @@ def turn_span(session_id: str, **attributes: Any) -> Iterator[Any]:
         yield span
 
 
+def turn_ended(stop_reason: Any) -> None:
+    """How the turn stopped, on the current ``shield.turn`` span (``shield.stop_reason``); nothing without one."""
+    found = _otel()
+    if found is None:
+        return
+    span = found[0].get_current_span()
+    if span is not None and span.is_recording():
+        span.set_attribute("shield.stop_reason", str(stop_reason))
+
+
 def trace_headers() -> dict[str, str]:
     """The current trace context as W3C headers, or nothing when there is none."""
     try:
@@ -365,16 +375,17 @@ __all__ = [
     "META_TRACEPARENT",
     "configure_export",
     "continued",
+    "export_resource",
     "flush_export",
     "labels",
     "observe",
     "refresh_export_token",
     "reset_instruments",
     "set_labels",
+    "subject_of_token",
     "trace_headers",
     "traceparent_of",
-    "export_resource",
-    "subject_of_token",
+    "turn_ended",
     "turn_span",
     "with_traceparent",
 ]

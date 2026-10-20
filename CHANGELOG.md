@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.11
+
+- One turn is one `shield.turn` span. 0.2.9 opened the span inside `ShieldProxy.prompt`, so a host that is the proxy and already opens the turn's span with its own attributes (agent-runtimes' `ACPAgent`) exported two spans for one turn, the proxy's nested in the host's. `prompt` now opens the span and runs `ShieldProxy.run_turn`, which a host with its own span calls instead; the stop reason goes on the current span (`tracing.turn_ended`).
+
 ## 0.2.10
 
 - A registered Shield's telemetry is filed under an account: the exported resource names the token's subject (`datalayer.user_uid`) and the organization it counts for (`datalayer.usage_account_uid`). Before, Datalayer's observability received the spans and counts and filed them under no account, so nobody could read them back. `tracing.export_resource`, `tracing.subject_of_token`.
@@ -60,8 +64,7 @@ side, SH-78, SH-70, SH-71, SH-72, SH-73; 16 October 2026). **The schema changed*
 document gains `authorize:` and `authorizer:` — so IAM and agentspecs follow (agentspecs
 0.0.105 carries it):
 
-- `agent_shield.policy.authorize`: the authorizer port — `authorize(subject, action, resource,
-  context)` in the OpenID AuthZen evaluation shape; the contributions `local` (grants as
+- `agent_shield.policy.authorize`: the authorizer port — `authorize(subject, action, resource, context)` in the OpenID AuthZen evaluation shape; the contributions `local` (grants as
   patterns in `agent-shield.yaml`), `authzen` (any evaluation endpoint), `openfga` (an
   organization's own, at its check API) and `opa` (Open Policy Agent, the request as its
   `input`; proved against a real OPA 1.9.0); the port's rules: a deny wins over any Rule, an
@@ -210,21 +213,23 @@ The audit side of Phase 2 (SH-34, SH-51, 15 October 2026):
   `continued` joins a trace a caller handed in; `trace_headers` for a lent
   MCP server. OpenTelemetry stays optional: without it nothing is done, and
   never a `traceparent` nobody opened.
+
 - The audit: a `plan` event (how many steps, their statuses; never their
   text); `fs_read` written as a row of its own (the path, the bytes) beside
   `fs_write`; `redacted_row` for whoever keeps rows elsewhere (agent-runtimes'
   record); `AuditLog.write` observes each row it writes.
+
 - The proxy's `prompt` carries the trace in `_meta.traceparent`.
 
 - `agent_shield.policy`: the document grows `limits.model_tokens` (the model
   budget, in tokens) and `limits.spend` (the deployment's spend limit, in
   credits, 100 a USD), each soft then hard, and a `harnesses` section — the
   harnesses a scope admits and whose credentials run them (`account`,
-  `platform`, `either`). `decide_budget(context, policies,
-  tokens=, cost=)` decides the next model request against the model limits
+  `platform`, `either`). `decide_budget(context, policies, tokens=, cost=)` decides the next model request against the model limits
   alone; a hard limit's sentence says what would let the session go on (a
   cheaper model, a wider budget, a person's word). `LimitState.spent` counts
   what a model request cost.
+
 - `agent_shield.policy.levels`: `widening(lower, above)` says, in sentences,
   every way a lower document would permit more than the one above — a rule
   that permits more than an overlapping rule above, a limit above, a fetch
@@ -234,23 +239,27 @@ The audit side of Phase 2 (SH-34, SH-51, 15 October 2026):
   `admits` and `credentials_rule` read the `harnesses` section strictest
   scope first. The engine's order is proved in every order the three levels
   are given.
+
 - `agent_shield.saas`: `ManagedPolicies` pulls
-  the documents of an account from IAM (`GET
-  /mcp-policies/shield/accounts/{account_uid}`, `IamPolicySource`), keeps
+  the documents of an account from IAM (`GET /mcp-policies/shield/accounts/{account_uid}`, `IamPolicySource`), keeps
   them until their `expires`, takes one pushed over a socket, and polls while
   a watcher runs (30 s); **fail closed** — with IAM unreachable and no
   unexpired copy, `PolicyUnavailable` names IAM in a sentence.
+
 - The proxy: `replace_policies` (a changed set in force at once in every open
   session, the session's own rules kept), `refuse_all` (while
   running), `add_session_rule` / `remove_session_rule` / `rules_in_force`
   (a person tightening a running session; a rule that would permit more
   than the organization's documents refused with the sentences),
   `decide_budget`; a `policy` audit event.
+
 - The conformance table (SH-35): the same action over MCP, A2A, ACP, AG-UI
   and the embed gets the same answer at the three levels.
+
 - `agentspecs` is an extra (`[register]`, brought by each harness extra), no
   longer a dependency: IAM installs the policy engine without the
   catalogue's sandbox stack.
+
 - `@datalayer/agent-shield`: `Limits.model_tokens`, `Limits.spend`,
   `LIMIT_NAMES`, `LIMIT_WORDS`, `Harnesses`, `CREDENTIALS`.
 
@@ -275,8 +284,7 @@ The package made real (Phase 0: SH-07, SH-02, SH-08, SH-09, SH-04).
   launched, permissions decided by the policy, tool calls classed and
   limited, files and terminals confined to the workspace, `mcpServers`
   rewritten to the allow-list, every action in `~/.agent-shield/audit.jsonl`.
-- `agent-shield setup | run | log | policy show | policy schema | policy init |
-  harnesses | upgrade [--check] | uninstall`; `serve` says it is not built.
+- `agent-shield setup | run | log | policy show | policy schema | policy init | harnesses | upgrade [--check] | uninstall`; `serve` says it is not built.
 - `@datalayer/agent-shield`: the policy types and the decisions' sentences,
   checked against the same schema in `npm test`.
 - The agent-teams scaffold's leftovers removed (the demo extra, the
