@@ -697,6 +697,7 @@ def serve(
             registration.telemetry_url,
             registration.token,
             service_name="agent-shield",
+            usage_account_uid=registration.org_uid,
             **{"shield.agent": registration.agent_uid},
         ):
             refuse(

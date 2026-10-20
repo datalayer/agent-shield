@@ -469,6 +469,8 @@ The Shield over OTEL: one trace across the chain, counts under the account (SH-5
 - `with_traceparent` — ``meta`` with the current ``traceparent`` (and ``tracestate``) added when there is one and ``meta`` names none.
 - `traceparent_of` — The ``traceparent`` a ``_meta`` carries, when it carries one.
 - `continued` — Continue the trace a caller handed in (its ``_meta.traceparent``), when this process is not already on one.
+- `subject_of_token` — Whom a token is minted for (its ``user``, ``sub`` or top-level ``uid``), read unverified; ``""`` if none.
+- `export_resource` — The resource the exported telemetry carries: the service, the token's subject, the account it counts for.
 - `configure_export` — Export spans and counts to Datalayer's observability at ``url`` with ``token``; ``False`` without the SDK.
 - `refresh_export_token` — A new bearer for the exporters already configured (a token exchanged again); how many took it.
 - `flush_export` — Hand what is batched to the ingest now (at exit, or before a check).

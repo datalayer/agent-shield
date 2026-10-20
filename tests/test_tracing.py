@@ -156,3 +156,29 @@ async def test_each_proxied_prompt_is_a_turn_span(recording, tmp_path: Path):
     assert len(turns) == 1
     assert turns[0].attributes["shield.stop_reason"] == "end_turn"
     assert {event.name for event in turns[0].events} >= {"shield.turn"}
+
+
+def _token(claims: dict) -> str:
+    import base64
+    import json
+
+    body = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+    return f"e30.{body}.sig"
+
+
+def test_the_exported_telemetry_names_its_account():
+    """The ingest files telemetry by the resource's account; without it nothing can be read back."""
+    assert tracing.subject_of_token(_token({"user": {"uid": "u1"}})) == "u1"
+    assert tracing.subject_of_token(_token({"sub": {"uid": "u2"}})) == "u2"
+    assert tracing.subject_of_token(_token({"sub": "agent-3"})) == "agent-3"
+    assert tracing.subject_of_token("not-a-jwt") == ""
+    resource = tracing.export_resource(
+        _token({"sub": "agent-3"}), service_name="agent-shield", usage_account_uid="org-1", **{"shield.agent": "a"}
+    )
+    assert resource == {
+        "service.name": "agent-shield",
+        "datalayer.user_uid": "agent-3",
+        "datalayer.usage_account_uid": "org-1",
+        "shield.agent": "a",
+    }
+    assert "datalayer.usage_account_uid" not in tracing.export_resource("x", service_name="agent-shield")

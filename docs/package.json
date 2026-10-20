@@ -1,6 +1,6 @@
 {
   "name": "@datalayer/agent-shield-docs",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",

@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.10
+
+- A registered Shield's telemetry is filed under an account: the exported resource names the token's subject (`datalayer.user_uid`) and the organization it counts for (`datalayer.usage_account_uid`). Before, Datalayer's observability received the spans and counts and filed them under no account, so nobody could read them back. `tracing.export_resource`, `tracing.subject_of_token`.
+
 ## 0.2.9
 
 - Each prompt through the Shield is a `shield.turn` span with how it stopped (`shield.stop_reason`), the turn's own rows its events: a registered `serve` or `run` now exports its turns to Datalayer's observability, beside the counts it already sent.

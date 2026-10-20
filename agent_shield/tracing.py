@@ -240,12 +240,60 @@ INGEST_PATH = "/api/otel/v1/otlp"
 _exporters: list[Any] = []
 
 
-def configure_export(url: str, token: str, *, service_name: str = "agent-shield", **resource: str) -> bool:
+def subject_of_token(token: str) -> str:
+    """Whom a token is minted for (its ``user``, ``sub`` or top-level ``uid``), read unverified; ``""`` if none.
+
+    The ingest verifies the token; this only names the account the telemetry
+    is filed under, which it reads from the resource's ``datalayer.user_uid``.
+    """
+    import base64
+    import binascii
+    import json
+
+    parts = token.split(".")
+    if len(parts) != 3:
+        return ""
+    try:
+        claims = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+    except (ValueError, binascii.Error):
+        return ""
+    if not isinstance(claims, dict):
+        return ""
+    for holder in (claims.get("user"), claims.get("sub"), claims):
+        if isinstance(holder, dict) and str(holder.get("uid") or "").strip():
+            return str(holder["uid"]).strip()
+    sub = claims.get("sub")
+    return sub.strip() if isinstance(sub, str) else ""
+
+
+def export_resource(token: str, *, service_name: str, usage_account_uid: str = "", **resource: str) -> dict[str, str]:
+    """The resource the exported telemetry carries: the service, the token's subject, the account it counts for."""
+    attributes = {
+        "service.name": service_name,
+        "datalayer.user_uid": subject_of_token(token),
+        "datalayer.usage_account_uid": usage_account_uid,
+        **resource,
+    }
+    return {k: v for k, v in attributes.items() if v}
+
+
+def configure_export(
+    url: str,
+    token: str,
+    *,
+    service_name: str = "agent-shield",
+    usage_account_uid: str = "",
+    **resource: str,
+) -> bool:
     """Export spans and counts to Datalayer's observability at ``url`` with ``token``; ``False`` without the SDK.
 
     Sets the process's tracer and meter providers once — OTLP over HTTP to
     ``{url}/api/otel/v1/otlp/v1/traces`` and ``/v1/metrics``, the token as
     the bearer — so :func:`turn_span` and :func:`observe` leave the process.
+    The resource names the token's subject (``datalayer.user_uid``) and the
+    account the telemetry is counted for (``datalayer.usage_account_uid``, an
+    organization's for a registered Shield): without them the ingest files
+    nothing under any account, and nobody can read it back.
     Without the OTEL SDK and the OTLP HTTP exporter installed
     (``datalayer-agent-shield[otel]``), nothing is set and ``False`` says so.
     """
@@ -266,7 +314,7 @@ def configure_export(url: str, token: str, *, service_name: str = "agent-shield"
         raise ValueError("a token is needed to export telemetry")
     base = url.rstrip("/") + INGEST_PATH
     headers = {"Authorization": f"Bearer {token}"}
-    attributes = {"service.name": service_name, **{k: v for k, v in resource.items() if v}}
+    attributes = export_resource(token, service_name=service_name, usage_account_uid=usage_account_uid, **resource)
     spans = OTLPSpanExporter(endpoint=f"{base}/v1/traces", headers=headers)
     points = OTLPMetricExporter(endpoint=f"{base}/v1/metrics", headers=headers)
     tracer_provider = TracerProvider(resource=Resource.create(attributes))
@@ -325,6 +373,8 @@ __all__ = [
     "set_labels",
     "trace_headers",
     "traceparent_of",
+    "export_resource",
+    "subject_of_token",
     "turn_span",
     "with_traceparent",
 ]
