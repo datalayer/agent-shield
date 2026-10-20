@@ -6,6 +6,12 @@
 
 # Changelog
 
+## 0.2.8
+
+- A harness that writes with its own tool (Claude Code's Write and Edit: the diff shown, then a permission asked, never `fs/write_text_file`) is held to `bytes_written`: the permission is decided with the size of the diff the tool call carries, or the one its earlier update showed; an allowed write counts toward the limit, and a write over the hard limit is refused in its sentence and ends the turn. `test_bytes_at_permission.py` (2).
+- A limit refused at a permission ends the turn, as on the tool call's own notification.
+- The agent is handed `SHELL` when the Shield's environment has none (a container): Claude Code refuses to run a command without it. The command is still decided at its permission.
+
 ## 0.2.7
 
 - Docstrings, comments, the policy schema's descriptions, the docs site and this changelog no longer cite private design-note sections or decision numbers; they say what the thing is. The refusal sentences are unchanged since 0.2.6's successor commit (no decision number in them).

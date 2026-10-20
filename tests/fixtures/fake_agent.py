@@ -174,6 +174,44 @@ class FakeAgent(Agent):
             else:
                 await say(session_id=session_id, update=update_tool_call("c1", status="failed"))
                 await say(session_id=session_id, update=update_agent_message_text(f"edit refused: {outcome}"))
+        if "selfwrite " in text:
+            # As Claude Code writes: its own tool, the diff shown before it asks, no fs/write_text_file.
+            size = int(text.split("selfwrite ", 1)[1].split()[0])
+            body = "a" * size
+            await say(
+                session_id=session_id, update=start_tool_call("c5", "Preparing file…", kind="edit", status="pending")
+            )
+            await say(
+                session_id=session_id,
+                update=update_tool_call(
+                    "c5",
+                    title="Write big.txt",
+                    locations=[ToolCallLocation(path="big.txt")],
+                    raw_input={"file_path": "big.txt", "content": body},
+                    content=[tool_diff_content("big.txt", body)],
+                ),
+            )
+            answer = await self.client.request_permission(
+                session_id=session_id,
+                tool_call=ToolCallUpdate(
+                    tool_call_id="c5",
+                    title="Write big.txt",
+                    kind="edit",
+                    status="pending",
+                    raw_input={"file_path": "big.txt", "content": body},
+                    locations=[ToolCallLocation(path="big.txt")],
+                ),
+                options=[
+                    PermissionOption(option_id="allow", name="Allow", kind="allow_once"),
+                    PermissionOption(option_id="reject", name="Reject", kind="reject_once"),
+                ],
+            )
+            if getattr(answer.outcome, "option_id", None) == "allow":
+                await say(session_id=session_id, update=update_tool_call("c5", status="completed"))
+                await say(session_id=session_id, update=update_agent_message_text(f"wrote {size} bytes"))
+            else:
+                await say(session_id=session_id, update=update_tool_call("c5", status="failed"))
+                await say(session_id=session_id, update=update_agent_message_text("selfwrite refused"))
         if "read" in text:
             await say(
                 session_id=session_id, update=start_tool_call("c2", "Read README.md", kind="read", status="in_progress")

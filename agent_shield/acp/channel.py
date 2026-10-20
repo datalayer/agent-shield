@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import sys
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
@@ -325,9 +326,7 @@ class StdioACPChannel(ConnectionChannel):
             answer.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await answer
-            raise ChannelRefused(
-                f"the agent exited (code {self.process.returncode}) before answering {method}"
-            )
+            raise ChannelRefused(f"the agent exited (code {self.process.returncode}) before answering {method}")
         finally:
             if not exited.done():
                 exited.cancel()
@@ -362,6 +361,7 @@ class StdioACPChannel(ConnectionChannel):
         unless named.
         """
         say = stderr or (lambda line: logger.debug("agent stderr: %s", line.rstrip()))
+        env = with_shell(env)
         async with spawn_stdio_transport(command, *args, env=env, cwd=cwd, shutdown_timeout=shutdown_timeout) as (
             reader,
             writer,
@@ -378,6 +378,19 @@ class StdioACPChannel(ConnectionChannel):
                 drain.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await drain
+
+
+def with_shell(env: Mapping[str, str] | None) -> dict[str, str]:
+    """``env`` with ``SHELL`` named: the SDK's trimmed environment drops it, and a
+    harness that runs commands with its own tool (Claude Code's Bash) refuses to
+    start one without it. The Shield's own ``SHELL``, else ``/bin/sh``; a shell is
+    no secret, and a command is still decided at its permission."""
+    merged = dict(env or {})
+    if not merged.get("SHELL"):
+        shell = os.environ.get("SHELL") or ("/bin/sh" if Path("/bin/sh").exists() else "")
+        if shell:
+            merged["SHELL"] = shell
+    return merged
 
 
 async def _drain(stream: asyncio.StreamReader | None, say: Callable[[str], None]) -> None:

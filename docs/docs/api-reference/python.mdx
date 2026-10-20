@@ -29,6 +29,7 @@ The client-side ``ACPChannel``: stdio and WebSocket, on the official SDK.
 - `ACPChannel` — One ACP connection, client side (see the module).
 - `ConnectionChannel` — An ``ACPChannel`` over the SDK's :class:`acp.connection.Connection`, whatever carries it.
 - `StdioACPChannel` — The agent as a subprocess of the Shield, its stdio the wire.
+- `with_shell` — ``env`` with ``SHELL`` named: the SDK's trimmed environment drops it, and a
 - `WebSocketACPChannel` — An agent served over a WebSocket, one JSON-RPC message per text frame.
 - `stderr_to_our_stderr` — A stderr sink that passes the agent's lines through, for ``agent-shield run --verbose``.
 - `wire` — A schema model as the wire spells it (camelCase, no nulls).

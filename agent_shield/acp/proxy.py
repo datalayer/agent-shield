@@ -149,6 +149,10 @@ class SessionState:
     #: Which execution credential the session's MCP servers were lent with
     #: (its fingerprint, SH-33), or ``None`` when none was handed.
     lent_credential: str | None = None
+    #: The bytes each tool call's diff carries, by its id: a harness that writes
+    #: with its own tool (Claude Code's Write and Edit) shows the diff before it
+    #: asks, and its permission is decided with that size against ``bytes_written``.
+    write_bytes: dict[str, int] = field(default_factory=dict)
 
     @property
     def context(self) -> Context:
@@ -780,6 +784,16 @@ def _always_rule(action: Action) -> Rule:
 _KINDS = {"read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"}
 
 
+def _diff_bytes(tool_call: Any) -> int | None:
+    """The size of the new text a tool call's own ``diff`` content carries, or ``None``."""
+    sizes = [
+        len((getattr(item, "new_text", None) or "").encode("utf-8"))
+        for item in (getattr(tool_call, "content", None) or [])
+        if getattr(item, "type", None) == "diff"
+    ]
+    return sum(sizes) if sizes else None
+
+
 class _InnerClient:
     """What the agent behind the Shield asks of its client: the Shield answers."""
 
@@ -859,6 +873,7 @@ class _InnerClient:
         elif isinstance(event, ToolCallUpdated):
             for display in event.displays:
                 if display.display == "diff":
+                    session.write_bytes[event.tool_call_id] = len((display.new_text or "").encode("utf-8"))
                     proxy.audit.write(
                         "tool_call",
                         session=session_id,
@@ -900,6 +915,12 @@ class _InnerClient:
             # The notification carried the path or the command; the request does not. Its decision holds.
             decision = cached
         else:
+            if action.action_class == "write" and action.bytes is None:
+                carried = _diff_bytes(tool_call)
+                if carried is None:
+                    carried = session.write_bytes.get(tool_call.tool_call_id)
+                if carried is not None:
+                    action = action.model_copy(update={"bytes": carried})
             decision = proxy.decide(session, action)
         session.decisions[tool_call.tool_call_id] = decision
         if decision.verdict == "allow":
@@ -954,7 +975,11 @@ class _InnerClient:
             rule=decision.rule,
             scope=decision.scope,
         )
-        await proxy.tell(session_id, decision.sentence)
+        if decision.decided_by == "limit":
+            # A hard limit ends the turn, as on the tool call's own notification.
+            await proxy.fail_turn(session, decision.sentence)
+        else:
+            await proxy.tell(session_id, decision.sentence)
         if option is None:
             return RequestPermissionResponse(outcome=DeniedOutcome(outcome="cancelled"))
         return RequestPermissionResponse(outcome=AllowedOutcome(outcome="selected", option_id=option.option_id))

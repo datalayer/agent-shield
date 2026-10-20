@@ -212,7 +212,20 @@ async def test_an_agent_that_exits_fails_the_request_at_once_not_at_a_timeout(tm
     dead.write_text("import sys\nsys.stderr.write('no policy\\n')\nsys.exit(3)\n")
     loop = asyncio.get_running_loop()
     started = loop.time()
-    async with StdioACPChannel.launch(Handler(), sys.executable, str(dead), cwd=tmp_path, stderr=lambda line: None) as channel:
+    async with StdioACPChannel.launch(
+        Handler(), sys.executable, str(dead), cwd=tmp_path, stderr=lambda line: None
+    ) as channel:
         with pytest.raises(ChannelRefused, match=r"the agent exited \(code 3\) before answering initialize"):
             await asyncio.wait_for(channel.initialize(), timeout=20)
     assert loop.time() - started < 10
+
+
+async def test_the_agent_is_handed_a_shell_the_trimmed_environment_drops(tmp_path: Path, monkeypatch):
+    """Claude Code's Bash refuses to run without ``SHELL`` (seen live, 20 October 2026)."""
+    from agent_shield.acp.channel import with_shell
+
+    monkeypatch.delenv("SHELL", raising=False)
+    assert with_shell(None)["SHELL"] == "/bin/sh"
+    assert with_shell({"SHELL": "/bin/bash"})["SHELL"] == "/bin/bash"
+    monkeypatch.setenv("SHELL", "/bin/zsh")
+    assert with_shell({"A": "b"}) == {"A": "b", "SHELL": "/bin/zsh"}
