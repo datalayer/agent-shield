@@ -465,6 +465,7 @@ The Shield over OTEL: one trace across the chain, counts under the account (SH-5
 - `reset_instruments` — Forget the counters, so a test's meter provider makes new ones.
 - `observe` — One audit row as a span event on the current span and as counts.
 - `turn_span` — One prompt as a span, a child of whatever is current (the face's request), or nothing without OTEL.
+- `turn_ended` — How the turn stopped, on the current ``shield.turn`` span (``shield.stop_reason``); nothing without one.
 - `trace_headers` — The current trace context as W3C headers, or nothing when there is none.
 - `with_traceparent` — ``meta`` with the current ``traceparent`` (and ``tracestate``) added when there is one and ``meta`` names none.
 - `traceparent_of` — The ``traceparent`` a ``_meta`` carries, when it carries one.
