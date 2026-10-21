@@ -296,6 +296,9 @@ def _fetch_decision(action: Action, policies: Sequence[Policy], companies: Seque
 
 LOCAL_SUBJECT = Subject(type="account", id="local")
 
+#: The classes whose relationship the platform writes on the workspace itself.
+WORKSPACE_CLASSES: frozenset[str] = frozenset({"read", "write", "execute", "delete"})
+
 
 def request_for(action: Action, context: Context) -> EvaluationRequest:
     """The AuthZen request an action is: the context's subject, the class, the action's resource."""
@@ -316,7 +319,12 @@ def request_for(action: Action, context: Context) -> EvaluationRequest:
     elif action.url:
         host = urlsplit(action.url).hostname or "-"
         resource = Resource(type="host", id=host)
-    elif action.command is not None:
+    elif action.command is not None or action.action_class in WORKSPACE_CLASSES:
+        # A command, or a file action whose path the request does not carry
+        # yet (Claude Code's own Write and Edit ask permission as *Preparing
+        # file…*, before the path is said), acts in the workspace: the
+        # relationship the platform writes is the workspace's. OpenFGA's
+        # model has no session type, so asking about one was always a deny.
         resource = Resource(type="workspace", id=context.workspace.strip("/") or "-")
     else:
         resource = Resource(type="session", id=context.session_id or "-")

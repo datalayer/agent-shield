@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.12
+
+- A file action whose path the request does not carry yet asks the authorizer about the workspace. Claude Code's own Write and Edit ask permission as *Preparing file…* (kind `edit`, no path, no command), and `request_for` made that a `session:<id>` resource, a type the platform's OpenFGA model does not have: every such ask was answered *invalid relation: type 'session' not found*, which the Shield rightly took as *could not be reached* and refused — so, on Datalayer, Claude Code's first write was always refused. A read, write, execute or delete with no path and no command now asks about the workspace it acts in (`workspace:<root>`, the relationship the platform writes); `session:` stays for a class with no workspace relation.
+
 ## 0.2.11
 
 - One turn is one `shield.turn` span. 0.2.9 opened the span inside `ShieldProxy.prompt`, so a host that is the proxy and already opens the turn's span with its own attributes (agent-runtimes' `ACPAgent`) exported two spans for one turn, the proxy's nested in the host's. `prompt` now opens the span and runs `ShieldProxy.run_turn`, which a host with its own span calls instead; the stop reason goes on the current span (`tracing.turn_ended`).

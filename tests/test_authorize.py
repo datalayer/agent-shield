@@ -94,8 +94,15 @@ def test_an_action_becomes_a_request_from_its_path_command_url_or_resource():
     assert request_for(action("fetch", "read", url="https://acme.example/x"), ctx).object == "host:acme.example"
     assert request_for(action("other", "write", resource="tool:earthdata/search"), ctx).object == "tool:earthdata/search"
     assert request_for(action("other", "send", resource="connection:acme.example"), ctx).relation == "can_send"
+    # A file action whose path the request does not carry acts in the workspace.
     plain = request_for(action("other", "write"), Context(workspace="/w"))
-    assert plain.object == "session:-" and plain.user == "account:local"
+    assert plain.object == "workspace:w" and plain.user == "account:local"
+    # Claude Code's own Write asks permission as "Preparing file…", kind edit, no path yet.
+    preparing = request_for(Action(kind="edit", title="Preparing file…", **{"class": "write"}), ctx)
+    assert preparing.object == "workspace:home/alice/p" and preparing.relation == "can_write"
+    assert request_for(action("read", "read"), ctx).object == "workspace:home/alice/p"
+    # Nothing else of a session is an object of the model: only a class with no workspace relation asks about it.
+    assert request_for(action("other", "send"), ctx).object == "session:s1"
     with pytest.raises(ValueError, match="type:id"):
         request_for(action("other", "write", resource="no-colon"), ctx)
 

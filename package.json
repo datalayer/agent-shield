@@ -1,6 +1,6 @@
 {
   "name": "@datalayer/agent-shield",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "description": "Agent Shield: the policy document's types and the decisions' sentences, for the web and the phone.",
   "type": "module",
   "license": "BSD-3-Clause",
