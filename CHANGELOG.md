@@ -6,6 +6,12 @@
 
 # Changelog
 
+## 0.2.13
+
+- A command line that deletes is classed **delete**, whatever kind the harness called its tool: `rm`, `rmdir`, `mv` (it replaces what is at its target), a truncating `>` (`>>`, `2>&1` and `/dev/null` are not), `git clean`, `git reset --hard`, `git checkout --` and `find -delete` (`DELETING_COMMANDS`, `deleting`, `command_class`). Before, a harness running `rm` through its own shell tool was an `execute`, and an application's *leave it to me* on deleting never saw it; the Shield's own terminal is classed the same way.
+- A tool call streamed before its input is whole is decided again once it is. Claude Code's adapter says a Bash call as *Terminal* with no command while the model streams its input, then refines it with a `tool_call_update` that carries the command: the first notification was decided on nothing — no rule on commands could match, and the record never learnt what ran. The refinement is now decided with the command (or the path, or the URL) it brings, a row written for it, the completion row carries the command, and a deny ends the turn (the harness runs its own tool, so nothing else can stop it).
+- The conformance report's *The Shield* section counts the sessions' history apart from the decisions: how many sessions were swapped to another agent, cloned, exported and imported over the period (`ShieldSection.history`, the record's `swapped`, `cloned`, `exported`, `imported` rows), said in its own lines and in *What changed since the last report*; never counted as decisions.
+
 ## 0.2.12
 
 - A file action whose path the request does not carry yet asks the authorizer about the workspace. Claude Code's own Write and Edit ask permission as *Preparing file…* (kind `edit`, no path, no command), and `request_for` made that a `session:<id>` resource, a type the platform's OpenFGA model does not have: every such ask was answered *invalid relation: type 'session' not found*, which the Shield rightly took as *could not be reached* and refused — so, on Datalayer, Claude Code's first write was always refused. A read, write, execute or delete with no path and no command now asks about the workspace it acts in (`workspace:<root>`, the relationship the platform writes); `session:` stays for a class with no workspace relation.

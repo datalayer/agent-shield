@@ -14,6 +14,7 @@ import pytest
 
 from agent_shield.policy import (
     ACTION_CLASSES,
+    DELETING_COMMANDS,
     FLAGGED_COMMANDS,
     KIND_CLASS,
     SCHEMA_PATH,
@@ -30,6 +31,8 @@ from agent_shield.policy import (
     Threshold,
     UnknownKind,
     class_of,
+    command_class,
+    deleting,
     decide,
     default_policy,
     dump_policy,
@@ -128,6 +131,61 @@ def test_flagged_commands(command, flag):
 @pytest.mark.parametrize("command", ["ls -la", "git status", "git pull", "pytest -q", "echo pushover", "sudoku"])
 def test_plain_commands_raise_no_flag(command):
     assert flagged(command) is None
+
+
+@pytest.mark.parametrize(
+    ("command", "family"),
+    [
+        ("rm hello.txt", "rm"),
+        ("rm -rf build/", "rm"),
+        ("ls; rm -f x", "rm"),
+        ("rmdir empty", "rmdir"),
+        ("mv a.txt b.txt", "mv (it replaces what is at its target)"),
+        ("echo hi > notes.txt", "a truncating redirection"),
+        ("git clean -fdx", "git clean"),
+        ("git reset --hard HEAD~1", "git reset --hard"),
+        ("git checkout -- app.py", "git checkout --"),
+        ("find . -name '*.pyc' -delete", "find -delete"),
+    ],
+)
+def test_deleting_commands_are_classed_delete(command, family):
+    assert deleting(command) == family
+    assert command_class(command) == "delete"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ls -la",
+        "git status",
+        "git checkout main",
+        "git reset --soft HEAD~1",
+        "echo hi >> notes.txt",
+        "cmd 2>&1",
+        "cmd > /dev/null",
+        "firmware x",
+        "arm x",
+        "wc -c hello.txt",
+        "cat hello.txt | wc -l",
+    ],
+)
+def test_commands_that_delete_nothing_stay_execute(command):
+    assert deleting(command) is None
+    assert command_class(command) == "execute"
+    assert command_class(None) == "execute" and command_class("", None) is None
+
+
+def test_every_deleting_family_is_named_for_the_sentence():
+    assert set(DELETING_COMMANDS) == {
+        "rm",
+        "rmdir",
+        "mv (it replaces what is at its target)",
+        "a truncating redirection",
+        "git clean",
+        "git reset --hard",
+        "git checkout --",
+        "find -delete",
+    }
 
 
 def test_the_default_policy_carries_every_flag_as_a_rule():

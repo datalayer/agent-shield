@@ -5,7 +5,10 @@
 """ACP kinds to classes, and the commands the default policy asks about.
 
 The classes: ``read``, ``search``, ``fetch`` → **read**; ``edit``, ``move`` →
-**write**; ``delete`` → **delete**; ``execute`` → **execute**; ``think`` and
+**write**; ``delete`` → **delete**; ``execute`` → **execute** — unless the command line
+runs a deleting family (``rm``, ``rmdir``, a destructive ``mv``, a truncating
+``>``, ``git clean``, ``git reset --hard``, ``git checkout --``, ``find
+-delete``), which is **delete** (``command_class``); ``think`` and
 ``switch_mode`` → none (nothing to decide); ``other`` → **write**, because a
 kind the agent could not name fails closed.
 
@@ -117,14 +120,54 @@ def flagged(command: str) -> str | None:
     return None
 
 
+#: The shell commands that delete, by family: a command line that runs one is
+#: classed **delete**, not execute, so an application's rule on deleting holds
+#: it (an ``rm`` run by a harness's own shell tool was classed execute before,
+#: and a *leave it to me* on delete never saw it). Each a name the sentence
+#: uses and a regular expression on a command line — ``mv`` whenever it has a
+#: target (the engine cannot see whether something is there, so a move is taken
+#: as replacing it: fail closed), ``>`` only when it truncates a file (``>>``
+#: appends, ``2>&1`` and ``/dev/null`` write nothing).
+DELETING_COMMANDS: dict[str, str] = {
+    "rm": r"(?:^|[\s;&|(])rm\b",
+    "rmdir": r"(?:^|[\s;&|(])rmdir\b",
+    "mv (it replaces what is at its target)": r"(?:^|[\s;&|(])mv\s",
+    "a truncating redirection": r"(?<![>&\d])>(?!>)(?!&)\s*(?!/dev/null\b)\S",
+    "git clean": r"\bgit\b[^;&|]*\bclean\b",
+    "git reset --hard": r"\bgit\b[^;&|]*\breset\b[^;&|]*--hard\b",
+    "git checkout --": r"\bgit\b[^;&|]*\bcheckout\b[^;&|]*\s--(?:\s|$)",
+    "find -delete": r"\bfind\b[^;&|]*\s-delete\b",
+}
+
+_DELETING = {name: re.compile(pattern) for name, pattern in DELETING_COMMANDS.items()}
+
+
+def deleting(command: str) -> str | None:
+    """The name of the first deleting family a command line runs, or ``None``."""
+    for name, pattern in _DELETING.items():
+        if pattern.search(command):
+            return name
+    return None
+
+
+def command_class(command: str | None, default: ActionClass | None = "execute") -> ActionClass | None:
+    """The class of a command line: **delete** when it runs a deleting family, else ``default``."""
+    if command and deleting(command):
+        return "delete"
+    return default
+
+
 __all__ = [
     "CLASS_STRICTNESS",
+    "DELETING_COMMANDS",
     "FLAGGED_COMMANDS",
     "KIND_CLASS",
     "PAP_TOOL_CLASSES",
     "SHIELD_KINDS",
     "UnknownKind",
     "class_of",
+    "command_class",
+    "deleting",
     "flagged",
     "pap_tool_class",
     "strictest",

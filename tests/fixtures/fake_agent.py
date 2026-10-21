@@ -256,6 +256,16 @@ class FakeAgent(Agent):
             except RequestError as exc:
                 await say(session_id=session_id, update=update_tool_call("c3", status="failed"))
                 await say(session_id=session_id, update=update_agent_message_text(f"run refused: {exc}"))
+        if "stream " in text:
+            # A harness that streams a tool call before its input is whole
+            # (Claude Code's Bash): *Terminal* first, then the command, then done.
+            command = text.split("stream ", 1)[1].strip()
+            await say(session_id=session_id, update=start_tool_call("c7", "Terminal", kind="execute", status="pending"))
+            await say(
+                session_id=session_id,
+                update=update_tool_call("c7", title=command, kind="execute", raw_input={"command": command}),
+            )
+            await say(session_id=session_id, update=update_tool_call("c7", status="completed"))
         if "push" in text:
             answer = await self.client.request_permission(
                 session_id=session_id,

@@ -82,6 +82,7 @@ from agent_shield.policy import (
     UnknownKind,
     check_tightens,
     class_of,
+    command_class,
     decide,
     decide_budget,
     hook_for,
@@ -134,6 +135,10 @@ class SessionState:
     state: LimitState = field(default_factory=LimitState)
     terminals: Terminals | None = None
     decisions: dict[str, Decision] = field(default_factory=dict)
+    #: What each decided tool call was decided as: re-decided when a later
+    #: update brings the command, the path or the URL the first notification
+    #: lacked (a harness streams a tool call before its input is complete).
+    actions: dict[str, Action] = field(default_factory=dict)
     counted: set[str] = field(default_factory=set)
     failed: str | None = None
     shield_calls: int = 0
@@ -248,6 +253,10 @@ def action_of_tool_call(
     if path is None and locations:
         path = getattr(locations[0], "path", None)
     command = _raw(raw_input, "command", "cmd")
+    if command and action_class == "execute" and resource is None:
+        # A command line that deletes is a delete, whatever kind the harness
+        # called its tool: the rule on deleting holds it.
+        action_class = command_class(command)
     url = _raw(raw_input, "url")
     inside: bool | None = None
     shown = path
@@ -799,6 +808,35 @@ def _always_rule(action: Action) -> Rule:
 _KINDS = {"read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"}
 
 
+@dataclass
+class _Refined:
+    """A decided tool call as a later update completes it: what ``action_of_tool_call`` reads."""
+
+    kind: str
+    title: str | None
+    input: Any
+    locations: list[Any]
+
+
+def _refined(decided: Action | None, event: ToolCallUpdated) -> _Refined | None:
+    """The tool call to decide again, when the update brings what the decided one lacked, else ``None``."""
+    if decided is None or decided.command or decided.path or decided.url:
+        return None
+    command = _raw(event.input, "command", "cmd")
+    path = _raw(event.input, "path", "file_path", "filePath", "file")
+    url = _raw(event.input, "url")
+    if path is None and event.locations:
+        path = getattr(event.locations[0], "path", None)
+    if command is None and path is None and url is None:
+        return None
+    return _Refined(
+        kind=event.kind or decided.kind,
+        title=event.title or (command if command else decided.title),
+        input=event.input,
+        locations=list(event.locations),
+    )
+
+
 def _diff_bytes(tool_call: Any) -> int | None:
     """The size of the new text a tool call's own ``diff`` content carries, or ``None``."""
     sizes = [
@@ -856,36 +894,35 @@ class _InnerClient:
                 await proxy.fail_turn(session, problem)
                 return
             if action is not None:
-                decision = proxy.decide(session, action)
-                session.decisions[event.tool_call_id] = decision
-                proxy.audit.write(
-                    "tool_call",
-                    session=session_id,
-                    tool_call_id=event.tool_call_id,
-                    kind=action.kind,
-                    **{"class": action.action_class},
-                    title=action.title,
-                    path=action.path,
-                    command=action.command,
-                    url=action.url,
-                    status=event.status,
-                    decision=decision.verdict,
-                    sentence=decision.sentence,
-                    rule=decision.rule,
-                    scope=decision.scope,
-                    decided_by=decision.decided_by,
-                    authorizer=decision.authorizer,
-                    authorization=decision.authorization,
-                    model_version=decision.model_version,
-                    by="policy",
-                )
-                if decision.verdict == "deny":
+                decided = await self._decide_said(session, action, event.tool_call_id, event.status)
+                if decided is None:
                     await proxy.client.session_update(session_id=session_id, update=update, **kwargs)
-                    await proxy.fail_turn(session, decision.sentence)
                     return
-                if event.status == "in_progress" or decision.verdict == "allow":
-                    proxy.count(session, action, decision, event.tool_call_id)
         elif isinstance(event, ToolCallUpdated):
+            refined = _refined(session.actions.get(event.tool_call_id), event)
+            if refined is not None:
+                # The harness streamed the call before its input was complete
+                # (Claude Code's Bash: *Terminal*, then the command): decided
+                # again with what the update brings, a row for it. A deny can
+                # only end the turn — the harness runs its own tool.
+                try:
+                    action, problem = action_of_tool_call(refined, session.workspace, tool_class=proxy.tool_class)
+                except UnknownKind as exc:
+                    await proxy.fail_turn(session, str(exc))
+                    return
+                if problem is None and action is not None:
+                    # A write is counted at its permission, where its size is
+                    # known; what else the harness runs is counted here.
+                    decided = await self._decide_said(
+                        session,
+                        action,
+                        event.tool_call_id,
+                        event.status or "in_progress",
+                        count=action.action_class != "write",
+                    )
+                    if decided is None:
+                        await proxy.client.session_update(session_id=session_id, update=update, **kwargs)
+                        return
             for display in event.displays:
                 if display.display == "diff":
                     session.write_bytes[event.tool_call_id] = len((display.new_text or "").encode("utf-8"))
@@ -899,15 +936,59 @@ class _InnerClient:
                     )
             if event.status in ("completed", "failed") and event.tool_call_id in session.decisions:
                 decision = session.decisions[event.tool_call_id]
+                done = session.actions.get(event.tool_call_id)
                 proxy.audit.write(
                     "tool_call",
                     session=session_id,
                     tool_call_id=event.tool_call_id,
                     status=event.status,
                     decision=decision.verdict,
+                    title=done.title if done is not None else None,
+                    command=done.command if done is not None else None,
+                    path=done.path if done is not None else None,
                     by="agent",
                 )
         await proxy.client.session_update(session_id=session_id, update=update, **kwargs)
+
+    async def _decide_said(
+        self, session: SessionState, action: Action, call_id: str, status: str | None, *, count: bool = True
+    ) -> Decision | None:
+        """Decide a tool call the harness said (first, or again once its input is whole), a row for it.
+
+        ``None`` when the decision is a deny: the turn is failed, and the caller
+        forwards the update before returning.
+        """
+        proxy = self.proxy
+        decision = proxy.decide(session, action)
+        session.decisions[call_id] = decision
+        session.actions[call_id] = action
+        proxy.audit.write(
+            "tool_call",
+            session=session.session_id,
+            tool_call_id=call_id,
+            kind=action.kind,
+            **{"class": action.action_class},
+            title=action.title,
+            path=action.path,
+            command=action.command,
+            url=action.url,
+            status=status,
+            decision=decision.verdict,
+            sentence=decision.sentence,
+            rule=decision.rule,
+            scope=decision.scope,
+            decided_by=decision.decided_by,
+            authorizer=decision.authorizer,
+            authorization=decision.authorization,
+            model_version=decision.model_version,
+            by="policy",
+        )
+        if decision.verdict == "deny":
+            await proxy.fail_turn(session, decision.sentence)
+            return None
+        if count and (status == "in_progress" or decision.verdict == "allow"):
+            proxy.count(session, action, decision, call_id)
+        return decision
 
     # -- permissions -------------------------------------------------------------
 
@@ -1164,7 +1245,7 @@ class _InnerClient:
         if session.terminals is None:  # pragma: no cover - opened with the session
             raise RequestError(REFUSED, f"session {session_id!r} has no terminals")
         shown = " ".join([command, *(args or [])])
-        action = Action(kind="terminal", title=f"Run `{shown}`", command=shown, **{"class": "execute"})
+        action = Action(kind="terminal", title=f"Run `{shown}`", command=shown, **{"class": command_class(shown)})
         _, call_id = await self._decide_own(session, action)
         try:
             run = await session.terminals.create(

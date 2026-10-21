@@ -57,6 +57,10 @@ class ShieldSection:
     #: What changed since the last report, a sentence each;
     #: ``None`` when there is no earlier report to compare with.
     changed: Sequence[str] | None = None
+    #: The session's history over the period — how many sessions were swapped
+    #: to another agent, cloned, exported and imported: rows of the record
+    #: that are history, never decisions.
+    history: Mapping[str, int] = field(default_factory=dict)
 
     @classmethod
     def of(cls, inputs: Inputs, previous: Mapping[str, Any] | None = None) -> ShieldSection:
@@ -94,6 +98,7 @@ class ShieldSection:
                 decided_by[because] = decided_by.get(because, 0) + 1
             if because == "limit" and payload.get("limit"):
                 limits[str(payload["limit"])] = limits.get(str(payload["limit"]), 0) + 1
+        history = {kind: len(c.record_rows(inputs, kind)) for kind in HISTORY_KINDS}
         approvals: dict[str, int] = {}
         for row in c.record_rows(inputs, "approval"):
             payload = row.get("payload") or {}
@@ -127,6 +132,7 @@ class ShieldSection:
             gate=dict(inputs.validation) if inputs.validation else None,
             harness=dict(inputs.harness) if inputs.harness else None,
             weakened=c.policy_weakened(inputs),
+            history={kind: n for kind, n in history.items() if n},
         )
 
     def to_json(self) -> dict[str, Any]:
@@ -142,8 +148,14 @@ class ShieldSection:
             "harness": dict(self.harness) if self.harness else None,
             "weakened": list(self.weakened),
             "changed": list(self.changed) if self.changed is not None else None,
+            "history": dict(self.history),
         }
 
+
+#: The record's rows that are a session's history, not the Shield's decisions
+#: (a session swapped to another agent, cloned, exported, imported): counted
+#: apart in the section, in this order.
+HISTORY_KINDS = ("swapped", "cloned", "exported", "imported")
 
 #: The section's counts, and how a change in each is said.
 _COUNTED = (
@@ -151,6 +163,7 @@ _COUNTED = (
     ("decided_by", "decided by"),
     ("approvals", "answers"),
     ("limits_reached", "limits reached"),
+    ("history", "the sessions' history"),
 )
 
 
@@ -382,6 +395,16 @@ class ConformanceReport:
                 ", ".join(f"{name} {n} times" for name, n in sorted(s.limits_reached.items()))
                 if s.limits_reached
                 else "none reached over the period"
+            )
+        )
+        lines += ["", "### The sessions' history", ""]
+        lines.append(
+            "- "
+            + (
+                ", ".join(f"{s.history[kind]} {kind}" for kind in HISTORY_KINDS if s.history.get(kind))
+                + " — history, not decisions"
+                if s.history
+                else "No session was swapped, cloned, exported or imported over the period."
             )
         )
         lines += ["", "### What changed since the last report", "", *_changed_lines(s.changed)]

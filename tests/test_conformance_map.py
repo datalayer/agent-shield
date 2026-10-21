@@ -550,3 +550,28 @@ def test_a_partial_clause_without_a_note_says_the_rest_is_the_organizations():
     status, reason, _evidence, missing, _last = answer_covered(clause, covering, full_inputs())
     assert status == "partly" and "E006 met by evidence" in reason
     assert missing[-1].endswith("partially: the rest is the organization's")
+
+
+def test_the_shield_section_counts_the_sessions_history_apart_from_its_decisions():
+    """A session swapped, cloned, exported or imported is history in the
+    record, never a decision: counted in its own lines, and a change in it
+    said since the last report."""
+    plain = build_report(AIUC, full_inputs(), scope="deployment", name="Desk", uid="d1")
+    assert plain.shield.history == {} and plain.to_json()["shield"]["history"] == {}
+    assert "- No session was swapped, cloned, exported or imported over the period." in plain.markdown()
+    inputs = full_inputs(
+        record=[
+            *full_inputs().record,
+            row("swapped", **{"from": "claude-code", "to": "codex", "at_turn": 2}),
+            row("cloned", **{"from": "s-1", "at_turn": 1}),
+            row("cloned", to="s-3", at_turn=1),
+            row("exported", by="u-1", entries=12, redactions=0),
+        ]
+    )
+    report = build_report(AIUC, inputs, scope="deployment", name="Desk", uid="d1", previous=plain.to_json())
+    assert report.shield.history == {"swapped": 1, "cloned": 2, "exported": 1}
+    assert report.shield.decisions == plain.shield.decisions, "history rows are not decisions"
+    markdown = report.markdown()
+    assert "### The sessions' history" in markdown
+    assert "- 1 swapped, 2 cloned, 1 exported — history, not decisions" in markdown
+    assert "In the sessions' history: cloned 0 → 2, exported 0 → 1, swapped 0 → 1." in report.shield.changed
