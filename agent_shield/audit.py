@@ -133,9 +133,13 @@ def default_audit_path() -> Path:
 class AuditLog:
     """Rows appended to a JSON Lines file."""
 
-    def __init__(self, path: Path | None = None, *, environment: Mapping[str, str] | None = None) -> None:
+    def __init__(
+        self, path: Path | None = None, *, environment: Mapping[str, str] | None = None, persist: bool = True
+    ) -> None:
         self.path = path or default_audit_path()
         self._environment = environment
+        #: Off, rows go to the trace (and whatever a subclass does) but no file grows.
+        self.persist = persist
         self.rows_written = 0
 
     def write(self, event: str, **fields: Any) -> dict[str, Any]:
@@ -147,9 +151,10 @@ class AuditLog:
         row = {"ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"), "event": event}
         row.update({k: v for k, v in fields.items() if v is not None})
         row = _redacted(row, self._environment)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(row, separators=(",", ":"), ensure_ascii=False) + "\n")
+        if self.persist:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(row, separators=(",", ":"), ensure_ascii=False) + "\n")
         self.rows_written += 1
         # The same row, after the same redaction, to the trace and the counts.
         observe(row)

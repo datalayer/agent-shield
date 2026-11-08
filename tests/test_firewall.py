@@ -391,3 +391,23 @@ def test_watch_says_a_refused_rules_file_with_its_revision_and_keeps_the_base(tm
     refused = json.loads((state / "refused.json").read_text())
     assert refused["revision"] == "43" and "private or reserved" in refused["error"]
     assert json.loads((state / "applied.json").read_text())["egress"] == []
+
+
+def test_watch_without_the_audit_file_keeps_rows_on_stdout_only(tmp_path, monkeypatch):
+    monkeypatch.setattr("agent_shield.firewall.controller.run_command", FakeKernel())
+    monkeypatch.setenv("AGENT_SHIELD_HOME", str(tmp_path / "home"))
+    state = tmp_path / "state"
+    args = [
+        "firewall",
+        "watch",
+        "--rules",
+        str(tmp_path / "none.json"),
+        "--state",
+        str(state),
+        "--once",
+        "--no-audit-file",
+    ]
+    result = runner.invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert '"event":"firewall"' in result.stdout
+    assert not (tmp_path / "home" / "audit.jsonl").exists()

@@ -204,10 +204,13 @@ def watch(
     refresh: float = typer.Option(60.0, "--refresh", help="Seconds between resolving the spec's hosts again."),
     record: bool = typer.Option(True, "--record/--no-record", help="Record every logged connection."),
     echo: bool = typer.Option(True, "--echo/--no-echo", help="Write each audit row to stdout as well."),
+    audit_file: bool = typer.Option(
+        True, "--audit-file/--no-audit-file", help="Keep the rows in the audit file; off, stdout and the trace only."
+    ),
     once: bool = typer.Option(False, "--once", hidden=True, help="Apply, mark ready and return (tests)."),
 ) -> None:
     """The sidecar's daemon: apply, keep current, record (needs NET_ADMIN)."""
-    audit = EchoingAuditLog() if echo else AuditLog()
+    audit = EchoingAuditLog(persist=audit_file) if echo else AuditLog(persist=audit_file)
     controller = Controller(load_base(base), audit=audit, enforce_ingress=ingress, state_dir=state)
     seen = _digest(rules)
 
