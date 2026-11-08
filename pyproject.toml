@@ -111,6 +111,7 @@ path = "agent_shield/__version__.py"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 timeout = 120
 filterwarnings = [
   "error",
