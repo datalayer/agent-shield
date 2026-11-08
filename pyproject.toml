@@ -61,9 +61,8 @@ otel = ["opentelemetry-sdk>=1.26", "opentelemetry-exporter-otlp-proto-http>=1.26
 # the catalogue's sandbox stack behind them (SH-50).
 register = ["agentspecs>=0.0.107"]
 # The company role of PAP (SH-71): the Shield in front of any agent, on the PAP SDK's company service.
-# The role is on draft 0.2: it runs on the SDK 0.25 and 0.26 only (0.27 changed operations,
-# 0.28 removed OperationResult and DpopHttpClient); draft 0.4 is the next step.
-pap = ["personal-agent-protocol>=0.25,<0.27"]
+# The role is on draft 0.4 (Operations v2): the SDK 0.32.
+pap = ["personal-agent-protocol>=0.32.0,<0.33"]
 # One extra per harness. The adapters are Node packages, which
 # pip cannot install: `agent-shield setup --harness <id>` installs the pinned
 # one into the Shield's own prefix. The extras name the choice on the install
@@ -77,8 +76,8 @@ openhands = ["datalayer-agent-shield[register]"]
 all = ["datalayer-agent-shield[websocket,serve,otel,register,pap]"]
 test = [
   "agentspecs>=0.0.107",
-  # 0.25: PAP draft 0.2 (Device Sign-In names the company), which the PAP tests use.
-  "personal-agent-protocol>=0.25,<0.27",
+  # 0.32: PAP draft 0.4 (Operations v2), which the PAP tests use.
+  "personal-agent-protocol>=0.32.0,<0.33",
   # tests/test_cli.py reads pyproject.toml; tomllib is 3.11+.
   "tomli>=2; python_version < '3.11'",
   "pytest>=7.0",

@@ -15,8 +15,15 @@ import pytest
 
 pytest.importorskip("personal_agent_protocol", reason="the PAP SDK is the company's; `pip install personal-agent-protocol`")
 
-from personal_agent_protocol.company import OperationFailed, OperationOutcomeUnknown, ProposedOperation, Reply, Turn
-from personal_agent_protocol.models import Operation, OperationResult
+from personal_agent_protocol.company import (
+    ActionResult,
+    OperationFailed,
+    OperationOutcomeUnknown,
+    ProposedOperation,
+    Reply,
+    Turn,
+)
+from personal_agent_protocol.models import Operation
 
 from agent_shield.audit import AuditLog
 from agent_shield.pap import (
@@ -37,13 +44,10 @@ NOW = datetime(2026, 10, 16, 9, 0, tzinfo=timezone.utc)
 def operation(action: str = "orders.exchange", terms=None, uid: str = "op-1") -> Operation:
     return Operation(
         operation_id=uid,
-        revision=1,
-        state="in_progress",
+        revision="rev_1",
         summary=f"{action} for the person",
         terms=terms,
         expires_at=NOW + timedelta(minutes=10),
-        confirmation=None,
-        result=None,
     )
 
 
@@ -54,9 +58,9 @@ class Inner:
         self.performed: list[str] = []
         self.turns: list[Turn] = []
 
-    async def perform(self, op: Operation, account_id: str) -> OperationResult:
+    async def perform(self, op: Operation, account_id: str | None) -> ActionResult:
         self.performed.append(op.operation_id)
-        return OperationResult(summary=f"Exchanged for {account_id}.")
+        return ActionResult(summary=f"Exchanged for {account_id}.")
 
     async def respond(self, turn: Turn):
         self.turns.append(turn)
@@ -81,7 +85,7 @@ def company(*rules: Rule, audit_path) -> CompanyShield:
 
 def turn(client_id: str = "pa-1", account_id: str | None = "alice") -> Turn:
     return Turn(
-        conversation_id="c1", text="Can I exchange my order?", data=None, sender="agent", account_id=account_id,
+        conversation_id="c1", text="Can I exchange my order?", data=None, author="agent", account_id=account_id,
         scopes=("orders:write",), client_id=client_id, is_direct=False, supports_operations=True,
     )
 
@@ -105,7 +109,7 @@ async def test_do_it_performs_and_the_answer_is_signed_and_recorded(tmp_path):
     assert kinds == ["tool_call", "operation"]
     assert rows[0]["decision"] == "allow" and rows[0]["class"] == "write" and rows[0]["rule"] == "exchanges are fine"
     signature = rows[1]["signature"]
-    assert signature["kid"] == "acme-2026" and shield.signer.verify({"operation": "op-1", "revision": 1, "summary": "Exchanged for alice.", "signature": signature})
+    assert signature["kid"] == "acme-2026" and shield.signer.verify({"operation": "op-1", "revision": "rev_1", "summary": "Exchanged for alice.", "signature": signature})
     assert shield.state.tool_calls == 1
 
 
@@ -120,8 +124,8 @@ async def test_ask_me_first_holds_the_operation_for_review_and_a_person_releases
     (ticket,) = shield.held()
     assert ticket.action == "orders.refund" and ticket.action_class == "buy" and ticket.state == "held"
     settled = []
-    answer = await shield.release(ticket.ticket_id, released_by="bob@acme.example", settle=lambda uid, result: settled.append((uid, result.summary)))
-    assert inner.performed == ["op-2"] and settled == [("op-2", "Exchanged for alice.")]
+    answer = await shield.release(ticket.ticket_id, released_by="bob@acme.example", settle=lambda uid, result, ok: settled.append((uid, result.summary, ok)))
+    assert inner.performed == ["op-2"] and settled == [("op-2", "Exchanged for alice.", True)]
     assert answer["state"] == "released" and answer["released_by"] == "bob@acme.example" and shield.signer.verify(answer)
     assert shield.held() == []
     with pytest.raises(ReviewRefused):
@@ -139,9 +143,34 @@ async def test_a_person_may_refuse_a_held_operation(tmp_path):
         await executor.perform(operation("orders.refund", terms={"amount": "10", "currency": "EUR"}, uid="op-3"), "alice")
     (ticket,) = shield.held()
     settled = []
-    answer = await shield.refuse(ticket.ticket_id, refused_by="bob", reason="Not within 30 days.", settle=lambda uid, why: settled.append((uid, why)))
-    assert inner.performed == [] and settled == [("op-3", "Not within 30 days.")]
+    answer = await shield.refuse(ticket.ticket_id, refused_by="bob", reason="Not within 30 days.", settle=lambda uid, result, ok: settled.append((uid, result.summary, ok)))
+    assert inner.performed == [] and settled == [("op-3", "Not within 30 days.", False)]
     assert answer["state"] == "refused" and shield.signer.verify(answer) and not shield.signer.verify({**answer, "state": "released"})
+
+
+@pytest.mark.asyncio
+async def test_a_released_operation_that_fails_partway_is_settled_as_failed_and_never_performed_again(tmp_path):
+    shield = company(Rule(name="refunds are reviewed", decision="ask", classes=["buy"]), audit_path=tmp_path / "a.jsonl")
+
+    class Partway(Inner):
+        async def perform(self, op: Operation, account_id: str | None) -> ActionResult:
+            self.performed.append(op.operation_id)
+            raise OperationFailed(ActionResult(summary="A label was emailed; no money moved."))
+
+    inner = Partway()
+    executor = ShieldedOperationExecutor(shield, inner, action="orders.refund")
+    with pytest.raises(OperationOutcomeUnknown):
+        await executor.perform(operation("orders.refund", terms={"amount": "10", "currency": "EUR"}, uid="op-4"), None)
+    (ticket,) = shield.held()
+    assert ticket.account_id is None and ticket.revision == "rev_1"
+    settled = []
+    answer = await shield.release(ticket.ticket_id, released_by="bob", settle=lambda uid, result, ok: settled.append((uid, result.summary, ok)))
+    assert settled == [("op-4", "A label was emailed; no money moved.", False)]
+    assert answer["state"] == "failed" and shield.signer.verify(answer) and shield.held() == []
+    with pytest.raises(ReviewRefused):
+        await shield.release(ticket.ticket_id, released_by="bob")
+    assert inner.performed == ["op-4"]
+    assert ("review", "failed") in [(row["event"], row.get("what")) for row in shield.audit.rows()]
 
 
 @pytest.mark.asyncio

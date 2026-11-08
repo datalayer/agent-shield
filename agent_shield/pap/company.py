@@ -10,7 +10,10 @@ discovery, identity, sessions and operations; this module stands at the
 SDK's two points where the agent is asked — ``pap.company.agent`` (a turn
 of a conversation) and ``pap.company.operationExecutor`` (an operation the
 person confirmed) — and **decides each incoming operation as an action of
-the company's policy** before the agent sees it:
+the company's policy** before the agent sees it. The SDK is the one of PAP
+draft 0.4 (personal-agent-protocol 0.32), Operations v2: an action that needs
+the person's approval is refused with ``403 approval_required`` and the
+operation, and the same request with the person's approval performs it:
 
 - a turn to answer is a ``send`` (the company's words to a person); an
   operation the agent proposes in its answer is classed by what it does;
@@ -19,10 +22,13 @@ the company's policy** before the agent sees it:
   what it does and is the most restricted, a ``buy`` (the gateway's rule);
 - *do it* lets the agent act, and what it answers is signed and recorded;
 - *ask me first* **holds** the operation for review: a ticket is kept, the
-  operation stays ``in_progress`` (PAP's own state for an outcome not yet
-  known), and a person of the company **releases** it — performed then and
-  settled — or refuses it;
-- *leave it to me* refuses it, in the policy's sentence.
+  operation stays *being performed* (PAP's outcome not yet known: the request
+  with the approval answered ``503`` and ``Retry-After``, a conversation told
+  it is still being done), and a person of the company **releases** it —
+  performed then and settled — or refuses it, settled as failed;
+- *leave it to me* refuses it, in the policy's sentence: the action failed,
+  nothing changed (``422 action_failed`` at an API, the sentence in a
+  conversation).
 
 The agent sees a :class:`Turn` and an :class:`Operation` only: never the
 personal agent's credential, never the protocol.
@@ -75,9 +81,11 @@ class ReviewTicket:
 
     ticket_id: str
     operation_id: str
-    revision: int
+    #: The revision the person approved: opaque, as the company gave it.
+    revision: str
     action: str
-    account_id: str
+    #: The account the operation belongs to; ``None`` for one approved signed out.
+    account_id: str | None
     action_class: str
     sentence: str
     held_at: datetime
@@ -167,11 +175,12 @@ class CompanyShield:
             authorize=self.authorize,
         )
 
-    def decide_operation(self, action: str, terms: Any, *, account_id: str, summary: str = "") -> Decision:
-        """What the company's policy says of performing this operation for this account."""
+    def decide_operation(self, action: str, terms: Any, *, account_id: str | None, summary: str = "") -> Decision:
+        """What the company's policy says of performing this operation for this account (signed out: ``None``)."""
         cls = operation_class(terms)
+        who = account_id or "a signed-out person"
         decision = decide(
-            Action(kind="other", title=f"{action} for {account_id}", resource=f"operation:{action}", **{"class": cls}),
+            Action(kind="other", title=f"{action} for {who}", resource=f"operation:{action}", **{"class": cls}),
             self._context(account_id),
             self.policies,
         )
@@ -219,9 +228,9 @@ class CompanyShield:
         self,
         *,
         operation_id: str,
-        revision: int,
+        revision: str,
         action: str,
-        account_id: str,
+        account_id: str | None,
         action_class: str,
         sentence: str,
         perform: Callable[[], Any],
@@ -244,62 +253,91 @@ class CompanyShield:
     def held(self) -> list[ReviewTicket]:
         return [ticket for ticket in self.tickets.values() if ticket.state == "held"]
 
-    async def release(self, ticket_id: str, *, released_by: str, settle: Callable[[str, Any], Any] | None = None) -> dict[str, Any]:
-        """A person of the company lets the held operation go on: performed now, settled, signed."""
+    async def release(self, ticket_id: str, *, released_by: str, settle: Settle | None = None) -> dict[str, Any]:
+        """A person of the company lets the held operation go on: performed now, settled, signed.
+
+        ``settle(operation_id, result, succeeded)`` tells the company service how it
+        ended — ``service.settle(operation_id, result, succeeded=succeeded)`` — so the
+        personal agent's request with the approval answers it. An action that fails
+        partway (``OperationFailed``) is settled as failed with what it changed; one
+        whose outcome is still unknown (``OperationOutcomeUnknown``) stays held, to be
+        released again (``operation_id`` is the executor's idempotency key).
+        """
+        from personal_agent_protocol.company import OperationFailed  # noqa: PLC0415
+
         ticket = self.tickets.get(ticket_id)
         if ticket is None or ticket.state != "held" or ticket._perform is None:
             raise ReviewRefused(f"no operation is held under the ticket {ticket_id!r}")
-        result = await ticket._perform()
-        ticket.state = "released"
+        try:
+            result, succeeded = await ticket._perform(), True
+        except OperationFailed as failed:
+            result, succeeded = failed.result, False
+        ticket.state = "released" if succeeded else "failed"
         ticket.settled_at = self.clock()
         ticket.summary = str(getattr(result, "summary", "") or "Done.")
-        if settle is not None:
-            settled = settle(ticket.operation_id, result)
-            if hasattr(settled, "__await__"):
-                await settled
+        await _settled(settle, ticket.operation_id, result, succeeded)
         answer = self.signer.sign({**ticket.describe(), "released_by": released_by})
-        self.audit.write("review", company=self.company, what="released", released_by=released_by, **ticket.describe(), by="person")
+        self.audit.write("review", company=self.company, what=ticket.state, released_by=released_by, **ticket.describe(), by="person")
         return answer
 
-    async def refuse(self, ticket_id: str, *, refused_by: str, reason: str = "", settle: Callable[[str, Any], Any] | None = None) -> dict[str, Any]:
-        """A person of the company refuses the held operation: failed, with the reason, signed."""
+    async def refuse(self, ticket_id: str, *, refused_by: str, reason: str = "", settle: Settle | None = None) -> dict[str, Any]:
+        """A person of the company refuses the held operation: settled as failed, nothing changed, signed."""
+        from personal_agent_protocol.company import ActionResult  # noqa: PLC0415
+
         ticket = self.tickets.get(ticket_id)
         if ticket is None or ticket.state != "held":
             raise ReviewRefused(f"no operation is held under the ticket {ticket_id!r}")
         ticket.state = "refused"
         ticket.settled_at = self.clock()
-        ticket.summary = reason or f"Refused by {refused_by} at review."
-        if settle is not None:
-            settled = settle(ticket.operation_id, ticket.summary)
-            if hasattr(settled, "__await__"):
-                await settled
+        ticket.summary = reason or f"Refused by {refused_by} at review; nothing was changed."
+        await _settled(settle, ticket.operation_id, ActionResult(summary=ticket.summary), False)
         answer = self.signer.sign({**ticket.describe(), "refused_by": refused_by})
         self.audit.write("review", company=self.company, what="refused", refused_by=refused_by, **ticket.describe(), by="person")
         return answer
 
 
+#: How a held operation ended, told to the company service: ``(operation_id, result, succeeded)``.
+Settle = Callable[[str, Any, bool], Any]
+
+
+async def _settled(settle: Settle | None, operation_id: str, result: Any, succeeded: bool) -> None:
+    if settle is None:
+        return
+    settled = settle(operation_id, result, succeeded)
+    if hasattr(settled, "__await__"):
+        await settled
+
+
 class ShieldedOperationExecutor:
-    """``pap.company.operationExecutor`` in front of the application's: decided first."""
+    """``pap.company.operationExecutor`` in front of the application's: decided first.
+
+    The SDK picks an executor by its ``action``: contribute this one in place of
+    the application's for that action, never beside it (two at the same order
+    and the SDK performs neither).
+    """
 
     def __init__(self, shield: CompanyShield, inner: Any, *, action: str) -> None:
         self.shield = shield
         self.inner = inner
         self.action = action
 
-    async def perform(self, operation: Any, account_id: str) -> Any:
-        from personal_agent_protocol.company import OperationFailed, OperationOutcomeUnknown  # noqa: PLC0415
-        from personal_agent_protocol.models import OperationResult  # noqa: PLC0415
+    async def perform(self, operation: Any, account_id: str | None) -> Any:
+        from personal_agent_protocol.company import (  # noqa: PLC0415
+            ActionResult,
+            OperationFailed,
+            OperationOutcomeUnknown,
+        )
 
         terms = getattr(operation, "terms", None)
         decision = self.shield.decide_operation(
             self.action, terms, account_id=account_id, summary=str(getattr(operation, "summary", "") or "")
         )
         if decision.verdict == "deny":
-            raise OperationFailed(OperationResult(summary=f"Refused by the company's policy: {decision.sentence}"))
+            raise OperationFailed(ActionResult(summary=f"Refused by the company's policy: {decision.sentence}"))
         if decision.verdict == "ask":
             ticket = self.shield.hold(
                 operation_id=str(operation.operation_id),
-                revision=int(operation.revision),
+                revision=str(operation.revision),
                 action=self.action,
                 account_id=account_id,
                 action_class=operation_class(terms),
@@ -317,9 +355,9 @@ class ShieldedOperationExecutor:
             account=account_id,
             action=self.action,
             operation=str(operation.operation_id),
-            revision=int(operation.revision),
+            revision=str(operation.revision),
             summary=str(getattr(result, "summary", "") or ""),
-            signature=self.shield.signer.sign({"operation": str(operation.operation_id), "revision": int(operation.revision), "summary": str(getattr(result, "summary", "") or "")})["signature"],
+            signature=self.shield.signer.sign({"operation": str(operation.operation_id), "revision": str(operation.revision), "summary": str(getattr(result, "summary", "") or "")})["signature"],
             by="agent",
         )
         return result
@@ -350,7 +388,7 @@ class ShieldedCompanyAgent:
             # An operation the agent proposes is classed by what it does; one the
             # policy refuses outright is not proposed, and the person is told why.
             proposal = self.shield.decide_operation(
-                str(proposed.action), proposed.terms, account_id=str(getattr(turn, "account_id", "") or ""), summary=proposed.summary
+                str(proposed.action), proposed.terms, account_id=getattr(turn, "account_id", None), summary=proposed.summary
             )
             if proposal.verdict == "deny":
                 kept.append(Reply(text=f"{reply.text or ''}\n\nNot proposed: {proposal.sentence}".strip(), data=reply.data))
@@ -363,9 +401,10 @@ class ShieldCompanyPlugin:
     """A Reactor plugin wrapping an application's company contributions behind the Shield.
 
     ``agent`` is the application's ``pap.company.agent``; ``executors`` its
-    ``pap.company.operationExecutor`` per declared action. Everything else of
-    the company (accounts, client policy, stores) is the host's, contributed
-    as before.
+    ``pap.company.operationExecutor`` per declared action, contributed through
+    this plugin only (the SDK picks one executor per action). Everything else
+    of the company (accounts, API, MCP, client policy, stores) is the host's,
+    contributed as before.
     """
 
     def __init__(self, shield: CompanyShield, *, agent: Any, executors: Mapping[str, Any]) -> None:
@@ -394,6 +433,7 @@ __all__ = [
     "CompanyShield",
     "ReviewRefused",
     "ReviewTicket",
+    "Settle",
     "ShieldCompanyPlugin",
     "ShieldedCompanyAgent",
     "ShieldedOperationExecutor",
