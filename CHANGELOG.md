@@ -6,6 +6,15 @@
 
 # Changelog
 
+## 0.2.15
+
+- **The PAP company role on draft 0.4** (`agent_shield.pap`, the `pap` extra): it runs on the PAP SDK 0.32 (`personal-agent-protocol>=0.32.0,<0.33` in the `pap` and `test` extras; 0.2.14 capped it at `<0.27`), the SDK every Datalayer service is on. Operations v2: there is no operations endpoint any more. An action that needs the person's approval is refused with `403 approval_required` and the operation, the person approves that revision, and the same request with the approval (or a conversation message carrying it) performs it — through the Shield, decided by the company's policy first.
+- What a personal agent sees of the policy: *do it* performs and answers the result; *ask me first* holds the operation as being performed — the request with the approval is answered `503` with `Retry-After`, a conversation is told it is still being done — until a person of the company releases it (performed then, settled, and the same request answers what it came to) or refuses it (settled as failed, nothing changed); *leave it to me* fails it in the policy's sentence, nothing changed (`422 action_failed` at an API).
+- **Breaking for a host of the role:** the `settle` callback of `CompanyShield.release` and `CompanyShield.refuse` is called `settle(operation_id, result, succeeded)` — what the SDK's `CompanyService.settle(operation_id, result, succeeded=...)` takes — with an `ActionResult` from both (a refusal's carries the reason); `Settle` names that type. A revision is the SDK's opaque string (`ReviewTicket.revision: str`), and an operation approved signed out is held with `account_id=None`.
+- A released operation whose action fails partway (`OperationFailed`) is settled as failed with what it changed, its ticket `failed` and audited so, and is never performed again; one whose outcome is still unknown (`OperationOutcomeUnknown`) stays held, to be released again.
+- The SDK picks one executor per action: `ShieldCompanyPlugin` contributes the shielded executor in place of the application's for each action it names, so the application's own executor for that action must not be contributed beside it.
+- The tests follow (`tests/test_pap_company.py`, `tests/test_pap_over_the_protocol.py`): over the protocol, an exchange asked for at the company's API is refused with the operation, held, released and answered; one approved in a conversation is held and refused by a person.
+
 ## 0.2.14
 
 - **The firewall** (`agent_shield.firewall`, `agent-shield firewall`). An agent's network rule is said in its spec under `policy.shield` — `egress` (`*` alone for any public address on any TCP port, or exact hosts, `host:port`, IPv4 addresses and CIDRs with an optional port) and `ingress` (`platform`, `*`, addresses or CIDRs with the agent's port) — validated by `FirewallRules`, whose JSON Schema is published as `schema/firewall.schema.json` (`firewall_json_schema()`, `agent-shield firewall schema`). A private or reserved address is never an agent's to ask for, and a wildcard host is refused with the reason (a firewall sees addresses, not names; `network.fetch` stays the name-level list).

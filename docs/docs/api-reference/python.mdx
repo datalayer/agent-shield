@@ -275,7 +275,7 @@ The evidence map: AIUC-1's 55 controls, each with its collectors and its status 
 
 ## `agent_shield.pap`
 
-PAP through the Shield: the company role, standing in front of any agent (SH-71).
+PAP through the Shield: the company role, standing in front of any agent (SH-71). It runs on the PAP SDK 0.32 (`personal-agent-protocol>=0.32.0,<0.33`, the `pap` extra), PAP draft 0.4 and Operations v2: an action that needs the person's approval is refused with `403 approval_required` and the operation, and the same request with the approval performs it.
 
 
 ## `agent_shield.pap.company`
@@ -285,11 +285,12 @@ The Shield as a PAP company, standing in front of any agent (SH-71).
 - `money_moves` — Whether a term carries an amount with a currency, anywhere in the terms.
 - `operation_class` — ``buy`` when a term moves money, or when there are no terms; ``write`` otherwise.
 - `ReviewRefused` — A ticket that is not held, or not this company's.
-- `ReviewTicket` — An operation held for a person of the company to release or refuse.
+- `ReviewTicket` — An operation held for a person of the company to release or refuse; `revision` is the opaque revision the person approved, `account_id` is `None` for one approved signed out, `state` is `held`, `released`, `failed` (the action failed partway when released) or `refused`.
+- `Settle` — How a held operation ended, told to the company service: `settle(operation_id, result, succeeded)`, as `service.settle(operation_id, result, succeeded=succeeded)` takes it.
 - `canonical`
 - `Signer` — The company's signature on what the Shield answers: HMAC-SHA256 over the canonical JSON.
-- `CompanyShield` — The company's policy in front of its agent: decides, holds, releases, signs, records.
-- `ShieldedOperationExecutor` — ``pap.company.operationExecutor`` in front of the application's: decided first.
+- `CompanyShield` — The company's policy in front of its agent: decides, holds, releases, signs, records. *Ask me first* holds an operation as being performed (the request with the approval answered `503` and `Retry-After`, a conversation told it is still being done) until `release` performs and settles it or `refuse` settles it as failed; *leave it to me* fails it with nothing changed (`422 action_failed` at an API).
+- `ShieldedOperationExecutor` — ``pap.company.operationExecutor`` in front of the application's: decided first. The SDK picks one executor per `action`: contribute it in place of the application's, never beside it.
 - `ShieldedCompanyAgent` — ``pap.company.agent`` in front of the application's: a turn is answered only when the policy lets it.
 - `ShieldCompanyPlugin` — A Reactor plugin wrapping an application's company contributions behind the Shield.
 
