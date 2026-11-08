@@ -48,6 +48,7 @@ from agent_shield.config import (
     harness_prefix,
     home,
 )
+from agent_shield.firewall.cli import firewall_app
 from agent_shield.policy import (
     LoadedPolicy,
     PolicyRefused,
@@ -85,6 +86,7 @@ policy_app = typer.Typer(
     name="policy", help="The policy in force: show it, its schema, write the default.", no_args_is_help=True
 )
 app.add_typer(policy_app)
+app.add_typer(firewall_app)
 
 
 def say(text: str) -> None:

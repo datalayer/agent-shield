@@ -6,6 +6,13 @@
 
 # Changelog
 
+## 0.2.14
+
+- **The firewall** (`agent_shield.firewall`, `agent-shield firewall`). An agent's network rule is said in its spec under `policy.shield` — `egress` (`*` alone for any public address on any TCP port, or exact hosts, `host:port`, IPv4 addresses and CIDRs with an optional port) and `ingress` (`platform`, `*`, addresses or CIDRs with the agent's port) — validated by `FirewallRules`, whose JSON Schema is published as `schema/firewall.schema.json` (`firewall_json_schema()`, `agent-shield firewall schema`). A private or reserved address is never an agent's to ask for, and a wildcard host is refused with the reason (a firewall sees addresses, not names; `network.fetch` stays the name-level list).
+- The Shield enforces it: the platform's **base layer** (DNS, its own endpoints at their resolved addresses, the metadata address always refused) and the agent's rules compile into the `SHIELD-EGRESS`, `SHIELD-INGRESS` and `SHIELD-REFUSE` chains, applied in one `iptables-restore --noflush` commit and hooked once from `OUTPUT` (and `INPUT` when ingress is enforced). A re-apply swaps the chains whole; a refused apply keeps the previous rules. Spec hosts are resolved where the rules are applied, again on a refresh, and a host that resolves to nothing is refused and said.
+- The Shield records it: every new connection a rule allows or refuses goes to `NFLOG` group 7, the controller reads it back from `nfnetlink_log` and writes a `connection` audit row (allow or deny, the rule, the destination and its host), repeats folded within 60 s into the next row's `repeated`; each apply writes a `firewall` row. Both events join the audit's vocabulary.
+- `agent-shield firewall check | schema | compile | apply | watch`: `watch` is a sidecar's daemon — apply the base, write the ready file a startup probe waits on, apply the rules file whenever it changes, resolve again, record. `apply` and `watch` need `NET_ADMIN` in the namespace they change.
+
 ## 0.2.13
 
 - A command line that deletes is classed **delete**, whatever kind the harness called its tool: `rm`, `rmdir`, `mv` (it replaces what is at its target), a truncating `>` (`>>`, `2>&1` and `/dev/null` are not), `git clean`, `git reset --hard`, `git checkout --` and `find -delete` (`DELETING_COMMANDS`, `deleting`, `command_class`). Before, a harness running `rm` through its own shell tool was an `execute`, and an application's *leave it to me* on deleting never saw it; the Shield's own terminal is classed the same way.

@@ -46,6 +46,10 @@ EVENTS = (
     # for a person, signed; a review held for a person of the company, released or refused.
     "operation",
     "review",
+    # The firewall (agent_shield.firewall): each apply of its rules, and every
+    # connection it allowed or refused, by rule and destination.
+    "firewall",
+    "connection",
 )
 
 #: Who decided: the policy, a person asked, the agent itself (a notification), or the Shield.

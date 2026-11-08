@@ -1,0 +1,72 @@
+---
+sidebar_position: 7
+title: The firewall
+---
+
+# The firewall
+
+The Shield decides an agent's connections the way it decides its actions. An agent says its network rule in its spec, under `policy.shield`. The Shield enforces that rule in the agent's network namespace and writes an audit row for every connection it allows or refuses.
+
+```yaml
+policy:
+  shield:
+    egress: ["*"]
+    ingress: ["platform"]
+```
+
+## The rules
+
+**Egress** is what the agent may reach beyond the platform's own endpoints. Each entry is one of:
+
+- `*`, alone: any **public** address, on any TCP port;
+- an exact host (`api.tavily.com`), or a host and port (`registry.npmjs.org:443`);
+- an IPv4 address, or an address and port;
+- a CIDR, or a CIDR and port.
+
+Some entries are refused, and the refusal gives the reason:
+
+- **A private or reserved address.** That covers 10/8, 172.16/12, 192.168/16, 100.64/10, link-local with the metadata address, loopback and multicast. `*` leaves these refused as well. Those are the platform's own addresses, and they belong to the base layer.
+- **A wildcard host** (`*.example.com`). A firewall sees addresses, not names. For a name-level allow-list, use the policy document's `network.fetch`.
+
+**Ingress** is who may reach the agent's ports. Each entry is one of:
+
+- `platform`, the default: the platform's ingress and probes, which the base layer names;
+- `*`;
+- an address or CIDR, with an optional `:port`, the agent's own port.
+
+`agent-shield firewall schema` prints the JSON Schema, which is also published as `schema/firewall.schema.json`. agentspecs validates every agent's `policy.shield` against it.
+
+## The layers
+
+The **base layer** is what the runtime always reaches: the DNS resolvers, the platform's endpoints at the addresses they resolved to, and what is always refused (the metadata address). No spec can remove any of it. On Datalayer, the Operator writes the base layer from its egress table.
+
+The agent's rules are added on top of the base. Both compile into three chains of the `filter` table:
+
+- `SHIELD-EGRESS`, hooked from `OUTPUT`;
+- `SHIELD-INGRESS`, hooked from `INPUT`, written only when ingress is enforced;
+- `SHIELD-REFUSE`, which rejects: a TCP reset, or port-unreachable for other protocols.
+
+The script is applied in one `iptables-restore --noflush` commit, so a new set of rules replaces the old one whole. If the kernel refuses a set, the previous rules stay in force. Hosts are resolved where the rules are applied, and resolved again on each refresh. A host that resolves to nothing is refused, and the refusal says so.
+
+## The record
+
+Every rule that allows or refuses a new connection logs it to `NFLOG` group 7, with the prefix `shield allow <rule>` or `shield refuse <rule>`. The controller reads these back from `nfnetlink_log` and writes one `connection` row per connection. A row looks like this:
+
+```json
+{"event": "connection", "by": "shield", "decision": "deny", "rule": "default",
+ "protocol": "tcp", "destination": "104.16.0.1:443", "source": "10.244.1.5"}
+```
+
+If the same decision, destination and rule come back within 60 seconds, they are folded into the next row's `repeated` count. Each apply writes a `firewall` row with the rules, the number of chain entries and any unresolved hosts. Both kinds of row go to OTEL with the rest of the Shield's audit.
+
+## The command
+
+| Command | What it does |
+|---|---|
+| `agent-shield firewall check <spec>` | Validates an agent spec's `policy.shield`, or a rules file, and says what it allows. |
+| `agent-shield firewall schema` | Prints the JSON Schema. |
+| `agent-shield firewall compile --base base.json --rules spec.yaml` | Prints the `iptables-restore` script. |
+| `agent-shield firewall apply --base … --rules …` | Applies the rules once. |
+| `agent-shield firewall watch --base … --rules … --state …` | Runs as a sidecar's daemon: applies the base, writes `ready`, re-applies the rules file whenever it changes (writing `applied.json`, or `refused.json` if the rules are refused), resolves again, and records. |
+
+`apply` and `watch` need `NET_ADMIN` in the network namespace they change, and nothing else. On Datalayer they are meant to run in a `shield-firewall` sidecar of the runtime pod (not yet deployed). The agent's own containers never hold `NET_ADMIN`, so they cannot change the rules.
