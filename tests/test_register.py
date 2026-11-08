@@ -13,7 +13,7 @@ from agentspecs.harnesses import load_harnesses, load_register
 
 from agent_shield.register import RegisterRefused, catalogue, credential_refusal, harness, harness_of_command
 
-CATALOGUE = {"claude-code", "codex", "gemini-cli", "goose", "opencode", "openhands", "fast-agent"}
+CATALOGUE = {"claude-code", "codex", "gemini-cli", "goose", "opencode", "openhands", "fast-agent", "pi"}
 
 
 def test_the_catalogue_is_agentspecs_without_custom():
