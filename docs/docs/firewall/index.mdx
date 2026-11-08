@@ -67,6 +67,6 @@ If the same decision, destination and rule come back within 60 seconds, they are
 | `agent-shield firewall schema` | Prints the JSON Schema. |
 | `agent-shield firewall compile --base base.json --rules spec.yaml` | Prints the `iptables-restore` script. |
 | `agent-shield firewall apply --base … --rules …` | Applies the rules once. |
-| `agent-shield firewall watch --base … --rules … --state …` | Runs as a sidecar's daemon: applies the base, writes `ready`, re-applies the rules file whenever it changes (writing `applied.json`, or `refused.json` if the rules are refused), resolves again, and records. |
+| `agent-shield firewall watch --rules … --state … [--base …]` | Runs as a sidecar's daemon. It applies the base, from `--base` or `$AGENT_SHIELD_FIREWALL_BASE`, and writes `ready`. Whenever the rules file's content changes it re-applies, and echoes the file's `revision` in `applied.json`, or in `refused.json` if the rules are refused. It resolves hosts again, records connections, and writes each audit row to stdout. |
 
 `apply` and `watch` need `NET_ADMIN` in the network namespace they change, and nothing else. On Datalayer they are meant to run in a `shield-firewall` sidecar of the runtime pod (not yet deployed). The agent's own containers never hold `NET_ADMIN`, so they cannot change the rules.

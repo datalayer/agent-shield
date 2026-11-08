@@ -345,3 +345,49 @@ def test_compile_prints_the_script(tmp_path):
     result = runner.invoke(app, ["firewall", "compile", "--base", str(base), "--rules", str(rules)])
     assert result.exit_code == 0, result.output
     assert "-A SHIELD-EGRESS -d 8.8.8.8/32 -p tcp --dport 53 -j ACCEPT" in result.output
+
+
+# -- revisions and the sidecar's daemon ----------------------------------------------------
+
+
+def test_the_revision_a_rules_file_names_is_echoed_in_applied_json(tmp_path):
+    controller = Controller(BASE, runner=FakeKernel(), state_dir=tmp_path)
+    controller.apply(FirewallRules(egress=["*"]), revision="r-7")
+    assert json.loads((tmp_path / "applied.json").read_text())["revision"] == "r-7"
+    controller.applied.resolved = {"stale": []}
+    controller.refresh()
+    assert json.loads((tmp_path / "applied.json").read_text())["revision"] == "r-7"
+
+
+def test_watch_takes_its_base_from_the_environment_applies_the_file_and_marks_ready(tmp_path, monkeypatch):
+    kernel = FakeKernel()
+    monkeypatch.setattr("agent_shield.firewall.controller.run_command", kernel)
+    monkeypatch.setenv("AGENT_SHIELD_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("AGENT_SHIELD_FIREWALL_BASE", json.dumps(BASE.to_json()))
+    rules = tmp_path / "rules" / "spec.json"
+    rules.parent.mkdir()
+    rules.write_text(json.dumps({"revision": "42", "shield": {"egress": ["*"]}}))
+    state = tmp_path / "state"
+    result = runner.invoke(app, ["firewall", "watch", "--rules", str(rules), "--state", str(state), "--once"])
+    assert result.exit_code == 0, result.output
+    assert (state / "ready").is_file()
+    applied = json.loads((state / "applied.json").read_text())
+    assert applied["revision"] == "42" and applied["egress"] == ["*"]
+    restores = [stdin for argv, stdin in kernel.calls if argv[0] == "iptables-restore"]
+    assert "203.0.113.5/32" in restores[-1] and "-A SHIELD-EGRESS -p tcp -j ACCEPT" in restores[-1]
+    # Each row is echoed on stdout, a JSON line the container's log carries.
+    echoed = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+    assert [row["event"] for row in echoed] == ["firewall", "firewall"] and echoed[-1]["revision"] == "42"
+
+
+def test_watch_says_a_refused_rules_file_with_its_revision_and_keeps_the_base(tmp_path, monkeypatch):
+    monkeypatch.setattr("agent_shield.firewall.controller.run_command", FakeKernel())
+    monkeypatch.setenv("AGENT_SHIELD_HOME", str(tmp_path / "home"))
+    rules = tmp_path / "spec.json"
+    rules.write_text(json.dumps({"revision": "43", "shield": {"egress": ["10.0.0.0/8"]}}))
+    state = tmp_path / "state"
+    result = runner.invoke(app, ["firewall", "watch", "--rules", str(rules), "--state", str(state), "--once"])
+    assert result.exit_code == 0, result.output
+    refused = json.loads((state / "refused.json").read_text())
+    assert refused["revision"] == "43" and "private or reserved" in refused["error"]
+    assert json.loads((state / "applied.json").read_text())["egress"] == []

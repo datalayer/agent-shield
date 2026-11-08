@@ -71,6 +71,8 @@ class Applied:
     resolved: dict[str, list[str]]
     compiled: Compiled
     at: float = field(default_factory=time.time)
+    #: The revision the rules file named, echoed in ``applied.json`` for whoever waits on it.
+    revision: str | None = None
 
 
 class Controller:
@@ -81,7 +83,7 @@ class Controller:
         base: BaseLayer,
         *,
         audit: AuditLog | None = None,
-        runner: Runner = run_command,
+        runner: Runner | None = None,
         resolver: Callable[[str], list[str]] = lookup,
         enforce_ingress: bool = False,
         state_dir: Path | None = None,
@@ -89,7 +91,7 @@ class Controller:
     ) -> None:
         self.base = base
         self.audit = audit
-        self.runner = runner
+        self.runner = runner or run_command
         self.resolver = resolver
         self.enforce_ingress = enforce_ingress
         self.state_dir = state_dir
@@ -106,7 +108,9 @@ class Controller:
             if code != 0:
                 raise FirewallRefused(f"{parent} could not be hooked to {chain}: {said}")
 
-    def apply(self, rules: FirewallRules | None = None, *, reason: str = "apply") -> Applied:
+    def apply(
+        self, rules: FirewallRules | None = None, *, reason: str = "apply", revision: str | None = None
+    ) -> Applied:
         """Apply base + ``rules`` atomically; the previous rules stay if the kernel refuses."""
         rules = rules or FirewallRules()
         resolved = self._resolve(rules)
@@ -119,7 +123,7 @@ class Controller:
             self._hook("INPUT", INGRESS_CHAIN)
         for host in compiled.unresolved:
             logger.warning("firewall: %s resolves to nothing; it is refused", host)
-        self.applied = Applied(rules, resolved, compiled)
+        self.applied = Applied(rules, resolved, compiled, revision=revision)
         if self.state_dir is not None:
             self.state_dir.mkdir(parents=True, exist_ok=True)
             (self.state_dir / "applied.json").write_text(json.dumps(self.state(), indent=2), encoding="utf-8")
@@ -128,6 +132,7 @@ class Controller:
                 "firewall",
                 by="shield",
                 reason=reason,
+                revision=revision,
                 egress=list(rules.egress),
                 ingress=list(rules.ingress) if self.enforce_ingress else None,
                 base=[a.name for a in self.base.allow],
@@ -143,7 +148,7 @@ class Controller:
         resolved = self._resolve(self.applied.rules)
         if resolved == self.applied.resolved:
             return False
-        self.apply(self.applied.rules, reason="refresh")
+        self.apply(self.applied.rules, reason="refresh", revision=self.applied.revision)
         return True
 
     def state(self) -> dict[str, Any]:
@@ -152,6 +157,7 @@ class Controller:
         return {
             "applied": True,
             "at": self.applied.at,
+            "revision": self.applied.revision,
             "egress": list(self.applied.rules.egress),
             "ingress": list(self.applied.rules.ingress),
             "enforce_ingress": self.enforce_ingress,
