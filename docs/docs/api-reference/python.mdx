@@ -273,24 +273,88 @@ The evidence map: AIUC-1's 55 controls, each with its collectors and its status 
 - `covering_standard` — The standard whose controls cover another's clauses, from the catalogue.
 - `answer_covered` — A clause answered through the controls that cover it (SH-66): the weakest of them, bounded by the coverage.
 
+## `agent_shield.firewall`
+
+The firewall: an agent's ``policy.shield`` enforced in its pod and every connection recorded.
+
+
+## `agent_shield.firewall.cli`
+
+``agent-shield firewall``: check, compile, apply, watch.
+
+- `parse_rules` — Rules from an agent spec (its ``policy.shield``), a ``&#123;shield: …&#125;`` mapping, or bare rules.
+- `load_rules` — :func:`parse_rules` for a command: a refusal is said and ends it.
+- `load_revision` — The ``revision`` a rules file names (``&#123;"revision": …, "shield": &#123;…&#125;&#125;``), echoed once applied.
+- `load_base`
+- `check` — Validate the rules; say what they allow.
+- `schema` — The JSON Schema of policy.shield.
+- `compile_command` — Print the iptables-restore script; spec hosts are resolved here.
+- `apply_command` — Apply base and rules once (needs NET_ADMIN).
+- `EchoingAuditLog` — The audit, each row also written to stdout as one JSON line: a container's log carries it.
+- `watch` — The sidecar's daemon: apply, keep current, record (needs NET_ADMIN).
+
+## `agent_shield.firewall.compile`
+
+Base and spec, compiled into one ``iptables-restore`` script.
+
+- `BaseAllowance` — One platform endpoint: its name, host, resolved addresses and ports.
+- `BaseLayer` — What the platform's runtime always reaches, and what is always refused.
+- `Compiled` — The script, and what a row needs to name a destination.
+- `prefix` — The ``NFLOG`` prefix of a rule: ``shield &lt;decision> &lt;rule>``, quoted-safe and short.
+- `compile_rules` — The ``iptables-restore --noflush`` script for base + spec.
+
+## `agent_shield.firewall.controller`
+
+The firewall's controller: apply base + spec, keep it current, record every connection.
+
+- `run_command`
+- `lookup`
+- `FirewallRefused` — The kernel did not take the rules: said with what ``iptables`` said.
+- `Applied` — What the last apply wrote.
+- `Controller` — Applies and keeps the rules; the only writer of the firewall's chains.
+- `ConnectionRecorder` — Each logged connection as a ``connection`` row; repeats within a window folded.
+
+## `agent_shield.firewall.model`
+
+The firewall's rules: what an agent's pod may reach, and who may reach it.
+
+- `FirewallError` — An entry the firewall cannot take, said in a sentence.
+- `Entry` — One parsed entry: ``any``, ``platform``, a ``host`` or a ``network``, and its port.
+- `parse_entry` — One entry of ``egress`` or ``ingress``, parsed, or :class:`FirewallError` saying why not.
+- `FirewallRules` — An agent's ``policy.shield``: its pod's egress and ingress.
+- `firewall_json_schema` — The JSON Schema of ``policy.shield``, which agentspecs carries verbatim.
+- `rules_of_spec` — An agent spec's ``policy.shield``, or the empty rules when it has none.
+
+## `agent_shield.firewall.nflog`
+
+``nfnetlink_log``: the packets the firewall's rules logged, read back as connections.
+
+- `Connection` — One logged connection: what was decided, by which rule, to where.
+- `attributes` — The attributes of one message's body, by type (the nested flag cleared).
+- `decode_prefix` — ``shield &lt;decision> &lt;rule>`` → (decision, rule); another prefix is not the Shield's.
+- `decode_packet` — An IPv4 packet's protocol, source, destination and ports; anything else is None.
+- `decode_message` — One netlink message → a :class:`Connection`, or None for what is not a Shield packet.
+- `messages` — The netlink messages one datagram carries.
+- `config_message` — A ``NFULNL_MSG_CONFIG`` request: a command, or the copy mode, for a group.
+- `Listener` — The bound group: :meth:`connections` yields each logged connection as it comes.
+
 ## `agent_shield.pap`
 
-PAP through the Shield: the company role, standing in front of any agent (SH-71). It runs on the PAP SDK 0.32 (`personal-agent-protocol>=0.32.0,<0.33`, the `pap` extra), PAP draft 0.4 and Operations v2: an action that needs the person's approval is refused with `403 approval_required` and the operation, and the same request with the approval performs it.
+PAP through the Shield: the company role, standing in front of any agent (SH-71), on PAP draft 0.4.
 
 
 ## `agent_shield.pap.company`
 
-The Shield as a PAP company, standing in front of any agent (SH-71).
+The Shield as a PAP company, standing in front of any agent (SH-71), on PAP draft 0.4 (Operations v2).
 
 - `money_moves` — Whether a term carries an amount with a currency, anywhere in the terms.
 - `operation_class` — ``buy`` when a term moves money, or when there are no terms; ``write`` otherwise.
 - `ReviewRefused` — A ticket that is not held, or not this company's.
-- `ReviewTicket` — An operation held for a person of the company to release or refuse; `revision` is the opaque revision the person approved, `account_id` is `None` for one approved signed out, `state` is `held`, `released`, `failed` (the action failed partway when released) or `refused`.
-- `Settle` — How a held operation ended, told to the company service: `settle(operation_id, result, succeeded)`, as `service.settle(operation_id, result, succeeded=succeeded)` takes it.
+- `ReviewTicket` — An operation held for a person of the company to release or refuse: held, released, failed or refused.
 - `canonical`
 - `Signer` — The company's signature on what the Shield answers: HMAC-SHA256 over the canonical JSON.
-- `CompanyShield` — The company's policy in front of its agent: decides, holds, releases, signs, records. *Ask me first* holds an operation as being performed (the request with the approval answered `503` and `Retry-After`, a conversation told it is still being done) until `release` performs and settles it or `refuse` settles it as failed; *leave it to me* fails it with nothing changed (`422 action_failed` at an API).
-- `ShieldedOperationExecutor` — ``pap.company.operationExecutor`` in front of the application's: decided first. The SDK picks one executor per `action`: contribute it in place of the application's, never beside it.
+- `CompanyShield` — The company's policy in front of its agent: decides, holds, releases, signs, records.
+- `ShieldedOperationExecutor` — ``pap.company.operationExecutor`` in place of the application's for its action: decided first.
 - `ShieldedCompanyAgent` — ``pap.company.agent`` in front of the application's: a turn is answered only when the policy lets it.
 - `ShieldCompanyPlugin` — A Reactor plugin wrapping an application's company contributions behind the Shield.
 
@@ -336,6 +400,8 @@ ACP kinds to classes, and the commands the default policy asks about.
 - `UnknownKind` — A tool kind the protocol does not name: the turn ends with this sentence.
 - `class_of` — The class of an ACP kind or a Shield kind, or ``None`` when nothing is to decide.
 - `flagged` — The name of the first flag a command line raises, or ``None``.
+- `deleting` — The name of the first deleting family a command line runs, or ``None``.
+- `command_class` — The class of a command line: **delete** when it runs a deleting family, else ``default``.
 
 ## `agent_shield.policy.decide`
 

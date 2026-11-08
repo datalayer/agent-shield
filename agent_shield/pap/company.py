@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield as a PAP company, standing in front of any agent (SH-71).
+"""The Shield as a PAP company, standing in front of any agent (SH-71), on PAP draft 0.4 (Operations v2).
 
 A company puts *any* agent behind the Personal Agent Protocol by running it
 behind the Shield in the company role: the PAP SDK's company service does
@@ -77,7 +77,7 @@ class ReviewRefused(ValueError):
 
 @dataclass
 class ReviewTicket:
-    """An operation held for a person of the company to release or refuse."""
+    """An operation held for a person of the company to release or refuse: held, released, failed or refused."""
 
     ticket_id: str
     operation_id: str
@@ -309,7 +309,7 @@ async def _settled(settle: Settle | None, operation_id: str, result: Any, succee
 
 
 class ShieldedOperationExecutor:
-    """``pap.company.operationExecutor`` in front of the application's: decided first.
+    """``pap.company.operationExecutor`` in place of the application's for its action: decided first.
 
     The SDK picks an executor by its ``action``: contribute this one in place of
     the application's for that action, never beside it (two at the same order
