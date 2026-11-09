@@ -43,6 +43,14 @@ export type Url2 = string;
  */
 export type Expires = string | null;
 /**
+ * The most an agent's egress may be: '*' (any public address) alone, or exact hosts, host:port, IPv4 addresses, CIDRs, each with an optional :port. Left out bounds nothing; empty grants nothing beyond the platform's endpoints.
+ */
+export type Egress = (string[] | null) & string[];
+/**
+ * The most an agent's ingress may be: '*', or addresses and CIDRs with an optional :port. 'platform' is always kept. Left out bounds nothing; empty keeps 'platform' only.
+ */
+export type Ingress = (string[] | null) & string[];
+/**
  * Harness ids of the catalogue this scope admits; empty admits every registered harness.
  */
 export type Admit = string[];
@@ -111,6 +119,10 @@ export interface AgentShieldPolicy {
    */
   authorizer?: AuthorizerConfig | null;
   expires?: Expires;
+  /**
+   * The organization's ceiling on its agents' firewall rules (policy.shield): the most any agent may be granted, egress and ingress, '*' allowing '*'. An organization document's alone.
+   */
+  firewall?: FirewallCeiling | null;
   harnesses?: Harnesses;
   limits?: Limits;
   mcp?: Mcp;
@@ -158,6 +170,18 @@ export interface OpenFgaAuthorizerConfig {
   model?: Model;
   store: Store;
   url: Url2;
+}
+/**
+ * An organization's ``firewall``: the most any of its agents may be granted.
+ *
+ * The same grammar as :class:`FirewallRules`. A direction left out (``None``)
+ * bounds nothing; an empty egress list grants nothing beyond the base layer,
+ * an empty ingress list nothing beyond ``platform``. ``*`` allows ``*``.
+ * :func:`agent_shield.firewall.bounds.bounded` holds an agent's rules to it.
+ */
+export interface FirewallCeiling {
+  egress?: Egress;
+  ingress?: Ingress;
 }
 /**
  * The harnesses an organization admits, and whose credentials run them.
