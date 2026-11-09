@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.17
+
+What 0.2.16 carries: its tag never published, because the npm package still said 0.2.15.
+
 ## 0.2.16
 
 - **The organization's ceiling on the firewall** (Agent Firewall N3-01). The policy document gains `firewall: {egress, ingress}` (`FirewallCeiling`), the most any agent of an organization may be granted, in the grammar of `policy.shield`. It is an organization document's alone: a team or session document that carries it is refused. `schema/policy.schema.json` carries it.
