@@ -36,6 +36,7 @@ import sys
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -74,12 +75,14 @@ from agent_shield.policy import (
     Authorizer,
     Context,
     Decision,
+    EventLog,
     LimitState,
     LoadedPolicy,
     Policy,
     Rule,
     Subject,
     UnknownKind,
+    call_from_request,
     check_tightens,
     class_of,
     command_class,
@@ -87,6 +90,7 @@ from agent_shield.policy import (
     decide_budget,
     hook_for,
     pap_tool_class,
+    request_for,
 )
 from agent_shield.tracing import turn_ended, turn_span, with_traceparent
 
@@ -158,6 +162,11 @@ class SessionState:
     #: with its own tool (Claude Code's Write and Edit) shows the diff before it
     #: asks, and its permission is decided with that size against ``bytes_written``.
     write_bytes: dict[str, int] = field(default_factory=dict)
+    #: The session's events for the dogwood sets (AC-42): each decided call a
+    #: request (an error when refused), each that ended a response or an error.
+    history: EventLog = field(default_factory=EventLog)
+    #: The runtime the session runs in: the Cedar resource.
+    runtime: str | None = None
 
     @property
     def context(self) -> Context:
@@ -168,6 +177,9 @@ class SessionState:
             subject=self.subject,
             authorize=self.authorize,
             companies=self.companies,
+            runtime=self.runtime,
+            history=self.history,
+            now=datetime.now(timezone.utc),
         )
 
     def all_session_rules(self) -> list[Rule]:
@@ -229,20 +241,25 @@ def action_of_tool_call(
     ``pap_*`` tools, takes its class from that table rather than from the ACP
     kind the harness reported — a confirmation at a company is a ``buy``
     whatever kind the harness called it — and names the company as the
-    resource the authorizer is asked about.
+    resource the authorizer is asked about. Such a tool is also the Cedar
+    action the dogwood sets decide (``tool``); the call's input is their
+    ``context.input``.
     """
     kind = getattr(tool_call, "kind", None)
     if kind is None:
         return None, "the tool call names no kind"
     action_class = class_of(kind)
     resource: str | None = None
+    tool: str | None = None
     name = tool_name_of(tool_call)
     if name:
         classed = tool_class(name) if tool_class is not None else None
         if classed is not None:
             action_class, resource = classed[0], classed[1]  # type: ignore[assignment]
+            tool = name
         elif pap_tool_class(name) is not None:
             action_class = pap_tool_class(name)
+            tool = name
     if action_class is None:
         return None, None
     raw_input = getattr(tool_call, "input", None)
@@ -273,6 +290,8 @@ def action_of_tool_call(
             command=command,
             url=url,
             resource=resource,
+            tool=tool,
+            input=dict(raw_input) if isinstance(raw_input, Mapping) else None,
             **{"class": action_class},
         ),
         None,
@@ -713,13 +732,26 @@ class ShieldProxy:
 
     # -- deciding ------------------------------------------------------------------------
 
-    def decide(self, session: SessionState, action: Action, *, count_as: str | None = None) -> Decision:
+    def decide(self, session: SessionState, action: Action, *, key: str | None = None) -> Decision:
+        """Decide an action; the decision is the session's history's request (or error) for ``key``."""
         if self.unavailable is not None:
             return Decision(verdict="deny", decided_by="default", sentence=self.unavailable)
-        decision = decide(action, session.context, session.policies_in_force())
+        context = session.context
+        decision = decide(action, context, session.policies_in_force())
         if decision.decided_by == "limit" and decision.verdict == "ask" and decision.scope and decision.rule:
             session.state.soft_asked.add((decision.scope, decision.rule))
+        if key is not None and action.action_class is not None:
+            session.history.decided(
+                key,
+                call_from_request(request_for(action, context)),
+                allowed=decision.verdict != "deny",
+                at=context.now or datetime.now(timezone.utc),
+            )
         return decision
+
+    def ended(self, session: SessionState, key: str, *, ok: bool, output: Any = None) -> None:
+        """A call that ran ended: its response (or error) in the session's history."""
+        session.history.ended(key, datetime.now(timezone.utc), ok=ok, output=output)
 
     def count(self, session: SessionState, action: Action, decision: Decision, key: str | None) -> None:
         if key is not None:
@@ -759,6 +791,8 @@ class ShieldProxy:
         option = next((o for o in options if o.option_id == option_id), None)
         chosen_kind = option.kind if option else "cancelled"
         granted = chosen_kind in ("allow_once", "allow_always")
+        if not granted:
+            session.history.refused(tool_call.tool_call_id, datetime.now(timezone.utc))
         if chosen_kind == "allow_always":
             session.session_rules.append(_always_rule(action))
         self.audit.write(
@@ -936,6 +970,8 @@ class _InnerClient:
                     )
             if event.status in ("completed", "failed") and event.tool_call_id in session.decisions:
                 decision = session.decisions[event.tool_call_id]
+                if decision.verdict != "deny":
+                    proxy.ended(session, event.tool_call_id, ok=event.status == "completed", output=event.output)
                 done = session.actions.get(event.tool_call_id)
                 proxy.audit.write(
                     "tool_call",
@@ -959,7 +995,7 @@ class _InnerClient:
         forwards the update before returning.
         """
         proxy = self.proxy
-        decision = proxy.decide(session, action)
+        decision = proxy.decide(session, action, key=call_id)
         session.decisions[call_id] = decision
         session.actions[call_id] = action
         proxy.audit.write(
@@ -981,6 +1017,7 @@ class _InnerClient:
             authorizer=decision.authorizer,
             authorization=decision.authorization,
             model_version=decision.model_version,
+            temporal=decision.temporal,
             by="policy",
         )
         if decision.verdict == "deny":
@@ -1017,7 +1054,7 @@ class _InnerClient:
                     carried = session.write_bytes.get(tool_call.tool_call_id)
                 if carried is not None:
                     action = action.model_copy(update={"bytes": carried})
-            decision = proxy.decide(session, action)
+            decision = proxy.decide(session, action, key=tool_call.tool_call_id)
         session.decisions[tool_call.tool_call_id] = decision
         if decision.verdict == "allow":
             option = _select(options, "allow_once", "allow_always")
@@ -1107,9 +1144,10 @@ class _InnerClient:
                     f"{session.workspace.root}, and the Shield answers files only inside it"
                 ),
             )
+            call_id = session.next_shield_call_id()
         else:
-            decision = proxy.decide(session, action)
-        call_id = session.next_shield_call_id()
+            call_id = session.next_shield_call_id()
+            decision = proxy.decide(session, action, key=call_id)
         row_kind = {"fs_read": "read", "fs_write": "edit", "terminal": "execute"}[action.kind]
         event = {"fs_read": "fs_read", "fs_write": "fs_write", "terminal": "terminal"}[action.kind]
         await proxy.client.session_update(
@@ -1154,6 +1192,7 @@ class _InnerClient:
             rule=decision.rule,
             scope=decision.scope,
             decided_by=decision.decided_by,
+            temporal=decision.temporal,
             by="policy",
         )
         if decision.verdict == "deny":
@@ -1177,6 +1216,7 @@ class _InnerClient:
         try:
             content = session.workspace.read_text(path, line=line, limit=limit)
         except (OutsideWorkspace, OSError) as exc:
+            self.proxy.ended(session, call_id, ok=False)
             await self.proxy.client.session_update(
                 session_id=session_id, update=update_tool_call(call_id, status="failed")
             )
@@ -1190,6 +1230,7 @@ class _InnerClient:
             what="read",
             by="shield",
         )
+        self.proxy.ended(session, call_id, ok=True)
         await self.proxy.client.session_update(
             session_id=session_id, update=update_tool_call(call_id, status="completed")
         )
@@ -1214,6 +1255,7 @@ class _InnerClient:
         try:
             session.workspace.write_text(path, content)
         except (OutsideWorkspace, OSError) as exc:
+            self.proxy.ended(session, call_id, ok=False)
             await self.proxy.client.session_update(
                 session_id=session_id, update=update_tool_call(call_id, status="failed")
             )
@@ -1225,6 +1267,7 @@ class _InnerClient:
             diff=diff_summary(placed.shown, content, old_text),
             by="shield",
         )
+        self.proxy.ended(session, call_id, ok=True)
         await self.proxy.client.session_update(
             session_id=session_id,
             update=update_tool_call(call_id, status="completed", content=[tool_diff_content(path, content, old_text)]),
@@ -1252,10 +1295,12 @@ class _InnerClient:
                 command, args, cwd, {item.name: item.value for item in env or []}, output_byte_limit
             )
         except (OutsideWorkspace, OSError) as exc:
+            self.proxy.ended(session, call_id, ok=False)
             await self.proxy.client.session_update(
                 session_id=session_id, update=update_tool_call(call_id, status="failed")
             )
             raise RequestError(REFUSED, f"{action.title}: {exc}") from None
+        self.proxy.ended(session, call_id, ok=True, output={"terminal_id": run.terminal_id})
         self.proxy.audit.write(
             "terminal",
             session=session_id,

@@ -106,7 +106,7 @@ export const LIMIT_WORDS: Record<LimitName, string> = {
 /** Whose key may run a harness. */
 export const CREDENTIALS = ['account', 'platform', 'either'] as const satisfies readonly Credentials[];
 
-export type DecidedBy = 'rule' | 'limit' | 'network' | 'default';
+export type DecidedBy = 'rule' | 'limit' | 'network' | 'default' | 'authorizer' | 'dogwood';
 
 export interface Decision {
   verdict: Verdict;
@@ -115,6 +115,8 @@ export interface Decision {
   rule?: string | null;
   decided_by: DecidedBy;
   counted?: boolean;
+  /** What the dogwood set answered: permit, deny, or deny (log only) with its sentence. */
+  temporal?: string | null;
 }
 
 /** The words of a decision, for a row or a card: the verdict's words and where it came from. */

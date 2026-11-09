@@ -1,0 +1,97 @@
+---
+sidebar_position: 3
+title: Cedar and Dogwood
+---
+
+# Cedar and Dogwood
+
+A policy document can say who may call what in **Cedar**, and what may happen given what already happened in the session in **Dogwood**. AgentCore Policy uses the same two languages to decide the tool calls that pass through an AgentCore Gateway. One document can be enforced by the Shield and by an AgentCore policy engine.
+
+**Built:** the `cedar` authorizer (a Cedar policy set behind the authorizer port), the document's `dogwood` section, decided over the session's history in `enforce` or `log_only` mode, and `agent-shield policy export --dogwood`, which writes a document's rules and limits as Dogwood. **Not built:** pushing a set to an AgentCore policy engine, Dogwood macros (`def temporal`, `def cedar`), and information providers such as guardrails.
+
+Both need `cedarpy` (Cedar 4): `pip install 'datalayer-agent-shield[cedar]'`. Without it, every action a set should decide is refused, and the refusal says why.
+
+## The entities
+
+| Cedar | What the Shield puts there |
+|---|---|
+| `principal` | `Datalayer::User::"<subject>"` (an agent is `Datalayer::Agent`, a deployment `Datalayer::Deployment`), with the attributes `org_uid`, `app_uid` and `agent_uid` |
+| `action` | `Datalayer::Action::"<server>___<tool>"`, AgentCore's naming for a Gateway's tools. The Shield's own actions are `Datalayer::Action::"shield___<kind>"` (for example `shield___terminal`, `shield___fs_read`) |
+| `resource` | `Datalayer::Runtime::"<runtime uid>"`, or `Datalayer::Runtime::"local"` for a standalone Shield |
+| `context.input` | the tool's arguments |
+| `context.class`, `context.kind`, `context.path`, `context.inside`, `context.command`, `context.url` | the action as the Shield classes it, when it has them |
+
+Cedar denies by default, and a `forbid` overrides any `permit`.
+
+## The `cedar` authorizer
+
+```yaml
+scope: organization
+authorize: [buy, send]
+authorizer:
+  cedar:
+    policies: |
+      permit (principal, action, resource)
+      when { principal has org_uid && principal.org_uid == "acme" };
+
+      @id("no big payments")
+      forbid (principal, action == Datalayer::Action::"bank___pay", resource)
+      when { context.input has amount && context.input.amount > 1000 };
+```
+
+`policies` holds the text, or the path of a `.cedar` file. The authorizer is asked only for the classes listed under `authorize`. Its deny wins over any rule. Its allow only lets the rules decide.
+
+## The `dogwood` section
+
+```yaml
+scope: organization
+dogwood:
+  mode: enforce          # or log_only: decide, record, let the action through
+  policies: |
+    permit (principal, action, resource)
+    unless { action == Datalayer::Action::"bank___pay" };
+
+    @id("approved before paying")
+    permit (principal, action == Datalayer::Action::"bank___pay", resource)
+    when temporal {
+        formerly within 1h Datalayer::Action::"bank___approve"::response{
+            eventResource: resource,
+            input.claim: context.input.claim
+        }
+    };
+```
+
+The set decides every classed action of the session. The Shield keeps the session's history the way AgentCore does:
+
+- each call it decides is a `request` event;
+- a call refused by the policy or by the person is an `error` event;
+- a permitted call that completed is a `response` event, carrying its output;
+- a call that failed is an `error` event.
+
+The request being decided counts in a condition that names its own action. A window closes at its edge: a witness exactly `W` back is in. The history keeps 24 hours.
+
+An enforced deny wins over any rule. In `log_only` mode, the decision's `temporal` field records what the set would have refused, and the rules decide as usual.
+
+### The grammar the Shield reads
+
+`formerly within`, `previous within`, `since within`, `!`, `&&`, `exists (x: T).`, `tp(t)`, `count for (…). where …`, `sum v for (…). where …` (a distinct count leaves the timepoint out of the domain), comparisons with `+ - *`, and predicates `Ns::Action::"id"::request|response|error{ field: term, … }` over `input.*`, `output.*`, `eventPrincipal`, `eventResource` and `requestId`. A window is written `<n>s`, `m`, `h` or `d`.
+
+### AgentCore's quotas
+
+A set is refused when it is read if it breaks one of AgentCore's quotas:
+
+- more than 20 temporal policies;
+- more than 3 temporal operators (`formerly`, `previous`, `since`, `count`, `sum`) in one policy;
+- a window over 24 hours.
+
+## Export
+
+`agent-shield policy export --dogwood agent-shield.yaml --tool files___op` writes the document's rules and its `tool_calls`, `model_tokens` and `spend` limits as a Dogwood policy set:
+
+- a rule that says *do it* becomes a `permit`, guarded by the earlier rules that say something else;
+- *ask me first* and *leave it to me* are not permitted, because Dogwood denies by default and has no *ask*;
+- a hard `tool_calls` threshold becomes a `count` per tool named with `--tool`, since Dogwood counts one action per predicate;
+- a hard `model_tokens` or `spend` threshold becomes a running `sum` over the model requests;
+- a soft threshold asks a person, which Dogwood cannot do, so it is not exported.
+
+A rule that matches commands by regular expression, or a path glob with `?` or `[`, cannot be said in Cedar, and the export refuses it. The other sections of the document stay with the Shield.

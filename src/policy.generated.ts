@@ -15,6 +15,10 @@
 export type Authorize = ('read' | 'write' | 'send' | 'buy' | 'delete' | 'execute')[];
 export type Url = string;
 /**
+ * A Cedar policy set, inline, or the path of a .cedar file.
+ */
+export type Policies = string;
+/**
  * workspace:* /src/*, tool:earthdata/*, connection:acme.example
  */
 export type Object = string;
@@ -38,6 +42,14 @@ export type Url1 = string;
 export type Model = string | null;
 export type Store = string;
 export type Url2 = string;
+/**
+ * enforce: what the set denies is refused; log_only: decided and recorded, then let through.
+ */
+export type Mode = 'enforce' | 'log_only';
+/**
+ * The policy set, as AgentCore Policy takes it: permit and forbid over Datalayer::User principals, Datalayer::Action::"<server>___<tool>" actions and the Datalayer::Runtime resource, with when temporal { formerly within | since within | count | sum } over the session's request, response and error events. Deny by default; a forbid overrides any permit.
+ */
+export type Policies1 = string;
 /**
  * When a pulled copy stops being honoured.
  */
@@ -115,9 +127,13 @@ export type Version = number;
 export interface AgentShieldPolicy {
   authorize?: Authorize;
   /**
-   * The decision point a standalone Shield asks: local (grants in this file), openfga {url, store, model} or authzen {url}. On Datalayer the authorizer is IAM's and a managed document names none.
+   * The decision point a standalone Shield asks: local (grants in this file), openfga {url, store, model}, authzen {url}, opa {url, package} or cedar {policies}. On Datalayer the authorizer is IAM's and a managed document names none.
    */
   authorizer?: AuthorizerConfig | null;
+  /**
+   * A Dogwood policy set deciding every classed action over the session's history (AgentCore Policy's language): a deny wins over any Rule, as the authorizer's does; an allow only lets the Rules decide.
+   */
+  dogwood?: Dogwood | null;
   expires?: Expires;
   /**
    * The organization's ceiling on its agents' firewall rules (policy.shield): the most any agent may be granted, egress and ingress, '*' allowing '*'. An organization document's alone.
@@ -136,6 +152,7 @@ export interface AgentShieldPolicy {
  */
 export interface AuthorizerConfig {
   authzen?: AuthZenAuthorizerConfig | null;
+  cedar?: CedarAuthorizerConfig | null;
   local?: LocalAuthorizerConfig | null;
   opa?: OpaAuthorizerConfig | null;
   openfga?: OpenFgaAuthorizerConfig | null;
@@ -146,6 +163,12 @@ export interface AuthZenAuthorizerConfig {
 }
 export interface Headers {
   [k: string]: string;
+}
+/**
+ * ``cedar: {policies}``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41).
+ */
+export interface CedarAuthorizerConfig {
+  policies: Policies;
 }
 export interface LocalAuthorizerConfig {
   grants?: Grants;
@@ -170,6 +193,17 @@ export interface OpenFgaAuthorizerConfig {
   model?: Model;
   store: Store;
   url: Url2;
+}
+/**
+ * A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+ *
+ * Read as it is loaded: the temporal clauses parsed, AgentCore's quotas held
+ * (20 temporal policies, 3 temporal operators in one, a 24-hour window at
+ * most) and, when ``cedarpy`` is installed, the Cedar parsed too.
+ */
+export interface Dogwood {
+  mode?: Mode;
+  policies: Policies1;
 }
 /**
  * An organization's ``firewall``: the most any of its agents may be granted.

@@ -7,7 +7,7 @@
     agent-shield setup [--harness claude-code] [--local|--register]
     agent-shield run [--workspace DIR] [--policy FILE] -- claude-agent-acp
     agent-shield log [--last 20] [--json]
-    agent-shield policy show | schema | init
+    agent-shield policy show | schema | init | export --dogwood FILE
     agent-shield harnesses
     agent-shield upgrade [--check]
     agent-shield uninstall [--yes]
@@ -518,6 +518,31 @@ def policy_show(
 def policy_schema() -> None:
     """The policy document's JSON Schema."""
     typer.echo(policy_json_schema_text(), nl=False)
+
+
+@policy_app.command("export")
+def policy_export(
+    document: Path = typer.Argument(..., help="The policy file (one document, or several under policies:)."),
+    dogwood: bool = typer.Option(False, "--dogwood", help="Write the document's rules and limits as Dogwood."),
+    tool: list[str] = typer.Option([], "--tool", help="A tool tool_calls holds, <server>___<tool>; repeatable."),
+    scope: Optional[str] = typer.Option(None, "--scope", help="The document of a file holding several."),
+) -> None:
+    """A document as another policy language: --dogwood, AgentCore Policy's (AC-43)."""
+    from agent_shield.policy.export_dogwood import ExportRefused, export_dogwood
+
+    if not dogwood:
+        refuse("name the language to export to: --dogwood")
+    try:
+        loaded = load_policies(document)
+    except PolicyRefused as exc:
+        refuse(str(exc))
+    chosen = [item.policy for item in loaded if scope is None or item.policy.scope == scope]
+    if len(chosen) != 1:
+        refuse(f"{document} holds {len(chosen)} documents{' of that scope' if scope else ''}: name one with --scope")
+    try:
+        typer.echo(export_dogwood(chosen[0], tools=tool), nl=False)
+    except ExportRefused as exc:
+        refuse(f"{document}: {exc}")
 
 
 @policy_app.command("init")

@@ -15,7 +15,8 @@ is a ``decision`` with a ``context`` of its own. Any policy decision point
 that speaks it is a contribution: :class:`LocalAuthorizer` (grants in
 ``agent-shield.yaml``, the standalone proxy's), :class:`AuthZenAuthorizer`
 (any AuthZen endpoint: IAM's on Datalayer, OPA or Cedar elsewhere),
-:class:`OpenFgaAuthorizer` (an organization running its own OpenFGA).
+:class:`OpenFgaAuthorizer` (an organization running its own OpenFGA),
+``cedar.CedarAuthorizer`` (a Cedar policy set decided in process, AC-41).
 
 The rules of the port, held by :func:`authorize` and by ``decide``:
 
@@ -37,9 +38,12 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from fnmatch import fnmatchcase
+from pathlib import Path
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .dogwood import cedar_problem
 
 #: The relation each action class asks for, in OpenFGA's vocabulary (the authorization model).
 RELATIONS: dict[str, str] = {
@@ -313,7 +317,10 @@ def _post_json(url: str, body: Mapping[str, Any], headers: Mapping[str, str], ti
         raise ValueError(f"{who}: the URL is http(s), not {url!r}")
     data = json.dumps(body).encode("utf-8")
     request = urllib.request.Request(  # noqa: S310 - the scheme is checked above
-        url, data=data, method="POST", headers={"Content-Type": "application/json", "Accept": "application/json", **headers}
+        url,
+        data=data,
+        method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json", **headers},
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as answer:  # noqa: S310 - http(s) only
@@ -370,7 +377,9 @@ class AuthZenAuthorizer:
         if not isinstance(data, Mapping) or not isinstance(data.get("decision"), bool):
             raise AuthorizerUnreachable(f"{who} answered no boolean 'decision'")
         context = data.get("context")
-        return EvaluationResponse(decision=data["decision"], context=dict(context) if isinstance(context, Mapping) else {})
+        return EvaluationResponse(
+            decision=data["decision"], context=dict(context) if isinstance(context, Mapping) else {}
+        )
 
 
 class OpenFgaAuthorizer:
@@ -412,21 +421,32 @@ class OpaAuthorizer(AuthZenAuthorizer):
     wrapping and the unwrapping; everything else is the port's.
     """
 
-    def __init__(self, url: str, *, package: str = "authzen/evaluation", headers: Mapping[str, str] | None = None, timeout: float = 5.0) -> None:
+    def __init__(
+        self,
+        url: str,
+        *,
+        package: str = "authzen/evaluation",
+        headers: Mapping[str, str] | None = None,
+        timeout: float = 5.0,
+    ) -> None:
         base = url.rstrip("/")
         path = package.strip("/").replace(".", "/")
         super().__init__(f"{base}/v1/data/{path}", name="opa", headers=headers, timeout=timeout)
 
     def evaluate(self, request: EvaluationRequest) -> EvaluationResponse:
         who = f"the authorizer opa at {self.url}"
-        data = _post_json(self.url, {"input": request.model_dump()}, {**self._headers, **self._bearer()}, self.timeout, who)
+        data = _post_json(
+            self.url, {"input": request.model_dump()}, {**self._headers, **self._bearer()}, self.timeout, who
+        )
         result = data.get("result") if isinstance(data, Mapping) else None
         if not isinstance(result, Mapping) or not isinstance(result.get("decision"), bool):
             raise AuthorizerUnreachable(
                 f"{who} answered no boolean 'decision' in its result: the package names none, or Rego refused the input"
             )
         context = result.get("context")
-        return EvaluationResponse(decision=result["decision"], context=dict(context) if isinstance(context, Mapping) else {})
+        return EvaluationResponse(
+            decision=result["decision"], context=dict(context) if isinstance(context, Mapping) else {}
+        )
 
 
 # -- the file's `authorizer:` section ------------------------------------------------------
@@ -453,7 +473,32 @@ class OpaAuthorizerConfig(_Strict):
     headers: dict[str, str] = Field(default_factory=dict)
 
 
-AUTHORIZER_KINDS = ("local", "openfga", "authzen", "opa")
+def read_cedar_policies(value: str) -> tuple[str, str]:
+    """The Cedar text a config names (inline, or a ``.cedar`` file's), and where it came from."""
+    if "\n" not in value and value.strip().endswith(".cedar"):
+        path = Path(value.strip()).expanduser()
+        if not path.is_file():
+            raise ValueError(f"the cedar authorizer's policies name a file that does not exist: {path}")
+        return path.read_text(encoding="utf-8"), str(path)
+    return value, "the cedar authorizer's policies"
+
+
+class CedarAuthorizerConfig(_Strict):
+    """``cedar: {policies}``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41)."""
+
+    policies: str = Field(min_length=1, description="A Cedar policy set, inline, or the path of a .cedar file.")
+
+    @field_validator("policies")
+    @classmethod
+    def _parses(cls, value: str) -> str:
+        text, origin = read_cedar_policies(value)
+        said = cedar_problem(text)
+        if said not in (None, "unavailable"):
+            raise ValueError(f"{origin}: Cedar refuses them: {said}")
+        return value
+
+
+AUTHORIZER_KINDS = ("local", "openfga", "authzen", "opa", "cedar")
 
 
 class AuthorizerConfig(_Strict):
@@ -463,6 +508,7 @@ class AuthorizerConfig(_Strict):
     openfga: OpenFgaAuthorizerConfig | None = None
     authzen: AuthZenAuthorizerConfig | None = None
     opa: OpaAuthorizerConfig | None = None
+    cedar: CedarAuthorizerConfig | None = None
 
     @model_validator(mode="after")
     def _exactly_one(self) -> AuthorizerConfig:
@@ -484,6 +530,11 @@ class AuthorizerConfig(_Strict):
             return OpenFgaAuthorizer(self.openfga.url, self.openfga.store, self.openfga.model)
         if self.opa is not None:
             return OpaAuthorizer(self.opa.url, package=self.opa.package, headers=self.opa.headers)
+        if self.cedar is not None:
+            from .cedar import CedarAuthorizer  # cedar.py imports this module
+
+            text, origin = read_cedar_policies(self.cedar.policies)
+            return CedarAuthorizer(text, origin=origin)
         assert self.authzen is not None
         return AuthZenAuthorizer(self.authzen.url, headers=self.authzen.headers)
 
@@ -501,6 +552,7 @@ __all__ = [
     "Authorizer",
     "AuthorizerConfig",
     "AuthorizerUnreachable",
+    "CedarAuthorizerConfig",
     "EvaluationRequest",
     "EvaluationResponse",
     "Grant",
@@ -514,4 +566,5 @@ __all__ = [
     "Subject",
     "authorize",
     "hook_for",
+    "read_cedar_policies",
 ]

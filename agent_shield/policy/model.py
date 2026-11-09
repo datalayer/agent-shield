@@ -20,13 +20,14 @@ nothing.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 from agent_shield.firewall.model import FirewallCeiling
 
 from .authorize import AuthorizerConfig
+from .dogwood import DogwoodRefused, DogwoodSet, cedar_problem, parse_set
 
 #: The three scopes, strictest first: the organization decides before the
 #: team, the team before the session.
@@ -165,10 +166,57 @@ class Harnesses(_Strict):
     )
     credentials: Credentials = Field(
         default="account",
+        description=("Whose key runs a harness: the account's own declared secret, the platform's, or either."),
+    )
+
+
+#: How a Dogwood set is applied: ``enforce`` refuses what it denies; ``log_only`` decides,
+#: records, and lets the action through to the rules (AgentCore's LOG_ONLY).
+DogwoodMode = Literal["enforce", "log_only"]
+
+
+class Dogwood(_Strict):
+    """A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+
+    Read as it is loaded: the temporal clauses parsed, AgentCore's quotas held
+    (20 temporal policies, 3 temporal operators in one, a 24-hour window at
+    most) and, when ``cedarpy`` is installed, the Cedar parsed too.
+    """
+
+    policies: str = Field(
+        min_length=1,
         description=(
-            "Whose key runs a harness: the account's own declared secret, the platform's, or either."
+            "The policy set, as AgentCore Policy takes it: permit and forbid over Datalayer::User principals, "
+            'Datalayer::Action::"<server>___<tool>" actions and the Datalayer::Runtime resource, with '
+            "when temporal { formerly within | since within | count | sum } over the session's request, response "
+            "and error events. Deny by default; a forbid overrides any permit."
         ),
     )
+    mode: DogwoodMode = Field(
+        default="enforce",
+        description="enforce: what the set denies is refused; log_only: decided and recorded, then let through.",
+    )
+
+    _parsed: DogwoodSet | None = PrivateAttr(default=None)
+
+    @model_validator(mode="after")
+    def _reads(self) -> Dogwood:
+        try:
+            parsed = parse_set(self.policies)
+        except DogwoodRefused as refused:
+            raise ValueError(f"dogwood: {refused}") from None
+        said = cedar_problem(parsed.lowered)
+        if said not in (None, "unavailable"):
+            raise ValueError(f"dogwood: Cedar refuses the set: {said}")
+        self._parsed = parsed
+        return self
+
+    @property
+    def parsed(self) -> DogwoodSet:
+        """The set, parsed and lowered to Cedar."""
+        if self._parsed is None:  # pragma: no cover - set by the validator
+            self._parsed = parse_set(self.policies)
+        return self._parsed
 
 
 class Policy(_Strict):
@@ -193,8 +241,17 @@ class Policy(_Strict):
     authorizer: AuthorizerConfig | None = Field(
         default=None,
         description=(
-            "The decision point a standalone Shield asks: local (grants in this file), openfga {url, store, model} "
-            "or authzen {url}. On Datalayer the authorizer is IAM's and a managed document names none."
+            "The decision point a standalone Shield asks: local (grants in this file), openfga {url, store, model}, "
+            "authzen {url}, opa {url, package} or cedar {policies}. On Datalayer the authorizer is IAM's and a "
+            "managed document names none."
+        ),
+    )
+
+    dogwood: Dogwood | None = Field(
+        default=None,
+        description=(
+            "A Dogwood policy set deciding every classed action over the session's history (AgentCore Policy's "
+            "language): a deny wins over any Rule, as the authorizer's does; an allow only lets the Rules decide."
         ),
     )
 
@@ -240,6 +297,14 @@ class Action(_Strict):
     command: str | None = None
     url: str | None = None
     bytes: int | None = Field(default=None, ge=0, description="Bytes a write carries.")
+    tool: str | None = Field(
+        default=None,
+        description=(
+            "The tool called, as AgentCore names a Gateway's tools (<server>___<tool>); the Cedar action. "
+            "Unset, the Shield's own: shield___<kind>."
+        ),
+    )
+    input: dict[str, Any] | None = Field(default=None, description="The tool's arguments: Cedar's context.input.")
     tokens: int | None = Field(default=None, ge=0, description="Tokens a model request spent, in and out.")
     credits: int | None = Field(default=None, ge=0, description="Credits a model request cost (100 a USD).")
     resource: str | None = Field(
@@ -260,13 +325,17 @@ class Decision(_Strict):
     sentence: str
     scope: Scope | None = Field(default=None, description="The scope that decided; None for the default.")
     rule: str | None = Field(default=None, description="The rule's name, or the limit's, or None for the default.")
-    decided_by: Literal["rule", "limit", "network", "default", "authorizer"]
+    decided_by: Literal["rule", "limit", "network", "default", "authorizer", "dogwood"]
     counted: bool = Field(default=False, description="Whether a session state should count this action.")
     authorizer: str | None = Field(default=None, description="The authorizer asked, when the class needed one.")
     authorization: str | None = Field(
         default=None, description="What it answered: allow, cached allow, or deny; with its reason in the sentence."
     )
     model_version: str | None = Field(default=None, description="The authorizer's model version, for the audit.")
+    temporal: str | None = Field(
+        default=None,
+        description="What the dogwood set answered: permit, deny, or deny (log only) with its sentence.",
+    )
 
     @property
     def word(self) -> str:
@@ -292,6 +361,8 @@ __all__ = [
     "ActionClass",
     "Credentials",
     "Decision",
+    "Dogwood",
+    "DogwoodMode",
     "Harnesses",
     "Limits",
     "Mcp",

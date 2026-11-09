@@ -139,6 +139,7 @@ The ``agent-shield`` command.
 - `log` — The audit: the last rows, one line each.
 - `policy_show` — Every line of the policy in force, and where it came from.
 - `policy_schema` — The policy document's JSON Schema.
+- `policy_export` — A document as another policy language: --dogwood, AgentCore Policy's (AC-43).
 - `policy_init` — Write the default policy.
 - `harnesses` — The register: every harness with its terms.
 - `yaml_checked_on`
@@ -406,7 +407,22 @@ The authorizer port (SH-74): *may this principal act on this object?*
 - `OpenFgaAuthorizerConfig`
 - `AuthZenAuthorizerConfig`
 - `OpaAuthorizerConfig`
+- `read_cedar_policies` — The Cedar text a config names (inline, or a ``.cedar`` file's), and where it came from.
+- `CedarAuthorizerConfig` — ``cedar: &#123;policies&#125;``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41).
 - `AuthorizerConfig` — ``authorizer:`` in a policy document: exactly one decision point (standalone).
+
+## `agent_shield.policy.cedar`
+
+Cedar behind the authorizer port (AC-41): the ``cedar`` authorizer.
+
+- `uid` — ``Datalayer::&lt;kind>::"&lt;ident>"``, quoted as Cedar quotes it.
+- `action_uid` — The Cedar action of a call: the tool as AgentCore names it, else the Shield's own kind.
+- `cedar_value` — A value as Cedar's JSON takes it: no null, no float (a float becomes its text).
+- `CedarCall` — One call as Cedar sees it: principal, action, resource, context, and the principal's attributes.
+- `call_from_request` — The Cedar call an AuthZen request is (the context ``request_for`` writes).
+- `CedarAnswer` — What Cedar decided: allowed or not, the policies that decided, and its errors.
+- `cedar_decide` — Decide one call against a Cedar policy set; no cedarpy, or an error, is a deny.
+- `CedarAuthorizer` — A Cedar policy set behind the port (``authorizer: &#123;cedar: &#123;policies&#125;&#125;``).
 
 ## `agent_shield.policy.classify`
 
@@ -436,6 +452,51 @@ ACP kinds to classes, and the commands the default policy asks about.
 The default policy of as a session document.
 
 - `default_policy` — The document ``agent-shield setup`` writes beside a project.
+
+## `agent_shield.policy.dogwood`
+
+Dogwood policy sets: the parser, AgentCore's quotas and the lowering to Cedar (AC-42).
+
+- `DogwoodRefused` — A policy set that cannot be read, said in a sentence.
+- `Window` — A ``within &lt;n>&lt;unit>`` window.
+- `Lit` — A literal: an integer, a string, a boolean, or a decimal kept as text.
+- `Var` — A bound variable.
+- `Wild` — ``_`` or ``*``: matches anything, binds nothing.
+- `CtxRef` — ``context.a.b``: a path into the current request's context.
+- `ScopeRef` — ``principal`` or ``resource``, with an optional attribute path.
+- `Entity` — An entity literal, ``Type::"id"``, kept normalised.
+- `Arr` — An array of terms.
+- `Agg` — ``count`` or ``sum v`` over a ``for`` domain, where a condition holds.
+- `Arith` — ``left + right``, ``left - right`` or ``left * right``.
+- `Pred` — A predicate on one event: its action, its kind and its field patterns.
+- `Tp` — ``tp(t)``: binds ``t`` to the timepoint evaluated.
+- `Formerly` — ``formerly within W body``.
+- `Previous` — ``previous within W body``.
+- `Since` — ``left since within W right``.
+- `Not` — ``!body``.
+- `And` — ``left && right``.
+- `Exists` — ``exists (x: T). body``.
+- `Compare` — ``left &lt;op> right``.
+- `Clause` — One ``when`` or ``unless`` of a policy: Cedar text, or a temporal condition.
+- `DogwoodPolicy` — One policy of a set.
+- `DogwoodSet` — A parsed policy set and its lowering.
+- `count_operators` — The temporal operators in a condition: formerly, previous, since, count and sum.
+- `windows_of` — Every window in a condition.
+- `normalize_uid` — An entity's uid written ``Type::"id"`` with no spaces, as the evaluator compares them.
+- `parse_temporal` — Parse the body of a ``temporal &#123; … &#125;`` block.
+- `lower` — The set as standard Cedar: each temporal clause a boolean ``context.dogwood`` slot.
+- `quota_problems` — Why AgentCore would refuse the set, in sentences; empty when it would take it.
+- `parse_set` — Parse a Dogwood policy set and hold AgentCore's quotas.
+- `cedar_problem` — Why ``cedarpy`` refuses the lowered set; ``None`` when it parses, or ``"unavailable"``.
+- `validate` — Validate a policy set as the policies spec reads it: problems, and what was not checked.
+
+## `agent_shield.policy.export_dogwood`
+
+A Shield document's rules and limits as a Dogwood policy set (AC-43).
+
+- `ExportRefused` — A document the export cannot say in Dogwood, said in a sentence.
+- `rule_match` — The rule's match as a Cedar condition over the Shield's context.
+- `export_dogwood` — A document's rules and limits as a Dogwood policy set, read back before it is returned.
 
 ## `agent_shield.policy.files`
 
@@ -469,10 +530,22 @@ The policy document: one schema, three scopes, first decision wins.
 - `Network` — What the agent may reach over the network, through the Shield.
 - `Mcp` — The MCP servers the agent is lent, by name; everything else is cut from session/new.
 - `Harnesses` — The harnesses an organization admits, and whose credentials run them.
+- `Dogwood` — A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
 - `Policy` — One policy document, one scope.
 - `Action` — What the agent wants to do, as the engine sees it.
 - `Decision` — What the engine answered, and from where.
 - `Settings` — Bounds that keep the schema's text readable in a sentence.
+
+## `agent_shield.policy.temporal`
+
+The temporal evaluator (AC-42): a Dogwood policy set decided over the session's history.
+
+- `Event` — One event of a session: a request, a response or an error, on one call.
+- `EventLog` — A session's history: what the Shield decided and what completed, oldest first.
+- `Evaluator` — One condition at one decision: the events up to and including the current request.
+- `TemporalAnswer` — What a set decided for one call, and why, in a sentence.
+- `current_request` — The call being decided, observed as a ``request`` at the decision timepoint.
+- `evaluate` — Decide one call: the temporal slots from the history and the current request, then Cedar.
 
 ## `agent_shield.reactor_extension`
 

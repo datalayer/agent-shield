@@ -21,10 +21,16 @@ The order:
 Before all of these, for a class a policy in force lists under
 ``authorize:``, the **authorizer** (``authorize.py``) is asked through
 the context's hook: its deny wins over any Rule, no hook is a deny, and an
-allow only lets the rules decide — it loosens nothing.
+allow only lets the rules decide — it loosens nothing. Then each policy's
+**dogwood** set (``temporal.py``) decides the action over the session's
+history, strictest scope first: an enforced deny wins over any Rule, a
+``log_only`` deny is recorded on the decision and lets the rules decide, a
+permit loosens nothing.
 
-The engine never touches a filesystem, a clock or a socket: ``inside``, the
-counters and the authorizer's hook arrive in the action and the context.
+The engine never touches a filesystem or a socket: ``inside``, the counters,
+the history, the moment and the authorizer's hook arrive in the action and
+the context (the moment is read from the clock only when the context brings
+none and a dogwood set needs one).
 """
 
 from __future__ import annotations
@@ -32,10 +38,12 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from fnmatch import fnmatchcase
 from urllib.parse import urlsplit
 
 from .authorize import ActionName, AuthorizeHook, EvaluationRequest, Resource, Subject
+from .cedar import call_from_request
 from .model import (
     LIMIT_NAMES,
     LIMIT_RELIEF,
@@ -51,6 +59,7 @@ from .model import (
     Settings,
     Threshold,
 )
+from .temporal import EventLog, evaluate
 
 
 @dataclass
@@ -104,6 +113,12 @@ class Context:
     #: The companies the application connects through PAP: a fetch to
     #: one is refused whatever the allow-list says — PAP is the only way to a company.
     companies: tuple[str, ...] = ()
+    #: The runtime the session runs in: the Cedar resource (``Datalayer::Runtime``), ``local`` unset.
+    runtime: str | None = None
+    #: The session's events, for the dogwood sets; ``None`` is an empty history.
+    history: EventLog | None = None
+    #: The decision's moment, for the dogwood sets' windows; ``None`` reads the clock.
+    now: datetime | None = None
 
 
 def _rank(policy: Policy) -> int:
@@ -340,6 +355,10 @@ def request_for(action: Action, context: Context) -> EvaluationRequest:
                 ("path", action.path),
                 ("command", action.command),
                 ("url", action.url),
+                ("inside", action.inside),
+                ("tool", action.tool),
+                ("input", action.input),
+                ("runtime", context.runtime),
             )
             if value is not None
         },
@@ -396,17 +415,61 @@ def _authorizer_decision(action: Action, context: Context, ordered: Sequence[Pol
     )
 
 
-def _with_authorization(decision: Decision, allowed: Decision | None) -> Decision:
-    """The rules' decision carrying the authorizer's allow, for the audit."""
-    if allowed is None:
-        return decision
-    return decision.model_copy(
-        update={
-            "authorizer": allowed.authorizer,
-            "authorization": allowed.authorization,
-            "model_version": allowed.model_version,
-        }
+def _dogwood_decision(action: Action, context: Context, ordered: Sequence[Policy]) -> Decision | None:
+    """The dogwood sets' answer, strictest scope first; ``None`` when no policy carries one.
+
+    An enforced deny is the decision; a ``log_only`` deny is an allow that
+    says what it would have refused; a permit lets the rules decide.
+    """
+    carrying = [(policy, policy.dogwood) for policy in ordered if policy.dogwood is not None]
+    if not carrying:
+        return None
+    call = call_from_request(request_for(action, context))
+    history = context.history.events if context.history is not None else []
+    moment = context.now or datetime.now(timezone.utc)
+    observed: list[str] = []
+    permitted: list[str] = []
+    for policy, dogwood in carrying:
+        answer = evaluate(dogwood.parsed, call, history, moment)
+        if answer.allowed:
+            permitted.append(f"{policy.scope}: {answer.sentence}")
+            continue
+        if dogwood.mode == "log_only":
+            observed.append(f"{policy.scope}: {answer.sentence}")
+            continue
+        return Decision(
+            verdict="deny",
+            decided_by="dogwood",
+            scope=policy.scope,
+            rule=", ".join(answer.decided_by) or "dogwood",
+            temporal="deny",
+            sentence=f"{_subject(action)}: leave it to me — {answer.sentence} ({policy.scope} policy)",
+        )
+    if observed:
+        return Decision(
+            verdict="allow",
+            decided_by="dogwood",
+            temporal="deny (log only): " + "; ".join(observed),
+            sentence=f"{_subject(action)}: the dogwood set would refuse it, in log_only mode — " + "; ".join(observed),
+        )
+    return Decision(
+        verdict="allow",
+        decided_by="dogwood",
+        temporal="permit",
+        sentence=f"{_subject(action)}: " + "; ".join(permitted),
     )
+
+
+def _with_authorization(decision: Decision, allowed: Decision | None, temporal: Decision | None = None) -> Decision:
+    """The rules' decision carrying the authorizer's allow and the dogwood answer, for the audit."""
+    update: dict[str, object] = {}
+    if allowed is not None:
+        update.update(
+            authorizer=allowed.authorizer, authorization=allowed.authorization, model_version=allowed.model_version
+        )
+    if temporal is not None:
+        update["temporal"] = temporal.temporal
+    return decision.model_copy(update=update) if update else decision
 
 
 def decide(action: Action, context: Context, policies: Sequence[Policy]) -> Decision:
@@ -417,17 +480,20 @@ def decide(action: Action, context: Context, policies: Sequence[Policy]) -> Deci
     authorized = _authorizer_decision(action, context, ordered)
     if authorized is not None and authorized.verdict == "deny":
         return authorized
+    temporal = _dogwood_decision(action, context, ordered)
+    if temporal is not None and temporal.verdict == "deny":
+        return _with_authorization(temporal, authorized)
     for policy in ordered:
         found = _limit_decision(action, context, policy)
         if found is not None:
-            return _with_authorization(found, authorized)
+            return _with_authorization(found, authorized, temporal)
     for policy in ordered:
         found = _rule_decision(action, policy)
         if found is not None:
-            return _with_authorization(found, authorized)
+            return _with_authorization(found, authorized, temporal)
     found = _fetch_decision(action, ordered, context.companies)
     if found is not None:
-        return _with_authorization(found, authorized)
+        return _with_authorization(found, authorized, temporal)
     return _with_authorization(
         Decision(
             verdict="ask",
@@ -436,6 +502,7 @@ def decide(action: Action, context: Context, policies: Sequence[Policy]) -> Deci
             sentence=f"{_subject(action)}: ask me first — no rule names it, and nothing unsaid is done",
         ),
         authorized,
+        temporal,
     )
 
 
@@ -469,4 +536,13 @@ def scopes_present(policies: Sequence[Policy]) -> list[Scope]:
     return [policy.scope for policy in sorted(policies, key=_rank)]
 
 
-__all__ = ["LOCAL_SUBJECT", "MODEL_KIND", "Context", "LimitState", "decide", "decide_budget", "request_for", "scopes_present"]
+__all__ = [
+    "LOCAL_SUBJECT",
+    "MODEL_KIND",
+    "Context",
+    "LimitState",
+    "decide",
+    "decide_budget",
+    "request_for",
+    "scopes_present",
+]

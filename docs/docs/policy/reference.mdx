@@ -17,7 +17,8 @@ One policy document, one scope.
 | Field | Type | Required | What it says |
 |---|---|---|---|
 | `authorize` | list of `read` \| `write` \| `send` \| `buy` \| `delete` \| `execute` | no | The classes that need an authorizer's allow beside the Rules: a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy. |
-| `authorizer` | AuthorizerConfig or null | no | The decision point a standalone Shield asks: local (grants in this file), openfga &#123;url, store, model&#125; or authzen &#123;url&#125;. On Datalayer the authorizer is IAM's and a managed document names none. |
+| `authorizer` | AuthorizerConfig or null | no | The decision point a standalone Shield asks: local (grants in this file), openfga &#123;url, store, model&#125;, authzen &#123;url&#125;, opa &#123;url, package&#125; or cedar &#123;policies&#125;. On Datalayer the authorizer is IAM's and a managed document names none. |
+| `dogwood` | Dogwood or null | no | A Dogwood policy set deciding every classed action over the session's history (AgentCore Policy's language): a deny wins over any Rule, as the authorizer's does; an allow only lets the Rules decide. |
 | `expires` | string or null | no | When a pulled copy stops being honoured. |
 | `firewall` | FirewallCeiling or null | no | The organization's ceiling on its agents' firewall rules (policy.shield): the most any agent may be granted, egress and ingress, '*' allowing '*'. An organization document's alone. |
 | `harnesses` | Harnesses | no |  |
@@ -42,9 +43,31 @@ One policy document, one scope.
 | Field | Type | Required | What it says |
 |---|---|---|---|
 | `authzen` | AuthZenAuthorizerConfig or null | no |  |
+| `cedar` | CedarAuthorizerConfig or null | no |  |
 | `local` | LocalAuthorizerConfig or null | no |  |
 | `opa` | OpaAuthorizerConfig or null | no |  |
 | `openfga` | OpenFgaAuthorizerConfig or null | no |  |
+
+## CedarAuthorizerConfig
+
+``cedar: &#123;policies&#125;``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41).
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `policies` | string | yes | A Cedar policy set, inline, or the path of a .cedar file. |
+
+## Dogwood
+
+A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+
+Read as it is loaded: the temporal clauses parsed, AgentCore's quotas held
+(20 temporal policies, 3 temporal operators in one, a 24-hour window at
+most) and, when ``cedarpy`` is installed, the Cedar parsed too.
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `mode` | `enforce` \| `log_only` | no | enforce: what the set denies is refused; log_only: decided and recorded, then let through. |
+| `policies` | string | yes | The policy set, as AgentCore Policy takes it: permit and forbid over Datalayer::User principals, Datalayer::Action::"&lt;server>___&lt;tool>" actions and the Datalayer::Runtime resource, with when temporal &#123; formerly within \| since within \| count \| sum &#125; over the session's request, response and error events. Deny by default; a forbid overrides any permit. |
 
 ## FirewallCeiling
 

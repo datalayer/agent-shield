@@ -63,6 +63,8 @@ register = ["agentspecs>=0.0.107"]
 # The company role of PAP (SH-71): the Shield in front of any agent, on the PAP SDK's company service.
 # The role is on draft 0.4 (Operations v2): the SDK 0.32.
 pap = ["personal-agent-protocol>=0.32.0,<0.33"]
+# Cedar 4 in process (AC-41, AC-42): the `cedar` authorizer and the policy document's `dogwood` set.
+cedar = ["cedarpy>=4.12,<5"]
 # One extra per harness. The adapters are Node packages, which
 # pip cannot install: `agent-shield setup --harness <id>` installs the pinned
 # one into the Shield's own prefix. The extras name the choice on the install
@@ -73,7 +75,7 @@ gemini-cli = ["datalayer-agent-shield[register]"]
 goose = ["datalayer-agent-shield[register]"]
 opencode = ["datalayer-agent-shield[register]"]
 openhands = ["datalayer-agent-shield[register]"]
-all = ["datalayer-agent-shield[websocket,serve,otel,register,pap]"]
+all = ["datalayer-agent-shield[websocket,serve,otel,register,pap,cedar]"]
 test = [
   "agentspecs>=0.0.107",
   # 0.32: PAP draft 0.4 (Operations v2), which the PAP tests use.
@@ -87,6 +89,7 @@ test = [
   "aiohttp>=3.9",
   "opentelemetry-sdk>=1.26",
   "opentelemetry-exporter-otlp-proto-http>=1.26",
+  "cedarpy>=4.12,<5",
 ]
 lint = ["mdformat>0.7", "mdformat-gfm>=0.3.5", "ruff"]
 typing = ["mypy>=0.990"]
