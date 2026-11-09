@@ -208,6 +208,7 @@ class ConnectionRecorder:
             rule=connection.rule,
             protocol=connection.protocol,
             destination=connection.target,
+            port=connection.destination_port,
             host=self.host_of(connection.destination),
             source=connection.source,
             repeated=repeated or None,

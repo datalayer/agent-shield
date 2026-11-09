@@ -10,7 +10,8 @@
 base (and the rules file when one is there), writes the ready file a startup
 probe waits on, applies the rules file again whenever it changes, resolves the
 spec's hosts again every ``--refresh`` seconds, and records every connection
-the rules logged. ``apply`` and ``watch`` need ``NET_ADMIN`` in the network
+the rules logged — each row on stdout, and each ``connection`` and ``firewall``
+row a span to OTEL once the export is configured. ``apply`` and ``watch`` need ``NET_ADMIN`` in the network
 namespace they change.
 """
 
@@ -31,6 +32,7 @@ from pydantic import ValidationError
 from agent_shield.audit import AuditLog
 from agent_shield.firewall.compile import BaseLayer, compile_rules
 from agent_shield.firewall.controller import ConnectionRecorder, Controller, FirewallRefused
+from agent_shield.firewall.export import export_row, runtime_uid
 from agent_shield.firewall.model import FirewallError, FirewallRules, firewall_json_schema, rules_of_spec
 
 firewall_app = typer.Typer(
@@ -171,12 +173,25 @@ def apply_command(
     )
 
 
-class EchoingAuditLog(AuditLog):
-    """The audit, each row also written to stdout as one JSON line: a container's log carries it."""
+class FirewallAuditLog(AuditLog):
+    """The sidecar's audit: each row also on stdout as one JSON line (a container's log carries it),
+    and each ``connection`` and ``firewall`` row a span to OTEL when the export is configured
+    (:func:`agent_shield.firewall.export.export_row`)."""
+
+    def __init__(
+        self, *, echo: bool = True, export: bool = True, runtime: str | None = None, persist: bool = True
+    ) -> None:
+        super().__init__(persist=persist)
+        self.echo = echo
+        self.export = export
+        self.runtime = runtime
 
     def write(self, event: str, **fields: Any) -> dict[str, Any]:
         row = super().write(event, **fields)
-        typer.echo(json.dumps(row, separators=(",", ":"), ensure_ascii=False))
+        if self.echo:
+            typer.echo(json.dumps(row, separators=(",", ":"), ensure_ascii=False))
+        if self.export:
+            export_row(row, runtime=self.runtime)
         return row
 
 
@@ -207,10 +222,15 @@ def watch(
     audit_file: bool = typer.Option(
         True, "--audit-file/--no-audit-file", help="Keep the rows in the audit file; off, stdout and the trace only."
     ),
+    export: bool = typer.Option(
+        True,
+        "--export/--no-export",
+        help="Each connection and firewall row a span to OTEL, once the export is configured.",
+    ),
     once: bool = typer.Option(False, "--once", hidden=True, help="Apply, mark ready and return (tests)."),
 ) -> None:
     """The sidecar's daemon: apply, keep current, record (needs NET_ADMIN)."""
-    audit = EchoingAuditLog(persist=audit_file) if echo else AuditLog(persist=audit_file)
+    audit = FirewallAuditLog(echo=echo, export=export, runtime=runtime_uid(), persist=audit_file)
     controller = Controller(load_base(base), audit=audit, enforce_ingress=ingress, state_dir=state)
     seen = _digest(rules)
 
@@ -255,4 +275,4 @@ def watch(
                 typer.echo(f"agent-shield: the refreshed rules were not applied: {error}", err=True)
 
 
-__all__ = ["BASE_ENV", "EchoingAuditLog", "firewall_app", "load_base", "load_revision", "load_rules", "parse_rules"]
+__all__ = ["BASE_ENV", "FirewallAuditLog", "firewall_app", "load_base", "load_revision", "load_rules", "parse_rules"]

@@ -278,6 +278,14 @@ The evidence map: AIUC-1's 55 controls, each with its collectors and its status 
 The firewall: an agent's ``policy.shield`` enforced in its pod and every connection recorded.
 
 
+## `agent_shield.firewall.bounds`
+
+An agent's rules held to its organization's ceiling (Agent Firewall N3-01).
+
+- `bounded` — ``rules`` held to ``ceiling``: each entry only as far as the ceiling allows it; unchanged with no ceiling.
+- `organization_ceilings` — The ceilings the organization documents among ``policies`` carry, in their order.
+- `bounded_by` — ``rules`` held to every ceiling in turn: an account in two organizations gets what both allow.
+
 ## `agent_shield.firewall.cli`
 
 ``agent-shield firewall``: check, compile, apply, watch.
@@ -290,7 +298,7 @@ The firewall: an agent's ``policy.shield`` enforced in its pod and every connect
 - `schema` — The JSON Schema of policy.shield.
 - `compile_command` — Print the iptables-restore script; spec hosts are resolved here.
 - `apply_command` — Apply base and rules once (needs NET_ADMIN).
-- `EchoingAuditLog` — The audit, each row also written to stdout as one JSON line: a container's log carries it.
+- `FirewallAuditLog` — The sidecar's audit: each row also on stdout as one JSON line (a container's log carries it),
 - `watch` — The sidecar's daemon: apply, keep current, record (needs NET_ADMIN).
 
 ## `agent_shield.firewall.compile`
@@ -314,6 +322,14 @@ The firewall's controller: apply base + spec, keep it current, record every conn
 - `Controller` — Applies and keeps the rules; the only writer of the firewall's chains.
 - `ConnectionRecorder` — Each logged connection as a ``connection`` row; repeats within a window folded.
 
+## `agent_shield.firewall.export`
+
+The firewall's rows to OTEL: one span per ``connection`` and ``firewall`` row (Agent Firewall N3-03).
+
+- `runtime_uid` — The runtime's uid the sidecar was given, or ``None``.
+- `row_attributes` — A ``connection`` or ``firewall`` row as the span's attributes; :data:`SPAN_NAMES` says which rows.
+- `export_row` — One firewall row as one span; ``False`` when the row is not one or OpenTelemetry is not there.
+
 ## `agent_shield.firewall.model`
 
 The firewall's rules: what an agent's pod may reach, and who may reach it.
@@ -322,6 +338,7 @@ The firewall's rules: what an agent's pod may reach, and who may reach it.
 - `Entry` — One parsed entry: ``any``, ``platform``, a ``host`` or a ``network``, and its port.
 - `parse_entry` — One entry of ``egress`` or ``ingress``, parsed, or :class:`FirewallError` saying why not.
 - `FirewallRules` — An agent's ``policy.shield``: its pod's egress and ingress.
+- `FirewallCeiling` — An organization's ``firewall``: the most any of its agents may be granted.
 - `firewall_json_schema` — The JSON Schema of ``policy.shield``, which agentspecs carries verbatim.
 - `rules_of_spec` — An agent spec's ``policy.shield``, or the empty rules when it has none.
 

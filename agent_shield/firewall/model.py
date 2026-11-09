@@ -193,6 +193,56 @@ class FirewallRules(BaseModel):
         return ANY in self.egress
 
 
+class FirewallCeiling(BaseModel):
+    """An organization's ``firewall``: the most any of its agents may be granted.
+
+    The same grammar as :class:`FirewallRules`. A direction left out (``None``)
+    bounds nothing; an empty egress list grants nothing beyond the base layer,
+    an empty ingress list nothing beyond ``platform``. ``*`` allows ``*``.
+    :func:`agent_shield.firewall.bounds.bounded` holds an agent's rules to it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    egress: list[str] | None = Field(
+        default=None,
+        description=(
+            "The most an agent's egress may be: '*' (any public address) alone, or exact hosts, host:port, IPv4 "
+            "addresses, CIDRs, each with an optional :port. Left out bounds nothing; empty grants nothing beyond "
+            "the platform's endpoints."
+        ),
+        json_schema_extra={"items": {"type": "string", "pattern": ENTRY_PATTERN}},
+    )
+    ingress: list[str] | None = Field(
+        default=None,
+        description=(
+            "The most an agent's ingress may be: '*', or addresses and CIDRs with an optional :port. 'platform' is "
+            "always kept. Left out bounds nothing; empty keeps 'platform' only."
+        ),
+        json_schema_extra={"items": {"type": "string", "pattern": ENTRY_PATTERN}},
+    )
+
+    @field_validator("egress")
+    @classmethod
+    def _egress(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        try:
+            return _check(value, "egress")
+        except FirewallError as error:
+            raise ValueError(str(error)) from None
+
+    @field_validator("ingress")
+    @classmethod
+    def _ingress(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        try:
+            return _check(value, "ingress")
+        except FirewallError as error:
+            raise ValueError(str(error)) from None
+
+
 def firewall_json_schema() -> dict[str, Any]:
     """The JSON Schema of ``policy.shield``, which agentspecs carries verbatim."""
     schema = FirewallRules.model_json_schema()
@@ -216,6 +266,7 @@ __all__ = [
     "NON_PUBLIC",
     "PLATFORM",
     "Entry",
+    "FirewallCeiling",
     "FirewallError",
     "FirewallRules",
     "firewall_json_schema",

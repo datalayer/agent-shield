@@ -24,6 +24,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from agent_shield.firewall.model import FirewallCeiling
+
 from .authorize import AuthorizerConfig
 
 #: The three scopes, strictest first: the organization decides before the
@@ -195,6 +197,23 @@ class Policy(_Strict):
             "or authzen {url}. On Datalayer the authorizer is IAM's and a managed document names none."
         ),
     )
+
+    firewall: FirewallCeiling | None = Field(
+        default=None,
+        description=(
+            "The organization's ceiling on its agents' firewall rules (policy.shield): the most any agent may be "
+            "granted, egress and ingress, '*' allowing '*'. An organization document's alone."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _firewall_is_the_organizations(self) -> Policy:
+        if self.firewall is not None and self.scope != "organization":
+            raise ValueError(
+                f"a {self.scope} policy cannot carry 'firewall': the ceiling on agents' network rules is the "
+                "organization's"
+            )
+        return self
 
     @model_validator(mode="after")
     def _rule_names_unique(self) -> Policy:

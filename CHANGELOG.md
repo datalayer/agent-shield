@@ -6,6 +6,13 @@
 
 # Changelog
 
+## 0.2.16
+
+- **The organization's ceiling on the firewall** (Agent Firewall N3-01). The policy document gains `firewall: {egress, ingress}` (`FirewallCeiling`), the most any agent of an organization may be granted, in the grammar of `policy.shield`. It is an organization document's alone: a team or session document that carries it is refused. `schema/policy.schema.json` carries it.
+- `agent_shield.firewall.bounded(rules, ceiling)` holds an agent's rules to a ceiling, the strictest winning: `*` in the ceiling allows anything public; otherwise an exact host holds against the same host, an address or CIDR as far as a ceiling CIDR covers it, a port against the same port (an entry with no port narrowed to the ceiling's); the rules' `*` becomes the ceiling's entries; `platform` always stays in ingress; no ceiling leaves the rules as they are. `bounded_by(rules, ceilings)` applies several in turn, and `organization_ceilings(policies)` reads them from the documents in force.
+- **The firewall's rows to OTEL** (N3-03). `firewall watch` sends each `connection` row as a `shield.firewall.connection` span and each `firewall` row as a `shield.firewall.apply` span, once `configure_export` has set the tracer provider, each a root of its own: `shield.decision` (`allow` or `refuse`), `shield.rule`, `shield.destination`, `shield.host`, `shield.port`, `shield.protocol`, `shield.source`, `shield.repeated`, and `datalayer.runtime_uid` from `$AGENT_SHIELD_RUNTIME_UID` or `$DATALAYER_RUNTIME_ID` (`agent_shield.firewall.export`). `--no-export` turns them off. A `connection` row carries the destination's `port`.
+- **Breaking:** `EchoingAuditLog` is replaced by `FirewallAuditLog(echo=, export=, runtime=, persist=)`.
+
 ## 0.2.15
 
 - **The PAP company role on draft 0.4** (`agent_shield.pap`, the `pap` extra): it runs on the PAP SDK 0.32 (`personal-agent-protocol>=0.32.0,<0.33` in the `pap` and `test` extras; 0.2.14 capped it at `<0.27`), the SDK every Datalayer service is on. Operations v2: there is no operations endpoint any more. An action that needs the person's approval is refused with `403 approval_required` and the operation, the person approves that revision, and the same request with the approval (or a conversation message carrying it) performs it — through the Shield, decided by the company's policy first.

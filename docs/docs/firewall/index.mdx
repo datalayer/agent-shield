@@ -57,7 +57,37 @@ Every rule that allows or refuses a new connection logs it to `NFLOG` group 7, w
  "protocol": "tcp", "destination": "104.16.0.1:443", "source": "10.244.1.5"}
 ```
 
-If the same decision, destination and rule come back within 60 seconds, they are folded into the next row's `repeated` count. Each apply writes a `firewall` row with the rules, the number of chain entries and any unresolved hosts. Both kinds of row go to OTEL with the rest of the Shield's audit.
+If the same decision, destination and rule come back within 60 seconds, they are folded into the next row's `repeated` count. Each apply writes a `firewall` row with the rules, the number of chain entries and any unresolved hosts.
+
+Both kinds of row are counted with the rest of the Shield's audit. Once the OTEL export is configured (`configure_export`), `watch` also sends each row as a span of its own, so the destination reaches the platform and not only the count:
+
+| Span | Attributes |
+|---|---|
+| `shield.firewall.connection` | `shield.event`, `shield.decision` (`allow` or `refuse`), `shield.rule`, `shield.destination` (`address:port`), `shield.host`, `shield.port`, `shield.protocol`, `shield.source`, `shield.repeated`, `datalayer.runtime_uid` |
+| `shield.firewall.apply` | `shield.event`, `shield.reason`, `shield.revision`, `shield.egress`, `shield.ingress`, `shield.base`, `shield.rules`, `shield.unresolved`, `datalayer.runtime_uid` |
+
+The runtime's uid comes from `$AGENT_SHIELD_RUNTIME_UID`, or `$DATALAYER_RUNTIME_ID`. `--no-export` turns the spans off.
+
+## The organization's ceiling
+
+An organization's policy document may carry `firewall`, the most any of its agents may be granted:
+
+```yaml
+scope: organization
+firewall:
+  egress: ["github.com", "pypi.org:443", "203.0.113.0/24"]
+  ingress: ["10.42.0.0/16"]
+```
+
+`bounded(rules, ceiling)` holds an agent's rules to it, and the strictest wins:
+
+- `*` in the ceiling allows anything public the rules ask;
+- otherwise an exact host holds only against the same host, an address or CIDR only as far as a ceiling CIDR covers it, and a port only against the same port. An entry with no port is narrowed to the ceiling's port;
+- the rules' `*` becomes the ceiling's own entries;
+- `platform` always stays in ingress;
+- a direction the ceiling leaves out, or no ceiling at all, leaves the rules as they are.
+
+A host is never matched against a CIDR, because the firewall resolves names only where it applies them. Only an organization's document may carry `firewall`; a team's or a session's is refused. On Datalayer, the Operator reads the organization's document from IAM when it assigns a runtime, and bounds the agent's rule before the firewall applies it.
 
 ## The command
 
@@ -67,6 +97,6 @@ If the same decision, destination and rule come back within 60 seconds, they are
 | `agent-shield firewall schema` | Prints the JSON Schema. |
 | `agent-shield firewall compile --base base.json --rules spec.yaml` | Prints the `iptables-restore` script. |
 | `agent-shield firewall apply --base … --rules …` | Applies the rules once. |
-| `agent-shield firewall watch --rules … --state … [--base …]` | Runs as a sidecar's daemon. It applies the base, from `--base` or `$AGENT_SHIELD_FIREWALL_BASE`, and writes `ready`. Whenever the rules file's content changes it re-applies, and echoes the file's `revision` in `applied.json`, or in `refused.json` if the rules are refused. It resolves hosts again, records connections, and writes each audit row to stdout. |
+| `agent-shield firewall watch --rules … --state … [--base …]` | Runs as a sidecar's daemon. It applies the base, from `--base` or `$AGENT_SHIELD_FIREWALL_BASE`, and writes `ready`. Whenever the rules file's content changes it re-applies, and echoes the file's `revision` in `applied.json`, or in `refused.json` if the rules are refused. It resolves hosts again, records connections, writes each audit row to stdout, and sends each `connection` and `firewall` row as a span once the export is configured. |
 
 `apply` and `watch` need `NET_ADMIN` in the network namespace they change, and nothing else. On Datalayer they are meant to run in a `shield-firewall` sidecar of the runtime pod (not yet deployed). The agent's own containers never hold `NET_ADMIN`, so they cannot change the rules.
