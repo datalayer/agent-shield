@@ -76,6 +76,10 @@ An enforced deny wins over any rule. In `log_only` mode, the decision's `tempora
 
 `formerly within`, `previous within`, `since within`, `!`, `&&`, `exists (x: T).`, `tp(t)`, `count for (…). where …`, `sum v for (…). where …` (a distinct count leaves the timepoint out of the domain), comparisons with `+ - *`, and predicates `Ns::Action::"id"::request|response|error{ field: term, … }` over `input.*`, `output.*`, `eventPrincipal`, `eventResource` and `requestId`. A window is written `<n>s`, `m`, `h` or `d`.
 
+### Checked against Dogwood
+
+A CI job (`.github/workflows/dogwood-conformance.yaml`) builds Dogwood's reference CLI from a pinned commit and runs `scripts/dogwood_conformance.py`: Dogwood's published examples that fit the grammar above, the agentspecs organization examples and the sessions of the temporal tests are replayed by `dogwood replay` and decided by the Shield, and a request where the two answers differ fails the job with a sentence naming the case and both answers. Examples with macros, information providers, experimental arithmetic, custom event kinds, or a `temporal { … }` marker inside a Cedar clause are skipped, each said. `--dry-run` writes the inputs and runs the Shield's side alone. Dogwood is never a dependency of the package.
+
 ### AgentCore's quotas
 
 A set is refused when it is read if it breaks one of AgentCore's quotas:

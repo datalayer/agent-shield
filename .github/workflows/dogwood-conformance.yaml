@@ -1,0 +1,95 @@
+name: Dogwood Conformance
+
+# The Shield's Dogwood evaluator against Dogwood's reference CLI: Dogwood's
+# published examples, the agentspecs organization examples and the sessions of
+# the temporal tests are replayed by `dogwood replay` and decided by
+# agent_shield.policy.temporal; a disagreement fails the job with a sentence
+# naming the case and both answers (scripts/dogwood_conformance.py).
+#
+# Dogwood (github.com/dogwood-policy/dogwood, Apache-2.0, Rust) is built here
+# from a pinned commit and is never a dependency of the package.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent_shield/policy/dogwood.py'
+      - 'agent_shield/policy/temporal.py'
+      - 'agent_shield/policy/cedar.py'
+      - 'scripts/dogwood_conformance.py'
+      - '.github/workflows/dogwood-conformance.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent_shield/policy/dogwood.py'
+      - 'agent_shield/policy/temporal.py'
+      - 'agent_shield/policy/cedar.py'
+      - 'scripts/dogwood_conformance.py'
+      - '.github/workflows/dogwood-conformance.yaml'
+  workflow_dispatch:
+
+env:
+  # Dogwood v1.1.1.
+  DOGWOOD_REF: ff158506cfd9c7871385ed3a87d7435505fd24b1
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Checkout Dogwood (pinned)
+        uses: actions/checkout@v7
+        with:
+          repository: dogwood-policy/dogwood
+          ref: ${{ env.DOGWOOD_REF }}
+          path: dogwood-src
+
+      - name: Cache the dogwood binary
+        id: dogwood-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.dogwood
+          key: dogwood-cli-${{ runner.os }}-${{ env.DOGWOOD_REF }}
+
+      - name: Install Rust
+        if: steps.dogwood-cache.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        if: steps.dogwood-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            dogwood-src/target
+          key: dogwood-cargo-${{ runner.os }}-${{ env.DOGWOOD_REF }}
+
+      - name: Build the dogwood CLI
+        if: steps.dogwood-cache.outputs.cache-hit != 'true'
+        run: cargo install --path dogwood-src/dogwood-cli --root ~/.dogwood --target-dir dogwood-src/target
+
+      - name: The dogwood CLI
+        run: ~/.dogwood/bin/dogwood --version
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          python-version: '3.13'
+          activate-environment: true
+
+      - name: Install the Shield (cedar extra)
+        run: uv pip install '.[cedar]'
+
+      - name: Compare the decisions
+        run: python scripts/dogwood_conformance.py --dogwood ~/.dogwood/bin/dogwood --dogwood-src dogwood-src --out conformance-cases
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: dogwood-conformance-cases
+          path: conformance-cases

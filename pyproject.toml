@@ -158,3 +158,6 @@ ignore = ["FBT001", "FBT002", "FBT003", "N818"]
 "agent_shield/acp/server.py" = ["C901", "E501"]
 # The documentation's scripts speak on stdout, walk syntax trees and run the generator.
 "docs/scripts/*" = ["T201", "C901", "E501", "S603", "B007"]
+# The Dogwood conformance script speaks on stdout, runs the dogwood CLI it is given, reads traces
+# (C901), and carries policy sets verbatim (E501).
+"scripts/*" = ["T201", "S603", "C901", "E501"]
