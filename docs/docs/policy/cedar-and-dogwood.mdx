@@ -78,7 +78,7 @@ An enforced deny wins over any rule. In `log_only` mode, the decision's `tempora
 
 ### Checked against Dogwood
 
-A CI job (`.github/workflows/dogwood-conformance.yaml`) builds Dogwood's reference CLI from a pinned commit and runs `scripts/dogwood_conformance.py`: Dogwood's published examples that fit the grammar above, the agentspecs organization examples and the sessions of the temporal tests are replayed by `dogwood replay` and decided by the Shield, and a request where the two answers differ fails the job with a sentence naming the case and both answers. Examples with macros, information providers, experimental arithmetic, custom event kinds, or a `temporal { … }` marker inside a Cedar clause are skipped, each said. `--dry-run` writes the inputs and runs the Shield's side alone. Dogwood is never a dependency of the package.
+A CI job (`.github/workflows/dogwood-conformance.yaml`) builds Dogwood's reference CLI from a pinned commit and runs `scripts/dogwood_conformance.py`: Dogwood's published examples that fit the grammar above, the agentspecs organization examples and the sessions of the temporal tests are replayed by `dogwood replay` and decided by the Shield, and a request where the two answers differ fails the job with a sentence naming the case and both answers. Examples with macros, information providers, experimental arithmetic or custom event kinds are skipped, each said. A `temporal { … }` block inside a plain `when` or `unless` clause, beside Cedar's own `&&`, `||` and `!`, is read: each such block is lowered to a slot of its own and counts toward the quotas. `--dry-run` writes the inputs and runs the Shield's side alone. Dogwood is never a dependency of the package.
 
 ### AgentCore's quotas
 

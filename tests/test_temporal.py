@@ -647,3 +647,29 @@ def test_the_proxy_records_requests_responses_and_refusals(tmp_path) -> None:
         ("t3", "error"),
     ]
     assert session.history.events[2].output == {"approved": True}
+
+
+def test_a_temporal_block_nested_in_a_plain_when_is_lowered_to_its_own_slot() -> None:
+    # Dogwood's temporal subexpression: a `temporal { … }` inside an ordinary Cedar
+    # condition, here beside `||` — small sales pass, large ones need an approval.
+    text = """@id("sell_small_or_approved")
+permit (principal, action == Drupe::Action::"Sell", resource)
+when { context.input.qty < 100 || temporal { formerly within 1h Drupe::Action::"Approve"::response } };"""
+    parsed = parse_set(text)
+    assert parsed.temporal_policies and [slot for slot, _ in parsed.slots()] == ["p0c0s0"]
+    assert "temporal" not in parsed.lowered and "context.dogwood.p0c0s0" in parsed.lowered
+    trace = [
+        (0, "request", "Sell", "alice", {"qty": 10}, None),
+        (10, "request", "Sell", "alice", {"qty": 500}, None),
+        (20, "request", "Approve", "alice", {}, None),
+        (21, "response", "Approve", "alice", {}, {}),
+        (30, "request", "Sell", "alice", {"qty": 500}, None),
+    ]
+    # The Approve request at 20 is decided too: no policy permits it, so it is denied.
+    assert replay(text, trace) == ["@0 ALLOW", "@10 DENY", "@20 DENY", "@30 ALLOW"]
+
+
+def test_nested_temporal_blocks_count_toward_the_quotas() -> None:
+    blocks = " && ".join(f'temporal {{ formerly within 1h Drupe::Action::"A{i}"::response }}' for i in range(4))
+    with pytest.raises(DogwoodRefused, match="temporal operators"):
+        parse_set(f'permit (principal, action, resource) when {{ {blocks} }};')
