@@ -672,4 +672,4 @@ when { context.input.qty < 100 || temporal { formerly within 1h Drupe::Action::"
 def test_nested_temporal_blocks_count_toward_the_quotas() -> None:
     blocks = " && ".join(f'temporal {{ formerly within 1h Drupe::Action::"A{i}"::response }}' for i in range(4))
     with pytest.raises(DogwoodRefused, match="temporal operators"):
-        parse_set(f'permit (principal, action, resource) when {{ {blocks} }};')
+        parse_set(f"permit (principal, action, resource) when {{ {blocks} }};")
