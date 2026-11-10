@@ -383,6 +383,18 @@ The policy document and the decision engine.
 - `policy_json_schema` — The document's JSON Schema, the one agentspecs carries as ``policies/``.
 - `policy_json_schema_text`
 
+## `agent_shield.policy.agentcore`
+
+An organization's policy compiled for AgentCore Policy (AC-44) and its Gateway rate limits (AC-45).
+
+- `AgentCoreRefused` — A document AgentCore's Gateway cannot decide as the Shield does, said in a sentence.
+- `AgentCoreStatement` — One AgentCore policy: its name in the engine, its statement, and where it came from.
+- `AgentCorePolicies` — What the document compiles to for one policy engine.
+- `split_statements` — Each policy of a set as its own text, its annotations kept, comments between policies dropped.
+- `gateway_suffix` — The ten characters AgentCore ends a Gateway's id with: what a policy's name carries.
+- `compile_for_agentcore` — An organization's document as the policies of one AgentCore policy engine, one per statement and Gateway.
+- `gateway_rate_limit` — The document's ``rate_limits`` as one ``BatchPutLimitEntry`` of ``BatchPutGatewayRateLimits``.
+
 ## `agent_shield.policy.authorize`
 
 The authorizer port (SH-74): *may this principal act on this object?*
@@ -531,6 +543,8 @@ The policy document: one schema, three scopes, first decision wins.
 - `Mcp` — The MCP servers the agent is lent, by name; everything else is cut from session/new.
 - `Harnesses` — The harnesses an organization admits, and whose credentials run them.
 - `Dogwood` — A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+- `Rate` — A rate: at most ``rate`` per ``per``.
+- `RateLimits` — What each person may spend through the organization's AgentCore Gateways (AC-45).
 - `Policy` — One policy document, one scope.
 - `Action` — What the agent wants to do, as the engine sees it.
 - `Decision` — What the engine answered, and from where.

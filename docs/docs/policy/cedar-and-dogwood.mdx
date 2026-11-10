@@ -95,3 +95,39 @@ A set is refused when it is read if it breaks one of AgentCore's quotas:
 - a soft threshold asks a person, which Dogwood cannot do, so it is not exported.
 
 A rule that matches commands by regular expression, or a path glob with `?` or `[`, cannot be said in Cedar, and the export refuses it. The other sections of the document stay with the Shield.
+
+## On AgentCore
+
+When an organization runs its agents on Amazon Bedrock AgentCore, Datalayer compiles the organization's document into the policies of an AgentCore policy engine and attaches that engine to the organization's Gateways (`agent_shield.policy.agentcore.compile_for_agentcore`). The Shield still decides in the runtime, so the stricter of the two wins.
+
+An AgentCore Gateway gives its policies the principal (`AgentCore::OAuthUser`), the tool (`AgentCore::Action::"<target>___<tool>"`), the Gateway itself (`AgentCore::Gateway::"<arn>"`) and the tool's arguments as `context.input`. It gives nothing else. The compiler therefore:
+
+- carries each policy of the `dogwood` set in AgentCore's names. `Datalayer::Action` becomes `AgentCore::Action`, `Datalayer::User` becomes `AgentCore::OAuthUser` and `Datalayer::Runtime` becomes the Gateway. A resource the scope leaves open is scoped to the Gateway, and each temporal predicate gets `eventResource: resource`, which AgentCore requires;
+- leaves to the Shield any policy that names only the Shield's own actions (`shield___<kind>`), and records a note saying so;
+- lets the first rule decide every call. *Do it* permits every call, or, beside a `dogwood` set, lets the set decide. *Leave it to me* forbids every call;
+- turns the hard `tool_calls` threshold into a `count` for each Gateway tool named;
+- leaves the model budget, the spend, the terminals and the bytes written to the Shield, because none of them passes a Gateway.
+
+The compiler refuses the whole document, listing every reason in one sentence, when it holds:
+
+- a rule conditioned on classes, kinds, a side of the workspace, paths or commands;
+- an *ask me first* rule (a Gateway has nobody to ask);
+- a policy that reads `context.class`, `context.path` or another field outside `context.input`;
+- a principal attribute, or an agent or deployment principal;
+- a document that permits nothing.
+
+AgentCore's quotas apply to everything the engine will hold. With two Gateways each policy counts twice.
+
+### Rate limits
+
+An organization's document may also carry `rate_limits`. These are the requests, tokens and connections each person may use, per second or per minute, across every tool, model and agent behind the organization's Gateways:
+
+```yaml
+scope: organization
+rate_limits:
+  requests: {rate: 100, per: minute}
+  tokens: {rate: 20000, per: minute}
+  connections: {rate: 5, per: second}
+```
+
+They are pushed to each Gateway as one rate limit, `datalayer-per-user`. A person is counted by the token's `sub` on a `CUSTOM_JWT` Gateway, or by the IAM principal on an `AWS_IAM` one (`gateway_rate_limit`). The Shield itself does not count them, and a team or session document cannot carry them.

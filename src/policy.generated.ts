@@ -78,6 +78,14 @@ export type Allow = string[];
  */
 export type Fetch = string[];
 /**
+ * second or minute.
+ */
+export type Per = 'second' | 'minute';
+/**
+ * How many, at most, in each period.
+ */
+export type Rate1 = number;
+/**
  * The classes the rule names; empty names every class.
  */
 export type Classes = ('read' | 'write' | 'send' | 'buy' | 'delete' | 'execute')[];
@@ -143,6 +151,10 @@ export interface AgentShieldPolicy {
   limits?: Limits;
   mcp?: Mcp;
   network?: Network;
+  /**
+   * Per user, across tools, models and agents: the requests, tokens and connections each person may spend per second or per minute through the organization's AgentCore Gateways, pushed to them as Gateway rate limits. An organization document's alone.
+   */
+  rate_limits?: RateLimits | null;
   rules?: Rules;
   scope: Scope;
   version?: Version;
@@ -273,6 +285,35 @@ export interface Mcp {
  */
 export interface Network {
   fetch?: Fetch;
+}
+/**
+ * What each person may spend through the organization's AgentCore Gateways (AC-45).
+ *
+ * Per user — the Gateway's OAuth subject, or its IAM principal — across its
+ * tools, models and agents, as AgentCore's Gateway rate limits count them. The
+ * Shield does not count these in process: they are pushed to the Gateways of an
+ * organization that runs on AgentCore.
+ */
+export interface RateLimits {
+  /**
+   * Connections a person holds open to a Gateway.
+   */
+  connections?: Rate | null;
+  /**
+   * Requests a person makes through a Gateway.
+   */
+  requests?: Rate | null;
+  /**
+   * Tokens a person's requests process.
+   */
+  tokens?: Rate | null;
+}
+/**
+ * A rate: at most ``rate`` per ``per``.
+ */
+export interface Rate {
+  per: Per;
+  rate: Rate1;
 }
 /**
  * One line of a policy: what it matches and what it decides.

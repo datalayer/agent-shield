@@ -219,6 +219,41 @@ class Dogwood(_Strict):
         return self._parsed
 
 
+#: The period a Gateway rate is counted over (AgentCore's ``Period``).
+RatePeriod = Literal["second", "minute"]
+
+
+class Rate(_Strict):
+    """A rate: at most ``rate`` per ``per``."""
+
+    rate: float = Field(gt=0, le=10_000_000, description="How many, at most, in each period.")
+    per: RatePeriod = Field(description="second or minute.")
+
+
+class RateLimits(_Strict):
+    """What each person may spend through the organization's AgentCore Gateways (AC-45).
+
+    Per user — the Gateway's OAuth subject, or its IAM principal — across its
+    tools, models and agents, as AgentCore's Gateway rate limits count them. The
+    Shield does not count these in process: they are pushed to the Gateways of an
+    organization that runs on AgentCore.
+    """
+
+    requests: Rate | None = Field(default=None, description="Requests a person makes through a Gateway.")
+    tokens: Rate | None = Field(default=None, description="Tokens a person's requests process.")
+    connections: Rate | None = Field(default=None, description="Connections a person holds open to a Gateway.")
+
+    @model_validator(mode="after")
+    def _names_one(self) -> RateLimits:
+        if self.requests is None and self.tokens is None and self.connections is None:
+            raise ValueError("rate_limits names requests, tokens or connections: an empty section limits nothing")
+        return self
+
+
+#: The rates a Gateway rate limit holds, in AgentCore's names.
+RATE_NAMES: tuple[str, ...] = ("requests", "tokens", "connections")
+
+
 class Policy(_Strict):
     """One policy document, one scope."""
 
@@ -262,6 +297,24 @@ class Policy(_Strict):
             "granted, egress and ingress, '*' allowing '*'. An organization document's alone."
         ),
     )
+
+    rate_limits: RateLimits | None = Field(
+        default=None,
+        description=(
+            "Per user, across tools, models and agents: the requests, tokens and connections each person may "
+            "spend per second or per minute through the organization's AgentCore Gateways, pushed to them as "
+            "Gateway rate limits. An organization document's alone."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _rate_limits_are_the_organizations(self) -> Policy:
+        if self.rate_limits is not None and self.scope != "organization":
+            raise ValueError(
+                f"a {self.scope} policy cannot carry 'rate_limits': what each person may spend through the "
+                "organization's AgentCore Gateways is the organization's"
+            )
+        return self
 
     @model_validator(mode="after")
     def _firewall_is_the_organizations(self) -> Policy:
@@ -355,6 +408,7 @@ __all__ = [
     "LIMIT_RELIEF",
     "LIMIT_WORDS",
     "MODEL_LIMITS",
+    "RATE_NAMES",
     "SCOPES_STRICTEST_FIRST",
     "VERDICT_WORDS",
     "Action",
@@ -368,6 +422,9 @@ __all__ = [
     "Mcp",
     "Network",
     "Policy",
+    "Rate",
+    "RateLimits",
+    "RatePeriod",
     "Rule",
     "Scope",
     "Settings",

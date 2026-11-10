@@ -25,6 +25,7 @@ One policy document, one scope.
 | `limits` | Limits | no |  |
 | `mcp` | Mcp | no |  |
 | `network` | Network | no |  |
+| `rate_limits` | RateLimits or null | no | Per user, across tools, models and agents: the requests, tokens and connections each person may spend per second or per minute through the organization's AgentCore Gateways, pushed to them as Gateway rate limits. An organization document's alone. |
 | `rules` | list of Rule | no |  |
 | `scope` | `organization` \| `team` \| `session` | yes |  |
 | `version` | integer | no |  |
@@ -157,6 +158,30 @@ What the agent may reach over the network, through the Shield.
 | `model` | string or null | no |  |
 | `store` | string | yes |  |
 | `url` | string | yes |  |
+
+## Rate
+
+A rate: at most ``rate`` per ``per``.
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `per` | `second` \| `minute` | yes | second or minute. |
+| `rate` | number | yes | How many, at most, in each period. |
+
+## RateLimits
+
+What each person may spend through the organization's AgentCore Gateways (AC-45).
+
+Per user — the Gateway's OAuth subject, or its IAM principal — across its
+tools, models and agents, as AgentCore's Gateway rate limits count them. The
+Shield does not count these in process: they are pushed to the Gateways of an
+organization that runs on AgentCore.
+
+| Field | Type | Required | What it says |
+|---|---|---|---|
+| `connections` | Rate or null | no | Connections a person holds open to a Gateway. |
+| `requests` | Rate or null | no | Requests a person makes through a Gateway. |
+| `tokens` | Rate or null | no | Tokens a person's requests process. |
 
 ## Rule
 
