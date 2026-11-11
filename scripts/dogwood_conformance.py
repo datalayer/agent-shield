@@ -24,7 +24,7 @@ The cases:
   Under Dogwood's default event schema every temporal predicate is pinned to
   the requesting principal; the Shield keeps one history per session, whose
   principal is one, so it is handed the request's principal's events alone.
-- **The agentspecs organization examples** (the five ``dogwood-*`` policies),
+- **The agentspecs organization examples** (the six ``dogwood-*`` policies),
   each played as a session.
 - **The sessions of the Shield's own tests** (``tests/test_temporal.py``), in
   AgentCore's names.
@@ -653,6 +653,8 @@ PAY = 'Datalayer::Action::"payments___pay"'
 APPROVE_INVOICE = 'Datalayer::Action::"payments___approve"'
 TRANSFER = 'Datalayer::Action::"bank___transfer"'
 MODEL = 'Datalayer::Action::"shield___model"'
+APPLY_FIX = 'Datalayer::Action::"aws_account___apply_fix"'
+APPROVE_RECOMMENDATION = 'Datalayer::Action::"aws_account___approve_recommendation"'
 
 APPROVAL_BEFORE_PAYMENT = """\
 @id("everything but a payment")
@@ -665,6 +667,21 @@ when temporal {
     formerly within 1h Datalayer::Action::"payments___approve"::response{
         eventResource: resource,
         input.invoice: context.input.invoice
+    }
+};
+"""
+
+APPROVAL_BEFORE_ACCOUNT_CHANGE = """\
+@id("everything but an account change")
+permit (principal, action, resource)
+unless { action == Datalayer::Action::"aws_account___apply_fix" };
+
+@id("an account change needs its recommendation approved within the hour")
+permit (principal, action == Datalayer::Action::"aws_account___apply_fix", resource)
+when temporal {
+    formerly within 1h Datalayer::Action::"aws_account___approve_recommendation"::response{
+        eventResource: resource,
+        input.recommendation: context.input.recommendation
     }
 };
 """
@@ -723,7 +740,7 @@ when temporal {
 
 
 def agentspecs_cases() -> list[Case]:
-    """The five organization examples, each played as a session."""
+    """The six organization examples, each played as a session."""
 
     def pay(t: int, invoice: str) -> Step:
         return Step(t, PAY, {"invoice": invoice})
@@ -741,6 +758,22 @@ def agentspecs_cases() -> list[Case]:
             pay(30, "inv-2"),
             pay(11 + 3600, "inv-1"),  # the approval's response exactly an hour back: in
             pay(11 + 3602, "inv-1"),  # two seconds further: out
+        ],
+    )
+
+    def apply_fix(t: int, recommendation: str) -> Step:
+        return Step(t, APPLY_FIX, {"recommendation": recommendation})
+
+    cases += session_cases(
+        "agentspecs/approval-before-account-change",
+        APPROVAL_BEFORE_ACCOUNT_CHANGE,
+        [
+            apply_fix(0, "rec-1"),  # not approved: refused
+            Step(10, APPROVE_RECOMMENDATION, {"recommendation": "rec-1"}),
+            apply_fix(20, "rec-1"),  # the same recommendation approved: permitted
+            apply_fix(30, "rec-2"),  # another recommendation: refused
+            apply_fix(11 + 3600, "rec-1"),  # the approval's response exactly an hour back: in
+            apply_fix(11 + 7200, "rec-1"),  # two hours after it: refused
         ],
     )
     cases += session_cases(
