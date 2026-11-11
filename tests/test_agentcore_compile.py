@@ -163,6 +163,38 @@ def test_a_rule_that_asks_cannot_be_said_at_a_gateway() -> None:
         _compile({"rules": [{"name": "ask", "decision": "ask"}]})
 
 
+#: The agentspecs example for an AWS account agent: a change only after the same recommendation's approval.
+ACCOUNT_CHANGE = """
+@id("everything but an account change")
+permit (principal, action, resource)
+unless { action == Datalayer::Action::"aws_account___apply_fix" };
+
+@id("an account change needs its recommendation approved within the hour")
+permit (principal, action == Datalayer::Action::"aws_account___apply_fix", resource)
+when temporal {
+    formerly within 1h Datalayer::Action::"aws_account___approve_recommendation"::response{
+        eventResource: resource,
+        input.recommendation: context.input.recommendation
+    }
+};
+"""
+
+
+def test_the_account_change_example_is_said_at_a_gateway_and_an_application_s_ask_is_not() -> None:
+    compiled = _compile({"dogwood": {"policies": ACCOUNT_CHANGE}})
+    assert [(s.name, s.temporal) for s in compiled.statements] == [
+        ("dl_everything_but_an_account_chan_abcde12345", False),
+        ("dl_an_account_change_needs_its_re_abcde12345", True),
+    ]
+    temporal = compiled.statements[1].statement
+    assert f"resource == {GATEWAY_UID}" in temporal
+    assert 'formerly within 1h AgentCore::Action::"aws_account___approve_recommendation"::response{' in temporal
+    assert "input.recommendation: context.input.recommendation" in temporal
+    # The application's own rule for a write (ask a person first) has no Gateway form.
+    with pytest.raises(AgentCoreRefused, match="asks a person first"):
+        _compile({"rules": [{"name": "write", "decision": "ask"}], "dogwood": {"policies": ACCOUNT_CHANGE}})
+
+
 def test_a_document_that_permits_nothing_is_refused() -> None:
     with pytest.raises(AgentCoreRefused, match="nothing in the document permits a call"):
         _compile({"limits": {"tool_calls": {"soft": 1, "hard": 2}}}, tools=["a___b"])
