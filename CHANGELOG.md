@@ -6,7 +6,7 @@
 
 # Changelog
 
-## Unreleased
+## 0.2.20
 
 - **The line a listing shows beside a command** is one sentence ending with a period, and does not open with the command's name: `agent-shield` is listed in `datalayer --help` as "A runtime firewall for every agent."; `firewall`, `firewall check`, `firewall compile`, `serve`, `setup`, `uninstall` and `upgrade` follow, their explanation staying in each command's own `--help`.
 
