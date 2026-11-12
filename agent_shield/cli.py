@@ -77,7 +77,8 @@ DEFAULT_IDLE_SECONDS = 300.0
 
 app = typer.Typer(
     name="agent-shield",
-    help="Agent Shield: a runtime firewall for every agent. Run any ACP agent behind it.",
+    help="A runtime firewall for every agent: run any ACP agent behind it.",
+    short_help="A runtime firewall for every agent.",
     no_args_is_help=True,
     add_completion=False,
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -318,7 +319,10 @@ def setup(
     ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask."),
 ) -> None:
-    """The first five minutes: find node, the vendor CLIs and credentials; install the pinned adapter; write the policy."""
+    """Find what is installed, install the pinned adapter and write the policy.
+
+    The first five minutes: find node, the vendor CLIs and credentials; install the pinned adapter; write the policy.
+    """
     started = time.monotonic()
     try:
         entry = harness_of(harness)
@@ -597,7 +601,10 @@ def _latest_on_pypi() -> str | None:
 def upgrade(
     check: bool = typer.Option(False, "--check", help="Only say what a newer Shield or adapter would be."),
 ) -> None:
-    """Move the adapters to the register's pinned versions; say whether a newer Shield exists."""
+    """Move the adapters to the register's pinned versions.
+
+    Move the adapters to the register's pinned versions; say whether a newer Shield exists.
+    """
     config = Config.load()
     latest = _latest_on_pypi()
     if latest is None:
@@ -629,7 +636,10 @@ def upgrade(
 
 @app.command()
 def uninstall(yes: bool = typer.Option(False, "--yes", "-y", help="Do it; without it, preview.")) -> None:
-    """Preview what would go (the adapters, the config); the audit and the policies stay."""
+    """Preview what an uninstall would remove.
+
+    Preview what would go (the adapters, the config); the audit and the policies stay.
+    """
     base = home()
     going = [p for p in (base / "harnesses",).__iter__() if p.exists()] + [
         p for p in (base / "config.yaml",) if p.exists()
@@ -677,7 +687,10 @@ def serve(
     idle: float = typer.Option(DEFAULT_IDLE_SECONDS, "--idle", help="Seconds an HTTP connection may sit idle."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Log at DEBUG; pass the agents' stderr through."),
 ) -> None:
-    """The proxy as a server over WebSocket and ACP Streamable HTTP, one harness per connection (SH-52, SH-56)."""
+    """Serve the proxy over WebSocket and ACP Streamable HTTP.
+
+    One harness per connection.
+    """
     from agent_shield.acp.proxy import ProxyRefused, ShieldProxy, stderr_passthrough
     from agent_shield.acp.server import ServeRefused, ShieldBackend, ShieldServer
 

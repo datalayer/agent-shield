@@ -37,7 +37,8 @@ from agent_shield.firewall.model import FirewallError, FirewallRules, firewall_j
 
 firewall_app = typer.Typer(
     name="firewall",
-    help="The firewall: an agent's policy.shield enforced in its network namespace, every connection recorded.",
+    help="An agent's policy.shield enforced in its network namespace, every connection recorded.",
+    short_help="Enforce an agent's policy.shield in its network namespace.",
     no_args_is_help=True,
 )
 
@@ -120,7 +121,7 @@ def load_base(path: Path | None) -> BaseLayer:
 
 @firewall_app.command("check")
 def check(path: Path = typer.Argument(..., help="An agent spec, or a rules file.")) -> None:
-    """Validate the rules; say what they allow."""
+    """Validate the rules and say what they allow."""
     rules = load_rules(path)
     egress = (
         "the platform's endpoints and any public address"
@@ -143,7 +144,10 @@ def compile_command(
     base: Path | None = typer.Option(None, "--base", help="The base layer's JSON."),
     ingress: bool = typer.Option(False, "--ingress", help="Enforce ingress too."),
 ) -> None:
-    """Print the iptables-restore script; spec hosts are resolved here."""
+    """Print the iptables-restore script.
+
+    Print the iptables-restore script; spec hosts are resolved here.
+    """
     loaded = load_rules(rules)
     controller = Controller(load_base(base), enforce_ingress=ingress)
     resolved = {

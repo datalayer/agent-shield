@@ -224,3 +224,20 @@ def test_upgrade_check_compares_with_the_register(shield_home: Path, monkeypatch
     assert f"Shield {__version__} is the latest on PyPI" in out
     assert "claude-code: installed 0.90.0, pinned 0.91.0" in out
     assert Config.load(shield_home).installed("claude-code")["version"] == "0.90.0"
+
+
+def test_every_description_keeps_the_house_style():
+    # The line a listing shows beside a command — `datalayer --help` lists this
+    # package's among fifty: one sentence ending with a period, a capital,
+    # short enough not to wrap, not opening with the command's own name. The
+    # reactor holds the rule; without it installed there is no listing to keep.
+    reactor_cli = pytest.importorskip("reactor.cli")
+    import typer
+
+    host = typer.Typer(name="datalayer")
+    host.command("other", help="Do the other thing.")(lambda: None)
+    host.add_typer(app)
+
+    assert reactor_cli.help_style_violations(host) == []
+    listing = runner.invoke(host, ["--help"], env={"COLUMNS": "120", "NO_COLOR": "1", "TERM": "dumb"}).output
+    assert "A runtime firewall for every agent." in listing and "Run any ACP agent" not in listing

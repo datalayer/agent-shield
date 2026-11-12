@@ -6,6 +6,10 @@
 
 # Changelog
 
+## Unreleased
+
+- **The line a listing shows beside a command** is one sentence ending with a period, and does not open with the command's name: `agent-shield` is listed in `datalayer --help` as "A runtime firewall for every agent."; `firewall`, `firewall check`, `firewall compile`, `serve`, `setup`, `uninstall` and `upgrade` follow, their explanation staying in each command's own `--help`.
+
 ## 0.2.19
 
 - **A `temporal { … }` block inside a plain `when` or `unless` clause** is read, as Dogwood's temporal subexpressions are: each block is lowered to its own `context.dogwood` slot in the clause's Cedar text, beside Cedar's `&&`, `||` and `!`, and counts toward AgentCore's quotas. Such a set was refused before.
