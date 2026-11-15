@@ -33,7 +33,7 @@ from agent_shield.audit import AuditLog
 from agent_shield.firewall.compile import BaseLayer, compile_rules
 from agent_shield.firewall.controller import ConnectionRecorder, Controller, FirewallRefused
 from agent_shield.firewall.export import export_row, runtime_uid
-from agent_shield.firewall.model import FirewallError, FirewallRules, firewall_json_schema, rules_of_spec
+from agent_shield.firewall.model import FirewallError, FirewallRules, firewall_json_schema, parse_entry, rules_of_spec
 
 firewall_app = typer.Typer(
     name="firewall",
@@ -123,11 +123,15 @@ def load_base(path: Path | None) -> BaseLayer:
 def check(path: Path = typer.Argument(..., help="An agent spec, or a rules file.")) -> None:
     """Validate the rules and say what they allow."""
     rules = load_rules(path)
-    egress = (
-        "the platform's endpoints and any public address"
-        if rules.open_egress
-        else ("the platform's endpoints" + (f" and {', '.join(rules.egress)}" if rules.egress else " only"))
-    )
+    ports = rules.open_egress_ports
+    named = [item for item in rules.egress if parse_entry(item, "egress").kind != "any"]
+    if rules.open_egress:
+        egress = "the platform's endpoints and any public address"
+    elif ports:
+        egress = "the platform's endpoints and any public address on port" + ("s " if len(ports) > 1 else " ")
+        egress += ", ".join(str(port) for port in ports) + (f", and {', '.join(named)}" if named else "")
+    else:
+        egress = "the platform's endpoints" + (f" and {', '.join(rules.egress)}" if rules.egress else " only")
     typer.echo(f"egress: {egress}")
     typer.echo(f"ingress: {', '.join(rules.ingress) or 'platform'}")
 

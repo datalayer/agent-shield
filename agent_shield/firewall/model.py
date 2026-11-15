@@ -12,8 +12,9 @@ An agent spec says them under ``policy.shield``::
         ingress: ["platform", "10.42.0.0/16:8765"]
 
 An egress entry is an exact host, ``host:port``, an IPv4 address, ``ip:port``,
-a CIDR, ``cidr:port``, or ``*`` alone — any *public* address on any TCP port.
-A private, loopback, link-local, shared or multicast address is never an
+a CIDR, ``cidr:port``, ``*`` alone — any *public* address on any TCP port — or
+``*:port`` — any public address on that TCP port only (``["*:80", "*:443"]``:
+the web, and nothing else). A private, loopback, link-local, shared or multicast address is never an
 agent's to ask for: the platform's own internal endpoints are the base layer's
 (:class:`~agent_shield.firewall.compile.BaseLayer`), and ``*`` leaves them
 refused. A wildcard host (``*.example.com``) is refused with the reason: a
@@ -21,7 +22,7 @@ firewall sees addresses, not names; a name-level allow-list is the policy
 document's ``network.fetch``.
 
 An ingress entry is ``platform`` (the platform's ingress and probes, the
-default), ``*``, or an address or CIDR with an optional ``:port`` — the
+default), ``*``, ``*:port``, or an address or CIDR with an optional ``:port`` — the
 agent's own port it may be reached on. Private sources are the rule there.
 """
 
@@ -42,8 +43,9 @@ PLATFORM = "platform"
 _LABEL = r"(?!-)[a-z0-9-]{1,63}(?<!-)"
 _HOST = re.compile(rf"^{_LABEL}(\.{_LABEL})*$")
 _PORT = r"(?::(?P<port>\d{1,5}))?"
+_ANY_PORT = re.compile(r"^\*:(?P<port>\d{1,5})$")
 #: The grammar both lists share; a JSON Schema pattern as well.
-ENTRY_PATTERN = r"^(\*|platform|[A-Za-z0-9.\-]+(/\d{1,2})?(:\d{1,5})?)$"
+ENTRY_PATTERN = r"^(\*(:\d{1,5})?|platform|[A-Za-z0-9.\-]+(/\d{1,2})?(:\d{1,5})?)$"
 
 #: The ranges ``*`` leaves refused and an egress entry may not name.
 NON_PUBLIC = (
@@ -93,6 +95,12 @@ def parse_entry(text: str, direction: Direction = "egress") -> Entry:
         raise FirewallError("an empty entry names nothing")
     if raw == ANY:
         return Entry("any", ANY, None, raw)
+    any_port = _ANY_PORT.match(raw)
+    if any_port:
+        port = int(any_port.group("port"))
+        if not 1 <= port <= 65535:
+            raise FirewallError(f"{raw!r}: port {port} is not between 1 and 65535")
+        return Entry("any", ANY, port, raw)
     if raw == PLATFORM:
         if direction != "ingress":
             raise FirewallError("'platform' is an ingress source; the platform's own egress is the base layer's")
@@ -139,7 +147,7 @@ def _check(values: list[str], direction: Direction) -> list[str]:
             raise FirewallError(f"{value!r} is named twice")
         seen.add(value)
     if ANY in values and len(values) > 1:
-        raise FirewallError("'*' stands alone: it already allows every public address")
+        raise FirewallError("'*' stands alone: it already allows every public address on every port")
     return values
 
 
@@ -152,16 +160,17 @@ class FirewallRules(BaseModel):
         default_factory=list,
         description=(
             "What the agent's pod may reach beyond the platform's own endpoints: '*' (any public address, any TCP "
-            "port) alone, or exact hosts, host:port, IPv4 addresses, CIDRs, each with an optional :port. Private "
-            "and reserved addresses are refused; empty keeps the platform's endpoints only."
+            "port) alone, or '*:port' (any public address on that TCP port), exact hosts, host:port, IPv4 "
+            "addresses, CIDRs, each with an optional :port. Private and reserved addresses are refused; empty keeps "
+            "the platform's endpoints only."
         ),
         json_schema_extra={"items": {"type": "string", "pattern": ENTRY_PATTERN}},
     )
     ingress: list[str] = Field(
         default_factory=list,
         description=(
-            "Who may reach the agent's ports: 'platform' (the platform's ingress and probes), '*', or an address "
-            "or CIDR with an optional :port (the agent's port). Empty means 'platform'."
+            "Who may reach the agent's ports: 'platform' (the platform's ingress and probes), '*', '*:port', or an "
+            "address or CIDR with an optional :port (the agent's port). Empty means 'platform'."
         ),
         json_schema_extra={"items": {"type": "string", "pattern": ENTRY_PATTERN}},
     )
@@ -190,7 +199,13 @@ class FirewallRules(BaseModel):
 
     @property
     def open_egress(self) -> bool:
+        """Any public address on any port: ``*``."""
         return ANY in self.egress
+
+    @property
+    def open_egress_ports(self) -> list[int]:
+        """The ports any public address is reached on (each ``*:port``); empty when none is named so."""
+        return sorted(entry.port for entry in self.egress_entries() if entry.kind == "any" and entry.port)
 
 
 class FirewallCeiling(BaseModel):
@@ -207,8 +222,8 @@ class FirewallCeiling(BaseModel):
     egress: list[str] | None = Field(
         default=None,
         description=(
-            "The most an agent's egress may be: '*' (any public address) alone, or exact hosts, host:port, IPv4 "
-            "addresses, CIDRs, each with an optional :port. Left out bounds nothing; empty grants nothing beyond "
+            "The most an agent's egress may be: '*' (any public address) alone, or '*:port' (any public address "
+            "on that port), exact hosts, host:port, IPv4 addresses, CIDRs, each with an optional :port. Left out bounds nothing; empty grants nothing beyond "
             "the platform's endpoints."
         ),
         json_schema_extra={"items": {"type": "string", "pattern": ENTRY_PATTERN}},

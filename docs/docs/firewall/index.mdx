@@ -19,6 +19,7 @@ policy:
 **Egress** is what the agent may reach beyond the platform's own endpoints. Each entry is one of:
 
 - `*`, alone: any **public** address, on any TCP port;
+- `*:port`: any **public** address on that TCP port only. `["*:80", "*:443"]` is the web and nothing else: a page fetched over HTTP or HTTPS, never another port, never a private address;
 - an exact host (`api.tavily.com`), or a host and port (`registry.npmjs.org:443`);
 - an IPv4 address, or an address and port;
 - a CIDR, or a CIDR and port.
@@ -31,7 +32,7 @@ Some entries are refused, and the refusal gives the reason:
 **Ingress** is who may reach the agent's ports. Each entry is one of:
 
 - `platform`, the default: the platform's ingress and probes, which the base layer names;
-- `*`;
+- `*`, or `*:port`;
 - an address or CIDR, with an optional `:port`, the agent's own port.
 
 `agent-shield firewall schema` prints the JSON Schema, which is also published as `schema/firewall.schema.json`. agentspecs validates every agent's `policy.shield` against it.

@@ -66,6 +66,24 @@ def test_an_egress_entry_holds_only_as_far_as_the_ceiling_allows(asked, ceiling,
     assert egress(bounded({"egress": asked}, {"egress": ceiling})) == held
 
 
+@pytest.mark.parametrize(
+    "asked,ceiling,held",
+    [
+        # A ceiling of the web: anything asked, on its ports.
+        (["*"], ["*:80", "*:443"], ["*:80", "*:443"]),
+        (["*:443", "*:22"], ["*:80", "*:443"], ["*:443"]),
+        (["api.tavily.com"], ["*:443"], ["api.tavily.com:443"]),
+        (["api.tavily.com:443", "api.tavily.com:22"], ["*:443"], ["api.tavily.com:443"]),
+        (["198.51.100.0/24"], ["*:443"], ["198.51.100.0/24:443"]),
+        # The web asked under a ceiling of hosts: each host, on that port.
+        (["*:443"], ["github.com", "pypi.org:443", "smtp.example.com:587"], ["github.com:443", "pypi.org:443"]),
+        (["*:443"], ["*"], ["*:443"]),
+    ],
+)
+def test_star_on_a_port_holds_and_bounds_on_that_port(asked, ceiling, held):
+    assert egress(bounded({"egress": asked}, {"egress": ceiling})) == held
+
+
 def test_ingress_keeps_platform_and_is_bounded_like_egress():
     rules = {"egress": ["*"], "ingress": ["platform", "10.42.0.0/16:8765", "10.50.0.0/16"]}
     held = bounded(rules, {"ingress": ["10.42.0.0/16"]})

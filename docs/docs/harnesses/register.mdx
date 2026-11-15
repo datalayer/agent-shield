@@ -12,13 +12,14 @@ Every harness of the catalogue (agentspecs `harnesses/`), with its adapter and t
 
 | Harness | Adapter | Pinned | Credential | Third parties | Licence | Needs |
 |---|---|---|---|---|---|---|
-| **Claude Code** (`claude-code`) | `@agentclientprotocol/claude-agent-acp` | 0.91.0 | An Anthropic API key (ANTHROPIC_API_KEY), the person's own | `api_key_only` | Apache-2.0 (adapter); Anthropic Commercial Terms of Service (the agent) | Node 22 (engines.node >=22 on npm), git |
-| **Codex** (`codex`) | `@agentclientprotocol/codex-acp` | 2.2.2 | An OpenAI API key (OPENAI_API_KEY or CODEX_API_KEY), the person's own | `api_key_only` | Apache-2.0 (adapter); OpenAI Terms of Use (the agent) | Node 22 (as the Agent Client Protocol project's adapters; unstated on npm), git |
+| **Claude Code** (`claude-code`) | `@agentclientprotocol/claude-agent-acp` | 0.91.0 | Locally, an Anthropic API key (ANTHROPIC_API_KEY), the person's own; on Datalayer none, its calls answered from AWS Bedrock through ai-inference in credits | `api_key_only` | Apache-2.0 (adapter); Anthropic Commercial Terms of Service (the agent) | Node 22 (engines.node >=22 on npm), git |
+| **Codex** (`codex`) | `@agentclientprotocol/codex-acp` | 2.2.2 | Locally, an OpenAI API key (OPENAI_API_KEY or CODEX_API_KEY), the person's own; on Datalayer none, its calls answered from AWS Bedrock through ai-inference in credits | `api_key_only` | Apache-2.0 (adapter); OpenAI Terms of Use (the agent) | Node 22 (as the Agent Client Protocol project's adapters; unstated on npm), git |
 | **fast-agent** (`fast-agent`) | `fast-agent-acp` | 0.10.45 | The provider's key fast-agent is given (ANTHROPIC_API_KEY, OPENAI_API_KEY or HF_TOKEN); ANTHROPIC_API_KEY declared | `permitted` | Apache-2.0 | uv (uvx), Python 3.12 to 3.15 (requires_python on PyPI) |
 | **Gemini CLI** (`gemini-cli`) | `@google/gemini-cli` | 0.64.0 | A Gemini API key (GEMINI_API_KEY), the person's own; or a Google login on a Code Assist Standard or Enterprise subscription | `api_key_only` | Apache-2.0 (the agent); Gemini API or Gemini Code Assist terms (the model) | Node 20 or later (engines.node >=20 on npm), git |
 | **goose** (`goose`) | `goose` | 1.54.0 | The provider's key goose is configured with (GOOSE_PROVIDER); ANTHROPIC_API_KEY declared | `permitted` | Apache-2.0 | The goose CLI (release v1.54.0 of 8 October 2026), git |
-| **OpenCode** (`opencode`) | `opencode-ai` | 1.19.0 | The provider's key OpenCode is configured with; ANTHROPIC_API_KEY declared | `permitted` | MIT | Node (the opencode-ai package), git |
+| **OpenCode** (`opencode`) | `opencode-ai` | 1.19.0 | Locally, the provider's key OpenCode is configured with, ANTHROPIC_API_KEY declared; on Datalayer none, its calls go through ai-inference in credits | `permitted` | MIT | Node (the opencode-ai package), git |
 | **OpenHands** (`openhands`) | `openhands` | 1.16.0 | The provider's key OpenHands reads as LLM_API_KEY, with LLM_MODEL, under --override-with-envs | `permitted` | MIT | uv (uvx), Python 3.12 or later, git |
+| **pi** (`pi`) | `pi-acp` | 0.0.34 | Locally, the provider's key pi is configured with, ANTHROPIC_API_KEY declared, the person's own; on Datalayer none, its calls answered from AWS Bedrock through ai-inference in credits | `permitted` | MIT (adapter); MIT (the agent, @earendil-works/pi-coding-agent 1.4.0) | Node 22 (pi-coding-agent engines.node >=22.19.0; pi-acp >=20), the pi executable 1.4.0 on the PATH (@earendil-works/pi-coding-agent), git |
 
 ## Rolled where
 
@@ -35,13 +36,13 @@ On r1, the sidecar: off (DATALAYER_RUNTIME_HARNESS_SIDECAR): the image is prepul
 
 ### Claude Code
 
-Anthropic's legal page (read 2026-10-15): running Claude Code in hosted sandboxes or agent infrastructure requires the Commercial Terms; each end user authenticates with their own API key or subscription; developers may not route requests through Free, Pro or Max plan credentials on behalf of their users, nor collect or intermediate Claude.ai credentials. So only API keys are taken; a subscription login is refused. The npm package moved from @zed-industries (0.23.1, March 2026) to @agentclientprotocol.
+Anthropic's legal page (read 2026-10-15): running Claude Code in hosted sandboxes or agent infrastructure requires the Commercial Terms; each end user authenticates with their own API key or subscription; developers may not route requests through Free, Pro or Max plan credentials on behalf of their users, nor collect or intermediate Claude.ai credentials. So only API keys are taken; a subscription login is refused. The npm package moved from @zed-industries (0.23.1, March 2026) to @agentclientprotocol. On a Datalayer runtime the end user holds no key and Anthropic is not reached: the model calls are AWS Bedrock's, on Datalayer's account, metered in credits. The user decided on 30 October 2026 to offer it to customers on Datalayer that way. Counsel has not reviewed this entry's api_key_only reading against that use.
 
 Read at https://code.claude.com/docs/en/legal-and-compliance and https://www.npmjs.com/package/@agentclientprotocol/claude-agent-acp.
 
 ### Codex
 
-Codex's authentication page (read 2026-10-15) recommends API keys for automation and device-code login for headless machines; a ChatGPT login needs a browser and is hidden with NO_BROWSER=1 in the adapter. Only API keys are taken; a ChatGPT login is refused. The Zed-scoped package was archived on 22 July 2026 and names this one.
+Codex's authentication page (read 2026-10-15) recommends API keys for automation and device-code login for headless machines; a ChatGPT login needs a browser and is hidden with NO_BROWSER=1 in the adapter. Only API keys are taken; a ChatGPT login is refused. The Zed-scoped package was archived on 22 July 2026 and names this one. On a Datalayer runtime the end user holds no key and OpenAI is not reached: the model calls are AWS Bedrock's, on Datalayer's account, metered in credits. The user decided on 30 October 2026 to offer it that way. Counsel has not reviewed this entry's api_key_only reading against that use, nor whether running Codex on another vendor's model fits OpenAI's terms.
 
 Read at https://learn.chatgpt.com/docs/auth and https://www.npmjs.com/package/@agentclientprotocol/codex-acp.
 
@@ -77,6 +78,12 @@ Open source under MIT, no vendor terms of its own; the model provider's terms ap
 
 Read at https://github.com/OpenHands/OpenHands-CLI/blob/main/LICENSE and https://pypi.org/project/openhands/.
 
+### pi
+
+Read 2026-10-28. pi speaks no ACP itself; pi-acp 0.0.34 (MIT, an individual's, github.com/svkozak/pi-acp) speaks ACP JSON-RPC over stdio and spawns the published `pi` executable with `pi --mode rpc`, so pi 1.4.0 runs as published — chosen over @automatalabs/pi-acp 0.9.4 (Apache-2.0, in-process, which embeds pi 0.87.1 through its SDK on a fork's package). Open source under MIT on both sides, no vendor terms of their own; the model provider's terms apply to the key. Session persistence through pi's own session files (session/load).
+
+Read at https://github.com/earendil-works/pi/blob/main/LICENSE and https://www.npmjs.com/package/pi-acp.
+
 ## Listed, not drilled yet
 
 Every other agent of the Agent Client Protocol's agents page, registered with its documented command, its licence, its terms and the credential it takes. Nothing offers them: `agent-shield setup` and `run` refuse each one as *listed, not drilled yet* until it is drilled and moved to the catalogue above.
@@ -109,7 +116,6 @@ Every other agent of the Agent Client Protocol's agents page, registered with it
 | **Mistral Vibe** (`mistral-vibe`) | `vibe-acp` | A Mistral API key (MISTRAL_API_KEY) | `permitted` | Apache-2.0 |
 | **Muse Spark Code** (`muse-spark-code`) | `muse-spark-code-acp` | A Muse Code subscription, or a Meta Model API key (--backend modelApi) | `unknown` | MIT |
 | **OpenClaw** (`openclaw`) | `openclaw acp` | An OpenClaw Gateway token, with the Gateway's configured model providers | `permitted` | MIT |
-| **pi (through pi-acp)** (`pi`) | `npx -y pi-acp` | pi's configured provider's API key (a subscription login carries its provider's terms) | `permitted` | MIT |
 | **Poolside (pool)** (`poolside`) | `pool acp` | A Poolside login or POOLSIDE_API_KEY | `refused` | Proprietary (Poolside End User License Agreement) |
 | **Qoder CLI** (`qoder-cli`) | `qoder --acp` | A Qoder account login | `refused` | Proprietary (Qoder terms of service) |
 | **Qwen Code** (`qwen-code`) | `qwen --acp` | The configured provider's key (set with /auth) | `permitted` | Apache-2.0 |

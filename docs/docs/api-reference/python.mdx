@@ -135,7 +135,7 @@ The ``agent-shield`` command.
 - `refuse`
 - `run` — Run an ACP agent behind the Shield: `agent-shield run -- claude-agent-acp`.
 - `install_adapter` — ``npm install --prefix ~/.agent-shield/harnesses/&lt;id>@&lt;version> &lt;package>@&lt;version>``, in the foreground.
-- `setup` — The first five minutes: find node, the vendor CLIs and credentials; install the pinned adapter; write the policy.
+- `setup` — Find what is installed, install the pinned adapter and write the policy.
 - `log` — The audit: the last rows, one line each.
 - `policy_show` — Every line of the policy in force, and where it came from.
 - `policy_schema` — The policy document's JSON Schema.
@@ -143,9 +143,9 @@ The ``agent-shield`` command.
 - `policy_init` — Write the default policy.
 - `harnesses` — The register: every harness with its terms.
 - `yaml_checked_on`
-- `upgrade` — Move the adapters to the register's pinned versions; say whether a newer Shield exists.
-- `uninstall` — Preview what would go (the adapters, the config); the audit and the policies stay.
-- `serve` — The proxy as a server over WebSocket and ACP Streamable HTTP, one harness per connection (SH-52, SH-56).
+- `upgrade` — Move the adapters to the register's pinned versions.
+- `uninstall` — Preview what an uninstall would remove.
+- `serve` — Serve the proxy over WebSocket and ACP Streamable HTTP.
 - `connect` — A remote Shield as a local stdio agent, for clients that only start commands (SH-56).
 - `version` — The Shield's version.
 - `main`
@@ -295,9 +295,9 @@ An agent's rules held to its organization's ceiling (Agent Firewall N3-01).
 - `load_rules` — :func:`parse_rules` for a command: a refusal is said and ends it.
 - `load_revision` — The ``revision`` a rules file names (``&#123;"revision": …, "shield": &#123;…&#125;&#125;``), echoed once applied.
 - `load_base`
-- `check` — Validate the rules; say what they allow.
+- `check` — Validate the rules and say what they allow.
 - `schema` — The JSON Schema of policy.shield.
-- `compile_command` — Print the iptables-restore script; spec hosts are resolved here.
+- `compile_command` — Print the iptables-restore script.
 - `apply_command` — Apply base and rules once (needs NET_ADMIN).
 - `FirewallAuditLog` — The sidecar's audit: each row also on stdout as one JSON line (a container's log carries it),
 - `watch` — The sidecar's daemon: apply, keep current, record (needs NET_ADMIN).

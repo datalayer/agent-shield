@@ -58,6 +58,8 @@ BASE = BaseLayer(
     "text,kind,value,port",
     [
         ("*", "any", "*", None),
+        ("*:443", "any", "*", 443),
+        ("*:80", "any", "*", 80),
         ("api.tavily.com", "host", "api.tavily.com", None),
         ("registry.npmjs.org:443", "host", "registry.npmjs.org", 443),
         ("8.8.8.8", "network", "8.8.8.8/32", None),
@@ -78,6 +80,9 @@ def test_an_egress_entry_is_parsed(text, kind, value, port):
         ("192.168.1.1:22", "private or reserved"),
         ("localhost", "fully qualified"),
         ("example.com:70000", "between 1 and 65535"),
+        ("*:70000", "between 1 and 65535"),
+        ("*:", "addresses, not names"),
+        ("*:443:80", "addresses, not names"),
         ("platform", "ingress source"),
         ("1.2.3.4/33", "IPv4"),
         ("", "names nothing"),
@@ -103,6 +108,17 @@ def test_star_stands_alone_and_an_entry_once():
         FirewallRules(egress=["example.com", "example.com"])
     with pytest.raises(ValidationError):
         FirewallRules.model_validate({"egress": [], "fetch": []})
+
+
+def test_star_on_a_port_is_any_public_address_on_that_port_beside_other_entries():
+    rules = FirewallRules(egress=["*:80", "*:443", "smtp.example.com:587"])
+    assert not rules.open_egress
+    assert rules.open_egress_ports == [80, 443]
+    assert parse_entry("*:8765", "ingress").port == 8765
+    with pytest.raises(ValidationError, match="stands alone"):
+        FirewallRules(egress=["*", "*:443"])
+    with pytest.raises(ValidationError, match="named twice"):
+        FirewallRules(egress=["*:443", "*:443"])
 
 
 def test_empty_ingress_means_platform():
@@ -153,6 +169,25 @@ def test_star_refuses_the_non_public_ranges_first_then_accepts_tcp():
         assert lines.index(f"-A SHIELD-EGRESS -d {network} -j SHIELD-REFUSE") < accept
     # The base's own private addresses (DNS) are allowed before the ranges are refused.
     assert lines.index("-A SHIELD-EGRESS -d 10.96.0.10/32 -p udp --dport 53 -j ACCEPT") < accept
+
+
+def test_star_on_ports_refuses_the_non_public_ranges_on_those_ports_then_accepts_them_only():
+    lines = compile_rules(
+        BASE,
+        FirewallRules(egress=["*:80", "*:443", "smtp.example.com:587"]),
+        resolved={"smtp.example.com": ["198.51.100.9"]},
+    ).script.splitlines()
+    for port in (80, 443):
+        accept = lines.index(f"-A SHIELD-EGRESS -p tcp --dport {port} -j ACCEPT")
+        for network in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"):
+            assert lines.index(f"-A SHIELD-EGRESS -d {network} -p tcp --dport {port} -j SHIELD-REFUSE") < accept
+        assert f'--nflog-prefix "shield allow spec:*:{port}"' in "\n".join(lines)
+    # No rule accepts every TCP port, and the ranges are not refused on every protocol.
+    assert "-A SHIELD-EGRESS -p tcp -j ACCEPT" not in lines
+    assert "-A SHIELD-EGRESS -d 10.0.0.0/8 -j SHIELD-REFUSE" not in lines
+    # Another entry on another port still holds, and the rest is refused.
+    assert "-A SHIELD-EGRESS -d 198.51.100.9/32 -p tcp --dport 587 -j ACCEPT" in lines
+    assert lines[-2] == "-A SHIELD-EGRESS -j SHIELD-REFUSE"
 
 
 def test_an_unresolved_host_is_refused_and_said():
@@ -327,6 +362,14 @@ def test_check_reads_an_agent_specs_policy_shield(tmp_path):
     result = runner.invoke(app, ["firewall", "check", str(spec)])
     assert result.exit_code == 0, result.output
     assert "any public address" in result.output
+
+
+def test_check_says_the_ports_of_star_on_a_port(tmp_path):
+    spec = tmp_path / "agent.yaml"
+    spec.write_text("id: marketer\npolicy:\n  shield:\n    egress: ['*:80', '*:443']\n")
+    result = runner.invoke(app, ["firewall", "check", str(spec)])
+    assert result.exit_code == 0, result.output
+    assert "any public address on ports 80, 443" in result.output
 
 
 def test_check_refuses_a_wildcard_host_with_the_reason(tmp_path):

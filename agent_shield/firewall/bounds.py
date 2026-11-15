@@ -11,13 +11,14 @@ agent's ``policy.shield`` with it, the strictest winning, as the scopes do for
 ``network.fetch``:
 
 - ``*`` in the ceiling allows anything the rules ask (every egress entry is
-  public, :mod:`.model` refuses the rest);
+  public, :mod:`.model` refuses the rest); ``*:port`` allows anything the rules
+  ask on that port, an entry with no port narrowed to it;
 - otherwise an entry holds as far as a ceiling entry covers it: an exact host
   only by the same host, an address or CIDR by a CIDR that covers it (or the
   part of it the ceiling's narrower CIDR names), and a port only by the same
   port (an entry with no port, every port, is narrowed to the ceiling's port);
 - the rules' ``*`` is the ceiling itself: any public address, as far as the
-  ceiling goes;
+  ceiling goes; the rules' ``*:port`` is each ceiling entry on that port;
 - ``platform`` stays in ingress whatever the ceiling says: the platform's own
   sources are the base layer's, as its endpoints are in egress;
 - no ceiling, or a direction the ceiling leaves out, leaves the rules as they are.
@@ -58,17 +59,29 @@ def _network_text(network: ipaddress.IPv4Network) -> str:
     return str(network.network_address) if network.prefixlen == 32 else str(network)
 
 
+def _target(entry: Entry) -> str:
+    if entry.kind == "network":
+        return _network_text(ipaddress.IPv4Network(entry.value))
+    return entry.value
+
+
 def _meet(spec: Entry, ceiling: Entry) -> str | None:
     """What of ``spec`` the ceiling entry allows, as an entry's text; ``None`` when nothing."""
-    if ceiling.kind == "any":
+    if ceiling.kind == "any" and ceiling.port is None:
         return spec.text
-    if spec.kind == "any":
+    if spec.kind == "any" and spec.port is None:
         return ceiling.text
     if PLATFORM in (spec.kind, ceiling.kind):
         return None
     port = _port(spec.port, ceiling.port)
     if port is _CONFLICT:
         return None
+    if ceiling.kind == "any":
+        # ``*:port`` in the ceiling: the asked entry, on that port.
+        return spec.text if port == spec.port else _render(_target(spec), port)
+    if spec.kind == "any":
+        # ``*:port`` asked: the ceiling's entry, on that port.
+        return ceiling.text if port == ceiling.port else _render(_target(ceiling), port)
     if spec.kind == "host" and ceiling.kind == "host":
         if spec.value != ceiling.value:
             return None
@@ -85,7 +98,7 @@ def _meet(spec: Entry, ceiling: Entry) -> str | None:
 
 def _bounded_list(asked: Sequence[str], ceiling: Sequence[str], direction: Direction) -> list[str]:
     allowed = [parse_entry(item, direction) for item in ceiling]
-    if any(entry.kind == "any" for entry in allowed):
+    if any(entry.kind == "any" and entry.port is None for entry in allowed):
         return list(asked)
     held: list[str] = []
     for item in asked:

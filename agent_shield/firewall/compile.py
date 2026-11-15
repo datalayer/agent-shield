@@ -17,7 +17,8 @@ The firewall owns three chains in the ``filter`` table:
     loopback and established traffic; the refused list, logged; DNS to the
     resolvers; each base allowance and each spec entry, logged on a new
     connection; for ``*``, the non-public ranges sent to refuse, then the rest
-    accepted and logged; everything else refused.
+    accepted and logged (for ``*:port``, the same on that TCP port only);
+    everything else refused.
 ``SHIELD-INGRESS`` (from ``INPUT``, only when ingress is enforced)
     loopback and established traffic; each source, logged; refused.
 ``SHIELD-REFUSE``
@@ -206,11 +207,14 @@ def compile_rules(
         rule = f"spec:{entry.label}"
         port = f" --dport {entry.port}" if entry.port else ""
         if entry.kind == "any":
+            # ``*`` refuses the non-public ranges on every protocol; ``*:port``
+            # on its port only, so an entry for another port is left to decide.
+            scope = f" -p tcp{port}" if entry.port else ""
             for network in NON_PUBLIC:
-                lines.append(_log(egress_chain, f"-d {network}", "refuse", "spec:* non-public"))
-                lines.append(f"-A {egress_chain} -d {network} -j {refuse}")
-            lines.append(_log(egress_chain, "-p tcp", "allow", rule))
-            lines.append(f"-A {egress_chain} -p tcp -j ACCEPT")
+                lines.append(_log(egress_chain, f"-d {network}{scope}", "refuse", f"{rule} non-public"))
+                lines.append(f"-A {egress_chain} -d {network}{scope} -j {refuse}")
+            lines.append(_log(egress_chain, f"-p tcp{port}", "allow", rule))
+            lines.append(f"-A {egress_chain} -p tcp{port} -j ACCEPT")
             continue
         if entry.kind == "network":
             addresses = [entry.value]

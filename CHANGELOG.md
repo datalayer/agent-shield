@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.21
+
+- **`*:port` in a firewall rule:** any public address on that TCP port only, beside other entries (`egress: ["*:80", "*:443"]`, the web and nothing else). The non-public ranges stay refused on that port, and no rule accepts every port; `*` alone keeps meaning every port. A ceiling of `*:443` holds each entry asked to port 443 (`*` asked becomes `*:443`, a host with no port `host:443`), and `*:443` asked under a ceiling of hosts is each host on 443. `firewall check` says the ports. The schema, the TypeScript types and the documentation follow.
+
 ## 0.2.20
 
 - **The line a listing shows beside a command** is one sentence ending with a period, and does not open with the command's name: `agent-shield` is listed in `datalayer --help` as "A runtime firewall for every agent."; `firewall`, `firewall check`, `firewall compile`, `serve`, `setup`, `uninstall` and `upgrade` follow, their explanation staying in each command's own `--help`.

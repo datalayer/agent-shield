@@ -55,7 +55,7 @@ export type Policies1 = string;
  */
 export type Expires = string | null;
 /**
- * The most an agent's egress may be: '*' (any public address) alone, or exact hosts, host:port, IPv4 addresses, CIDRs, each with an optional :port. Left out bounds nothing; empty grants nothing beyond the platform's endpoints.
+ * The most an agent's egress may be: '*' (any public address) alone, or '*:port' (any public address on that port), exact hosts, host:port, IPv4 addresses, CIDRs, each with an optional :port. Left out bounds nothing; empty grants nothing beyond the platform's endpoints.
  */
 export type Egress = (string[] | null) & string[];
 /**
