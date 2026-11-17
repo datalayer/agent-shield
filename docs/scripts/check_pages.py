@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Hold the documentation to what is built (SHIELD SH-22, REVIEWS G-10).
+"""Hold the documentation to what is built.
 
 For every page under ``docs/docs``:
 

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Cedar behind the authorizer port (AC-41): the ``cedar`` authorizer.
+"""Cedar behind the authorizer port: the ``cedar`` authorizer.
 
 AgentCore Policy decides every tool call at its Gateway in **Cedar**:
 ``permit``/``forbid`` over a principal, an action and a resource, with the

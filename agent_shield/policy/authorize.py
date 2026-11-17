@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The authorizer port (SH-74): *may this principal act on this object?*
+"""The authorizer port: *may this principal act on this object?*
 
 Policy and authorization are two questions. The policy document says what
 kind of action needs what decision; it does not say whether this person may
@@ -16,7 +16,7 @@ that speaks it is a contribution: :class:`LocalAuthorizer` (grants in
 ``agent-shield.yaml``, the standalone proxy's), :class:`AuthZenAuthorizer`
 (any AuthZen endpoint: IAM's on Datalayer, OPA or Cedar elsewhere),
 :class:`OpenFgaAuthorizer` (an organization running its own OpenFGA),
-``cedar.CedarAuthorizer`` (a Cedar policy set decided in process, AC-41).
+``cedar.CedarAuthorizer`` (a Cedar policy set decided in process).
 
 The rules of the port, held by :func:`authorize` and by ``decide``:
 
@@ -342,7 +342,7 @@ def _post_json(url: str, body: Mapping[str, Any], headers: Mapping[str, str], ti
 
 
 class AuthZenAuthorizer:
-    """Any AuthZen evaluation endpoint (``POST <url>``): IAM's on Datalayer, OPA or Cedar elsewhere (SH-78)."""
+    """Any AuthZen evaluation endpoint (``POST <url>``): IAM's on Datalayer, OPA or Cedar elsewhere."""
 
     def __init__(
         self,
@@ -412,7 +412,7 @@ class OpenFgaAuthorizer:
 
 
 class OpaAuthorizer(AuthZenAuthorizer):
-    """Open Policy Agent behind the port (SH-78): a second decision point, not OpenFGA-shaped.
+    """Open Policy Agent behind the port: a second decision point, not OpenFGA-shaped.
 
     OPA's data API takes a document as ``input`` and answers its ``result``:
     the AuthZen request is the input, and a Rego package answering
@@ -484,7 +484,7 @@ def read_cedar_policies(value: str) -> tuple[str, str]:
 
 
 class CedarAuthorizerConfig(_Strict):
-    """``cedar: {policies}``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41)."""
+    """``cedar: {policies}``: a Cedar policy set inline, or the path of a ``.cedar`` file."""
 
     policies: str = Field(min_length=1, description="A Cedar policy set, inline, or the path of a .cedar file.")
 

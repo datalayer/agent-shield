@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""``agent-shield policy export --dogwood`` (AC-43): a document's rules and limits as Dogwood,
+"""``agent-shield policy export --dogwood``: a document's rules and limits as Dogwood,
 round-trip tested — the exported set decides as the document does on the same events."""
 
 from __future__ import annotations

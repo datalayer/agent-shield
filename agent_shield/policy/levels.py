@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Three levels, nothing loosening below the one above (SH-31).
+"""Three levels, nothing loosening below the one above.
 
 The engine already holds the order: the organization's policy decides before
 the team's (an Appspec's Rules), the team's before the session's, and the

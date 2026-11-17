@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""An agent's firewall rules held to its organization's ceiling (Agent Firewall N3-01)."""
+"""An agent's firewall rules held to its organization's ceiling."""
 
 from __future__ import annotations
 

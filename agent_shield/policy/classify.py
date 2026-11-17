@@ -22,7 +22,7 @@ import re
 
 from .model import ActionClass
 
-#: ACP ``ToolKind`` → F-10 class; ``None`` means nothing to decide.
+#: ACP ``ToolKind`` → action class; ``None`` means nothing to decide.
 KIND_CLASS: dict[str, ActionClass | None] = {
     "read": "read",
     "search": "read",
@@ -44,7 +44,7 @@ SHIELD_KINDS: dict[str, ActionClass] = {
 }
 
 
-#: The gateway's ``pap`` toolset (SH-70): what each tool does to the
+#: The gateway's ``pap`` toolset: what each tool does to the
 #: world, as agentspecs' table of the toolset says it — the strictest class
 #: when a tool may do two things (a confirmation is a ``buy`` when a term moves
 #: money, and the Shield cannot see the terms). A harness is lent these tools

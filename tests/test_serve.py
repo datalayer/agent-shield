@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""``agent-shield serve``: WebSocket and ACP Streamable HTTP, one harness per connection (SHIELD SH-52, SH-56)."""
+"""``agent-shield serve``: WebSocket and ACP Streamable HTTP, one harness per connection."""
 
 from __future__ import annotations
 
@@ -163,7 +163,7 @@ async def test_the_token_in_the_first_message_authenticates_the_websocket(tokene
 
 async def test_binary_frames_are_ndjson_as_marimo_writes_them(tokened: ShieldServer):
     """marimo's agents panel (use-acp's ndJsonStream over the socket) writes each
-    message as a binary frame of UTF-8 NDJSON; serve reads them as text (SHIELD SH-49)."""
+    message as a binary frame of UTF-8 NDJSON; serve reads them as text."""
     from websockets.asyncio.client import connect
 
     async with connect(ws_url(tokened)) as socket:

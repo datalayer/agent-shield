@@ -91,7 +91,7 @@ test('the unified diff aligns by a longest common subsequence', () => {
 });
 
 /**
- * The contracts are agent-runtimes' `portable/displays.ts` (SHIELD SH-53):
+ * The contracts are agent-runtimes' `portable/displays.ts`:
  * when that file is beside this package (the monorepo), the display types,
  * the diff and terminal shapes and the decoders' two cases are held equal,
  * whitespace aside.

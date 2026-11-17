@@ -1,7 +1,7 @@
 # Copyright (c) 2025-2026 Datalayer, Inc.
 # Distributed under the terms of the Modified BSD License.
 
-# The Shield's site, agent-shield.datalayer.tech (SHIELD SH-22): on every push
+# The Shield's site, agent-shield.datalayer.tech: on every push
 # to main the generated pages are checked against the schema, the register and
 # the docstrings, every page is held to what is built (docs/scripts/check_pages.py),
 # and the Docusaurus site is built and kept as an artifact. Deploying is the

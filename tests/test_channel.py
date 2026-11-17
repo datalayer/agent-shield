@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The stdio and WebSocket ``ACPChannel`` (SHIELD SH-02)."""
+"""The stdio and WebSocket ``ACPChannel``."""
 
 from __future__ import annotations
 
@@ -206,7 +206,7 @@ async def test_the_websocket_channel_speaks_the_same_interface(tmp_path: Path):
 
 
 async def test_an_agent_that_exits_fails_the_request_at_once_not_at_a_timeout(tmp_path: Path):
-    """SH-45's finding: `agent-shield run` with no policy exits, and the caller waited its
+    """Found by a drill: `agent-shield run` with no policy exits, and the caller waited its
     request timeout. A dead agent is a refusal naming its exit code, at once."""
     dead = tmp_path / "dead.py"
     dead.write_text("import sys\nsys.stderr.write('no policy\\n')\nsys.exit(3)\n")

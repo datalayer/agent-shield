@@ -4,7 +4,7 @@
  * BSD 3-Clause License
  */
 
-// Writes src/policy.generated.ts from schema/policy.schema.json (SHIELD SH-53).
+// Writes src/policy.generated.ts from schema/policy.schema.json.
 // `node scripts/generate.mjs` writes it; `node scripts/generate.mjs --check`
 // exits 1 when the checked-in file differs from what the schema gives now.
 
@@ -34,7 +34,7 @@ export async function generated() {
     '/* eslint-disable */',
     '/**',
     ' * GENERATED from schema/policy.schema.json by json-schema-to-typescript: do not edit.',
-    ' * `npm run generate` writes it; `npm test` regenerates and refuses a drift (SHIELD SH-53).',
+    ' * `npm run generate` writes it; `npm test` regenerates and refuses a drift.',
     ' */',
     '',
   ].join('\n');

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""A terminal's output pushed while its command runs (SHIELD SH-13, SH-16).
+"""A terminal's output pushed while its command runs.
 
 The terminal is the Shield's, so the client cannot ask it for its output: the
 proxy pushes it on its own row as it arrives — each `tool_call_update` carrying

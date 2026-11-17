@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The harness register, read from agentspecs, and the Shield's credential refusals (SH-04)."""
+"""The harness register, read from agentspecs, and the Shield's credential refusals."""
 
 from __future__ import annotations
 
@@ -89,7 +89,7 @@ def test_harnesses_without_a_login_file_are_not_refused(tmp_path: Path):
 
 
 def test_a_listed_or_an_organizations_own_harness_is_refused_by_the_standalone_shield():
-    """SH-57: the long tail is listed, not drilled yet; SH-46: an organization's own
+    """The long tail is listed, not drilled yet; an organization's own
     harness is served on Datalayer, where its organization admits the reviewed command."""
     from agent_shield.register import RegisterRefused, harness
 

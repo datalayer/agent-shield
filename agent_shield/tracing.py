@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield over OTEL: one trace across the chain, counts under the account (SH-51).
+"""The Shield over OTEL: one trace across the chain, counts under the account.
 
 The ACP session is a trace, each prompt a span (:func:`turn_span`), and every
 audit row a span event and a count (:func:`observe`) in the audit's safe
@@ -242,7 +242,7 @@ def continued(traceparent: str | None, tracestate: str | None = None) -> Iterato
         otel_context.detach(token)
 
 
-# -- exporting from a standalone Shield (SH-47, SH-52) -------------------------------------
+# -- exporting from a standalone Shield -------------------------------------
 
 #: The OTLP/HTTP ingest of Datalayer's observability, under the service's prefix.
 INGEST_PATH = "/api/otel/v1/otlp"

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield as a PAP company, standing in front of any agent (SH-71), on PAP draft 0.4 (Operations v2).
+"""The Shield as a PAP company, standing in front of any agent, on PAP draft 0.4 (Operations v2).
 
 A company puts *any* agent behind the Personal Agent Protocol by running it
 behind the Shield in the company role: the PAP SDK's company service does

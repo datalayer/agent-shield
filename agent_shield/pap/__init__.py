@@ -2,11 +2,11 @@
 #
 # BSD 3-Clause License
 
-"""PAP through the Shield: the company role, standing in front of any agent (SH-71), on PAP draft 0.4.
+"""PAP through the Shield: the company role, standing in front of any agent, on PAP draft 0.4.
 
 The personal-agent role is not here: a harness is **lent** the gateway's
-``pap`` tools through the lent MCP (SH-70, agent-runtimes), and the
-standalone proxy has it once registered (SH-73, :mod:`agent_shield.registration`).
+``pap`` tools through the lent MCP (agent-runtimes), and the
+standalone proxy has it once registered (:mod:`agent_shield.registration`).
 """
 
 from __future__ import annotations

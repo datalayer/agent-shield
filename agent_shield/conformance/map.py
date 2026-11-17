@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule (SH-61).
+"""The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule.
 
 A rule answers ``(status, reason, evidence, missing, last)``: the status, why
 in a sentence, the evidence attached, what is missing named, and when the
@@ -17,8 +17,8 @@ are honest by construction:
   asks for was collected, else *partly met* with the missing pieces named;
 - a control the standard **retired** is *not applicable*, with the release.
 
-ISO/IEC 42001's clauses are answered through the crosswalk (SH-66,
-:func:`answer_covered`): a clause's status is the weakest of the AIUC-1
+ISO/IEC 42001's clauses are answered through the crosswalk
+(:func:`answer_covered`): a clause's status is the weakest of the AIUC-1
 controls that cover it, *partly met* at most where the crosswalk says the
 coverage is partial, and *the organization's* where nothing covers it.
 """
@@ -37,7 +37,7 @@ Answer = tuple[str, str, list[Evidence], list[str], str | None]
 REST_IS_THE_ORGANIZATIONS = "the rest is the organization's"
 Rule = Callable[[Any, Inputs], Answer]
 
-#: The drills of SH-37, by id, as the map names them.
+#: The drills, by id, as the map names them.
 DRILLS = {
     "outside-curl": "an outside curl from the pod",
     "write-outside-workspace": "a write outside the workspace",
@@ -63,7 +63,7 @@ FACTS = {
     "input_output_safety": "the input and output safety guardrail on every turn",
     "gateway_refusals": "the MCP gateway refusing a call outside the manifest",
     "rate_limits": "a rate limit on the deployment's routes and the visitors' ceilings",
-    "record_include": "the record keeping only what `record.include` names, in A-01's safe vocabulary",
+    "record_include": "the record keeping only what `record.include` names, in the record's safe vocabulary",
     "sandboxed_execution": "code and commands running in the runtime's sandbox",
     "waiting_for_you": "Waiting for you: an action asked about waits for a person on the page, the phone and the Approvals page",
     "stop_and_barge_in": "Stop and barge-in on a running session, the phone's inbox",
@@ -812,7 +812,7 @@ def covering_standard(standard_id: str) -> Any:
 
 
 def answer_covered(control: Any, covering: Assessment | None, inputs: Inputs) -> Answer:
-    """A clause answered through the controls that cover it (SH-66): the weakest of them, bounded by the coverage."""
+    """A clause answered through the controls that cover it: the weakest of them, bounded by the coverage."""
     if covering is None:
         raise ValueError(f"the clause {control.id} is covered by another standard, which was not assessed")
     if control.coverage == "none" or not control.covered_by:

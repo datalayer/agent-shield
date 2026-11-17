@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The firewall's rows to OTEL, one span each (Agent Firewall N3-03)."""
+"""The firewall's rows to OTEL, one span each."""
 
 from __future__ import annotations
 

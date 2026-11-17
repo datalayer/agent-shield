@@ -16,7 +16,7 @@ The order:
    any host: on the list, do it; off it, or with no list anywhere, leave it
    to me.
 4. Nothing said: **ask me first**. An action with no rule never falls to
-   *do it* (R-05).
+   *do it*.
 
 Before all of these, for a class a policy in force lists under
 ``authorize:``, the **authorizer** (``authorize.py``) is asked through
@@ -69,7 +69,7 @@ class LimitState:
     tool_calls: int = 0
     terminals_open: int = 0
     bytes_written: int = 0
-    #: What the session's model requests spent so far (SH-32): tokens and credits.
+    #: What the session's model requests spent so far: tokens and credits.
     model_tokens: int = 0
     spend: int = 0
     #: ``(scope, limit)`` pairs whose soft threshold was already asked about.
@@ -140,7 +140,7 @@ def _subject(action: Action) -> str:
     return action.title
 
 
-#: The kind of a model request, held to the model limits alone (SH-32): never
+#: The kind of a model request, held to the model limits alone: never
 #: a tool call, never a rule's business.
 MODEL_KIND = "model"
 
@@ -326,7 +326,7 @@ def request_for(action: Action, context: Context) -> EvaluationRequest:
         # A path inside the workspace asks about the workspace itself — the folder a
         # mount, a share or a project made a relationship on; one outside asks
         # about its own path. OpenFGA holds no path hierarchy, so the relationship
-        # is the folder's, as the platform writes it (SH-75).
+        # is the folder's, as the platform writes it.
         resource = Resource(
             type="workspace",
             id=context.workspace.strip("/") if action.inside else action.path.strip("/"),
@@ -509,7 +509,7 @@ def decide(action: Action, context: Context, policies: Sequence[Policy]) -> Deci
 def decide_budget(
     context: Context, policies: Sequence[Policy], *, tokens: int = 0, cost: int = 0, title: str = "a model request"
 ) -> Decision:
-    """Decide the next model request against the model limits alone (SH-32, SH-54).
+    """Decide the next model request against the model limits alone.
 
     ``tokens`` and ``cost`` (in credits) are what the request is expected to add — the
     last request's cost is the usual estimate; ``0`` asks whether what was

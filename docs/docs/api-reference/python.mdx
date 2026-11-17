@@ -36,7 +36,7 @@ The client-side ``ACPChannel``: stdio and WebSocket, on the official SDK.
 
 ## `agent_shield.acp.credential`
 
-Authority across the chain: the execution credential a caller hands the Shield (SH-33).
+Authority across the chain: the execution credential a caller hands the Shield.
 
 - `take_credential` — The ``_meta`` to hand on, with the credential withheld, and the credential when one was sent.
 - `fingerprint` — Which credential, to compare two: a digest, never kept beside the token.
@@ -90,7 +90,7 @@ The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched
 
 ## `agent_shield.acp.remote`
 
-``agent-shield connect &lt;url>``: a remote Shield (``serve``) as a local stdio agent (SH-56).
+``agent-shield connect &lt;url>``: a remote Shield (``serve``) as a local stdio agent.
 
 - `RemoteRefused` — A remote the mirror will not connect to, said in a sentence.
 - `remote_url` — The URL checked: ``ws``/``wss``, no token in it.
@@ -98,11 +98,11 @@ The proxy: an ACP agent on the Shield's stdio, in front of the agent it launched
 
 ## `agent_shield.acp.server`
 
-``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP (SH-52, SH-56).
+``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP.
 
 - `ServeRefused` — What stops the server before it listens, said in a sentence.
 - `ShieldBackend` — A connection's Shield: a proxy of its own, the SDK's agent router in front of it.
-- `BridgeBackend` — No Shield: the harness spawned for this connection, every line relayed both ways (SH-40).
+- `BridgeBackend` — No Shield: the harness spawned for this connection, every line relayed both ways.
 - `Served` — One client connection: its backend, its streams, what it is waiting for.
 - `ShieldServer` — The listener (see the module). ``agents`` maps a path id (``""`` for ``/acp`` alone) to what serves it.
 
@@ -139,14 +139,14 @@ The ``agent-shield`` command.
 - `log` — The audit: the last rows, one line each.
 - `policy_show` — Every line of the policy in force, and where it came from.
 - `policy_schema` — The policy document's JSON Schema.
-- `policy_export` — A document as another policy language: --dogwood, AgentCore Policy's (AC-43).
+- `policy_export` — A document as another policy language: --dogwood, AgentCore Policy's.
 - `policy_init` — Write the default policy.
 - `harnesses` — The register: every harness with its terms.
 - `yaml_checked_on`
 - `upgrade` — Move the adapters to the register's pinned versions.
 - `uninstall` — Preview what an uninstall would remove.
 - `serve` — Serve the proxy over WebSocket and ACP Streamable HTTP.
-- `connect` — A remote Shield as a local stdio agent, for clients that only start commands (SH-56).
+- `connect` — A remote Shield as a local stdio agent, for clients that only start commands.
 - `version` — The Shield's version.
 - `main`
 
@@ -162,13 +162,13 @@ Where the Shield keeps its things: ``~/.agent-shield`` (or ``$AGENT_SHIELD_HOME`
 
 ## `agent_shield.conformance`
 
-Conformance: a standard's controls answered from the Shield's evidence (SH-61).
+Conformance: a standard's controls answered from the Shield's evidence.
 
 - `ConformanceError` — What cannot be assessed, said in a sentence.
 - `Evidence` — One piece of evidence a collector attached to a control.
-- `Document` — A document of the Studio a person wrote for a control (SH-64).
+- `Document` — A document of the Studio a person wrote for a control.
 - `ThirdPartyReport` — A third party's evaluation report, recorded with its date (the quarterly clock starts there).
-- `DrillResult` — One of SH-37's drills, as its report records it.
+- `DrillResult` — One of the drills, as its report records it.
 - `Fact` — A fact the host asserts of its platform, with where it was proved.
 - `Inputs` — Everything the map reads, collected by the host.
 - `Cadence` — A control's clock: how often, when last, when next, whether it has run out.
@@ -179,7 +179,7 @@ Conformance: a standard's controls answered from the Shield's evidence (SH-61).
 
 ## `agent_shield.conformance.collect`
 
-The collectors: each reads one kind of evidence out of :class:`Inputs` (SH-61).
+The collectors: each reads one kind of evidence out of :class:`Inputs`.
 
 - `policies_by_scope`
 - `policy_in_force` — The documents in force, each scope with its version: the configuration the Shield decides with.
@@ -217,7 +217,7 @@ The collectors: each reads one kind of evidence out of :class:`Inputs` (SH-61).
 
 ## `agent_shield.conformance.continuous`
 
-Continuous conformance (SH-63): recomputed as the inputs change, a lapse raised as a notice.
+Continuous conformance: recomputed as the inputs change, a lapse raised as a notice.
 
 - `Notice` — One lapse, for the organization's owners.
 - `Snapshot` — What an assessment amounted to, kept for the line over time.
@@ -227,7 +227,7 @@ Continuous conformance (SH-63): recomputed as the inputs change, a lapse raised 
 
 ## `agent_shield.conformance.map`
 
-The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule (SH-61).
+The evidence map: AIUC-1's 55 controls, each with its collectors and its status rule.
 
 - `a001`
 - `a002`
@@ -272,7 +272,7 @@ The evidence map: AIUC-1's 55 controls, each with its collectors and its status 
 - `f002`
 - `rule_for`
 - `covering_standard` — The standard whose controls cover another's clauses, from the catalogue.
-- `answer_covered` — A clause answered through the controls that cover it (SH-66): the weakest of them, bounded by the coverage.
+- `answer_covered` — A clause answered through the controls that cover it: the weakest of them, bounded by the coverage.
 
 ## `agent_shield.firewall`
 
@@ -281,7 +281,7 @@ The firewall: an agent's ``policy.shield`` enforced in its pod and every connect
 
 ## `agent_shield.firewall.bounds`
 
-An agent's rules held to its organization's ceiling (Agent Firewall N3-01).
+An agent's rules held to its organization's ceiling.
 
 - `bounded` — ``rules`` held to ``ceiling``: each entry only as far as the ceiling allows it; unchanged with no ceiling.
 - `organization_ceilings` — The ceilings the organization documents among ``policies`` carry, in their order.
@@ -325,7 +325,7 @@ The firewall's controller: apply base + spec, keep it current, record every conn
 
 ## `agent_shield.firewall.export`
 
-The firewall's rows to OTEL: one span per ``connection`` and ``firewall`` row (Agent Firewall N3-03).
+The firewall's rows to OTEL: one span per ``connection`` and ``firewall`` row.
 
 - `runtime_uid` — The runtime's uid the sidecar was given, or ``None``.
 - `row_attributes` — A ``connection`` or ``firewall`` row as the span's attributes; :data:`SPAN_NAMES` says which rows.
@@ -358,12 +358,12 @@ The firewall's rules: what an agent's pod may reach, and who may reach it.
 
 ## `agent_shield.pap`
 
-PAP through the Shield: the company role, standing in front of any agent (SH-71), on PAP draft 0.4.
+PAP through the Shield: the company role, standing in front of any agent, on PAP draft 0.4.
 
 
 ## `agent_shield.pap.company`
 
-The Shield as a PAP company, standing in front of any agent (SH-71), on PAP draft 0.4 (Operations v2).
+The Shield as a PAP company, standing in front of any agent, on PAP draft 0.4 (Operations v2).
 
 - `money_moves` — Whether a term carries an amount with a currency, anywhere in the terms.
 - `operation_class` — ``buy`` when a term moves money, or when there are no terms; ``write`` otherwise.
@@ -385,7 +385,7 @@ The policy document and the decision engine.
 
 ## `agent_shield.policy.agentcore`
 
-An organization's policy compiled for AgentCore Policy (AC-44) and its Gateway rate limits (AC-45).
+An organization's policy compiled for AgentCore Policy and its Gateway rate limits.
 
 - `AgentCoreRefused` — A document AgentCore's Gateway cannot decide as the Shield does, said in a sentence.
 - `AgentCoreStatement` — One AgentCore policy: its name in the engine, its statement, and where it came from.
@@ -397,7 +397,7 @@ An organization's policy compiled for AgentCore Policy (AC-44) and its Gateway r
 
 ## `agent_shield.policy.authorize`
 
-The authorizer port (SH-74): *may this principal act on this object?*
+The authorizer port: *may this principal act on this object?*
 
 - `Subject` — Who acts: ``&#123;type, id&#125;`` as AuthZen names it (``account``, ``deployment``, ``agent``).
 - `ActionName` — What is done: an action class of the policy, or a relation's own name.
@@ -412,20 +412,20 @@ The authorizer port (SH-74): *may this principal act on this object?*
 - `hook_for` — The hook a ``Context`` carries: one authorizer, one cache of allows.
 - `Grant` — One line of the ``local`` authorizer: who may do what to what, as patterns (fnmatch).
 - `LocalAuthorizer` — Grants in ``agent-shield.yaml`` (the ``local`` authorizer): the standalone proxy's own.
-- `AuthZenAuthorizer` — Any AuthZen evaluation endpoint (``POST &lt;url>``): IAM's on Datalayer, OPA or Cedar elsewhere (SH-78).
+- `AuthZenAuthorizer` — Any AuthZen evaluation endpoint (``POST &lt;url>``): IAM's on Datalayer, OPA or Cedar elsewhere.
 - `OpenFgaAuthorizer` — An organization's own OpenFGA, asked at its check API (``openfga: &#123;url, store, model&#125;``).
-- `OpaAuthorizer` — Open Policy Agent behind the port (SH-78): a second decision point, not OpenFGA-shaped.
+- `OpaAuthorizer` — Open Policy Agent behind the port: a second decision point, not OpenFGA-shaped.
 - `LocalAuthorizerConfig`
 - `OpenFgaAuthorizerConfig`
 - `AuthZenAuthorizerConfig`
 - `OpaAuthorizerConfig`
 - `read_cedar_policies` — The Cedar text a config names (inline, or a ``.cedar`` file's), and where it came from.
-- `CedarAuthorizerConfig` — ``cedar: &#123;policies&#125;``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41).
+- `CedarAuthorizerConfig` — ``cedar: &#123;policies&#125;``: a Cedar policy set inline, or the path of a ``.cedar`` file.
 - `AuthorizerConfig` — ``authorizer:`` in a policy document: exactly one decision point (standalone).
 
 ## `agent_shield.policy.cedar`
 
-Cedar behind the authorizer port (AC-41): the ``cedar`` authorizer.
+Cedar behind the authorizer port: the ``cedar`` authorizer.
 
 - `uid` — ``Datalayer::&lt;kind>::"&lt;ident>"``, quoted as Cedar quotes it.
 - `action_uid` — The Cedar action of a call: the tool as AgentCore names it, else the Shield's own kind.
@@ -456,7 +456,7 @@ ACP kinds to classes, and the commands the default policy asks about.
 - `Context` — What surrounds an action: the workspace, the session and its state.
 - `request_for` — The AuthZen request an action is: the context's subject, the class, the action's resource.
 - `decide` — Decide one action against the policies in force (see the module).
-- `decide_budget` — Decide the next model request against the model limits alone (SH-32, SH-54).
+- `decide_budget` — Decide the next model request against the model limits alone.
 - `scopes_present`
 
 ## `agent_shield.policy.default`
@@ -467,7 +467,7 @@ The default policy of as a session document.
 
 ## `agent_shield.policy.dogwood`
 
-Dogwood policy sets: the parser, AgentCore's quotas and the lowering to Cedar (AC-42).
+Dogwood policy sets: the parser, AgentCore's quotas and the lowering to Cedar.
 
 - `DogwoodRefused` — A policy set that cannot be read, said in a sentence.
 - `Window` — A ``within &lt;n>&lt;unit>`` window.
@@ -504,7 +504,7 @@ Dogwood policy sets: the parser, AgentCore's quotas and the lowering to Cedar (A
 
 ## `agent_shield.policy.export_dogwood`
 
-A Shield document's rules and limits as a Dogwood policy set (AC-43).
+A Shield document's rules and limits as a Dogwood policy set.
 
 - `ExportRefused` — A document the export cannot say in Dogwood, said in a sentence.
 - `rule_match` — The rule's match as a Cedar condition over the Shield's context.
@@ -523,7 +523,7 @@ Policy documents on disk: ``agent-shield.yaml``.
 
 ## `agent_shield.policy.levels`
 
-Three levels, nothing loosening below the one above (SH-31).
+Three levels, nothing loosening below the one above.
 
 - `PolicyWidens` — A lower document that would permit more than the one above it, in sentences.
 - `overlaps` — Whether some action both rules match. Conservative: a pattern is taken to overlap.
@@ -542,9 +542,9 @@ The policy document: one schema, three scopes, first decision wins.
 - `Network` — What the agent may reach over the network, through the Shield.
 - `Mcp` — The MCP servers the agent is lent, by name; everything else is cut from session/new.
 - `Harnesses` — The harnesses an organization admits, and whose credentials run them.
-- `Dogwood` — A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+- `Dogwood` — A Dogwood policy set (Cedar, and ``when temporal`` over the session's events).
 - `Rate` — A rate: at most ``rate`` per ``per``.
-- `RateLimits` — What each person may spend through the organization's AgentCore Gateways (AC-45).
+- `RateLimits` — What each person may spend through the organization's AgentCore Gateways.
 - `Policy` — One policy document, one scope.
 - `Action` — What the agent wants to do, as the engine sees it.
 - `Decision` — What the engine answered, and from where.
@@ -552,7 +552,7 @@ The policy document: one schema, three scopes, first decision wins.
 
 ## `agent_shield.policy.temporal`
 
-The temporal evaluator (AC-42): a Dogwood policy set decided over the session's history.
+The temporal evaluator: a Dogwood policy set decided over the session's history.
 
 - `Event` — One event of a session: a request, a response or an error, on one call.
 - `EventLog` — A session's history: what the Shield decided and what completed, oldest first.
@@ -571,7 +571,7 @@ What agent-shield contributes to the Datalayer CLI, as a reactor plugin.
 
 ## `agent_shield.register`
 
-The harness register, read from agentspecs (SH-04).
+The harness register, read from agentspecs.
 
 - `RegisterRefused` — A harness the Shield will not set up or run, said in a sentence.
 - `Harness` — A catalogue harness with its register entry, as the Shield uses it.
@@ -582,11 +582,11 @@ The harness register, read from agentspecs (SH-04).
 
 ## `agent_shield.registration`
 
-Registration with Datalayer, for a Shield that runs outside its runtimes (SH-47, SH-73).
+Registration with Datalayer, for a Shield that runs outside its runtimes.
 
 - `RegistrationRefused` — What stops a registration, said in a sentence; never the key.
 - `cannot_have`
-- `pap_sentence` — PAP through the Shield (SH-73): once registered, said unavailable while local-only.
+- `pap_sentence` — PAP through the Shield: once registered, said unavailable while local-only.
 - `Registration` — ``credentials.yaml``: where the Shield is registered and with what.
 - `pap_server_name` — A company's server as the runtime names it: ``pap_`` and its domain in plain characters.
 - `pap_servers` — The gateway's ``pap`` toolset at each company, lent with the registered Shield's token.
@@ -594,7 +594,7 @@ Registration with Datalayer, for a Shield that runs outside its runtimes (SH-47,
 
 ## `agent_shield.report`
 
-The conformance report, with the Shield report as its Shield section (SH-36, SH-62, SH-65).
+The conformance report, with the Shield report as its Shield section.
 
 - `ShieldSection` — What the Shield decided with, and what it decided, over the period.
 - `ConformanceReport` — One report: the scope it is of, the assessment, the Shield section.
@@ -605,12 +605,12 @@ The conformance report, with the Shield report as its Shield section (SH-36, SH-
 
 ## `agent_shield.saas`
 
-Managed from the SaaS (SH-50): the policies pulled from IAM.
+Managed from the SaaS: the policies pulled from IAM.
 
 
 ## `agent_shield.saas.authorizer`
 
-OpenFGA through IAM (SH-75): the ``openfga-through-iam`` contribution to the port.
+OpenFGA through IAM: the ``openfga-through-iam`` contribution to the port.
 
 - `evaluate_url`
 - `IamAuthorizer` — IAM's evaluation route, with the token: the one authorizer on Datalayer.
@@ -629,7 +629,7 @@ The Shield's policy, pulled from IAM and honoured until it expires.
 
 ## `agent_shield.tracing`
 
-The Shield over OTEL: one trace across the chain, counts under the account (SH-51).
+The Shield over OTEL: one trace across the chain, counts under the account.
 
 - `set_labels` — The labels every count and span carries from now on: ``harness``, ``deployment``, ``usage_account_uid``.
 - `labels`

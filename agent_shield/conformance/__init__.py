@@ -2,10 +2,10 @@
 #
 # BSD 3-Clause License
 
-"""Conformance: a standard's controls answered from the Shield's evidence (SH-61).
+"""Conformance: a standard's controls answered from the Shield's evidence.
 
 A standard is a spec of agentspecs' ``standards/`` catalogue (``aiuc-1``
-first; ``iso-42001`` through its crosswalk, SH-66). For each
+first; ``iso-42001`` through its crosswalk). For each
 control the **evidence map** (:mod:`agent_shield.conformance.map`) says which
 evidence kinds it takes, which **collectors** read that evidence
 (:mod:`agent_shield.conformance.collect` — the policy document in force and
@@ -90,7 +90,7 @@ class Evidence:
 
 @dataclass(frozen=True)
 class Document:
-    """A document of the Studio a person wrote for a control (SH-64)."""
+    """A document of the Studio a person wrote for a control."""
 
     control: str
     title: str
@@ -127,7 +127,7 @@ class ThirdPartyReport:
 
 @dataclass(frozen=True)
 class DrillResult:
-    """One of SH-37's drills, as its report records it."""
+    """One of the drills, as its report records it."""
 
     id: str
     title: str

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The firewall's rows to OTEL: one span per ``connection`` and ``firewall`` row (Agent Firewall N3-03).
+"""The firewall's rows to OTEL: one span per ``connection`` and ``firewall`` row.
 
 ``firewall watch`` writes every row to its audit (stdout, and a file unless
 ``--no-audit-file``); the audit's counts reach OTEL through

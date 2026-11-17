@@ -13,7 +13,7 @@ permission for a ``git push``; ``fetch`` says a fetch tool call; ``bad``
 sends an update ACP does not describe; ``slow`` waits until cancelled;
 ``meta`` says the ``_meta`` its prompt was handed; ``lent`` says each MCP
 server its session was lent and the ``Authorization`` it carries (a test's
-token only, SH-33).
+token only).
 """
 
 from __future__ import annotations

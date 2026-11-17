@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.22
+
+- **Comments, docstrings, docs and this changelog without references to internal planning documents:** the bracketed item ids and document names are gone and the sentences are kept. Descriptions only: the policy schema's descriptions (`schema/policy.schema.json`, the TypeScript types), two CLI help lines and a conformance map's sentence follow; nothing decides differently. `agent_shield/policy/dogwood.py` and the schema are again byte for byte what agentspecs carries.
+
 ## 0.2.21
 
 - **`*:port` in a firewall rule:** any public address on that TCP port only, beside other entries (`egress: ["*:80", "*:443"]`, the web and nothing else). The non-public ranges stay refused on that port, and no rule accepts every port; `*` alone keeps meaning every port. A ceiling of `*:443` holds each entry asked to port 443 (`*` asked becomes `*:443`, a host with no port `host:443`), and `*:443` asked under a ceiling of hosts is each host on 443. `firewall check` says the ports. The schema, the TypeScript types and the documentation follow.
@@ -17,14 +21,14 @@
 ## 0.2.19
 
 - **A `temporal { … }` block inside a plain `when` or `unless` clause** is read, as Dogwood's temporal subexpressions are: each block is lowered to its own `context.dogwood` slot in the clause's Cedar text, beside Cedar's `&&`, `||` and `!`, and counts toward AgentCore's quotas. Such a set was refused before.
-- **An organization's policy compiled for AgentCore Policy** (AC-44): `agent_shield.policy.agentcore.compile_for_agentcore(policy, gateways, tools=)` turns an organization document into the policies of one AgentCore policy engine, one statement per policy and Gateway, each named `dl_<what>_<gateway suffix>`. The document's `dogwood` set is carried in AgentCore's names: `AgentCore::Action::"<target>___<tool>"` actions, `AgentCore::OAuthUser` principals, the resource `AgentCore::Gateway::"<arn>"` (an open resource scoped to it), and `eventResource: resource` on each temporal predicate. A policy that names only the Shield's own actions stays the Shield's, said in a note. The first rule decides every call when no rule is conditioned: *do it* permits every call (or lets the set decide), *leave it to me* forbids every call. The hard `tool_calls` threshold becomes a count for each Gateway tool named. The model budget, the spend, the terminals and the bytes written stay the Shield's. What a Gateway cannot see is refused, every part in one sentence (`AgentCoreRefused`): rules on class, kind, workspace side, path or command; *ask me first*; context outside `context.input`; principal attributes; agent or deployment principals; a document that permits nothing. AgentCore's quotas are held over everything the engine holds. A temporal statement's `definition` is `policy` (Dogwood), a plain one's is `cedar`.
-- **`rate_limits`** (AC-45): an organization document may carry `rate_limits: {requests, tokens, connections}`, each `{rate, per: second|minute}`: what each person may use through the organization's AgentCore Gateways. A team or session document that carries it, or an empty section, is refused. `gateway_rate_limit(rate_limits, authorizer_type)` gives the `BatchPutGatewayRateLimits` entry (`datalayer-per-user`, counting a person by `$.context.jwt.sub` or `$.context.iam.principal`). The Shield itself does not count them. The schema, the TypeScript types, the policy reference and *Cedar and Dogwood* follow.
+- **An organization's policy compiled for AgentCore Policy**: `agent_shield.policy.agentcore.compile_for_agentcore(policy, gateways, tools=)` turns an organization document into the policies of one AgentCore policy engine, one statement per policy and Gateway, each named `dl_<what>_<gateway suffix>`. The document's `dogwood` set is carried in AgentCore's names: `AgentCore::Action::"<target>___<tool>"` actions, `AgentCore::OAuthUser` principals, the resource `AgentCore::Gateway::"<arn>"` (an open resource scoped to it), and `eventResource: resource` on each temporal predicate. A policy that names only the Shield's own actions stays the Shield's, said in a note. The first rule decides every call when no rule is conditioned: *do it* permits every call (or lets the set decide), *leave it to me* forbids every call. The hard `tool_calls` threshold becomes a count for each Gateway tool named. The model budget, the spend, the terminals and the bytes written stay the Shield's. What a Gateway cannot see is refused, every part in one sentence (`AgentCoreRefused`): rules on class, kind, workspace side, path or command; *ask me first*; context outside `context.input`; principal attributes; agent or deployment principals; a document that permits nothing. AgentCore's quotas are held over everything the engine holds. A temporal statement's `definition` is `policy` (Dogwood), a plain one's is `cedar`.
+- **`rate_limits`**: an organization document may carry `rate_limits: {requests, tokens, connections}`, each `{rate, per: second|minute}`: what each person may use through the organization's AgentCore Gateways. A team or session document that carries it, or an empty section, is refused. `gateway_rate_limit(rate_limits, authorizer_type)` gives the `BatchPutGatewayRateLimits` entry (`datalayer-per-user`, counting a person by `$.context.jwt.sub` or `$.context.iam.principal`). The Shield itself does not count them. The schema, the TypeScript types, the policy reference and *Cedar and Dogwood* follow.
 
 ## 0.2.18
 
-- **The `cedar` authorizer** (AC-41): a Cedar policy set behind the AuthZen port, decided in process by `cedarpy` (Cedar 4, the new `cedar` extra): `authorizer: {cedar: {policies: <text> | <path>.cedar}}`. The entities come from the call: the principal `Datalayer::User::"<subject>"` (`Datalayer::Agent`, `Datalayer::Deployment`) with `org_uid`, `app_uid` and `agent_uid` as attributes; the action `Datalayer::Action::"<server>___<tool>"` as AgentCore names a Gateway's tools, the Shield's own `shield___<kind>`; the resource `Datalayer::Runtime::"<runtime>"` (`local` standalone); `context.input` the tool's arguments, beside `class`, `kind`, `path`, `inside`, `command`, `url` and `target`. Deny by default, a forbid overriding any permit; without `cedarpy` every request is a deny that says so. `agent_shield.policy.cedar`.
-- **Dogwood temporal policies** (AC-42): the policy document gains `dogwood: {policies, mode}` — a Dogwood policy set (Cedar, and `when temporal` / `unless temporal` over the session's events, AgentCore Policy's language) deciding every classed action. `agent_shield.policy.dogwood` parses the documented grammar (`formerly within`, `previous within`, `since within`, `!`, `&&`, `exists`, `tp`, `count` and `sum` with distinct domains, comparisons with `+ - *`, predicates on `request` / `response` / `error` events over `input.*`, `output.*`, `eventPrincipal`, `eventResource`), holds AgentCore's quotas as a document is read (20 temporal policies, 3 temporal operators in one, a 24-hour window at most) and lowers each temporal clause to a boolean `context.dogwood` slot; `agent_shield.policy.temporal` computes the slots over the session's `EventLog` — the current request counted — and `cedarpy` decides the lowered set. The proxy feeds the log: each decided call a `request` (an `error` when refused, by the policy or by the person), each that completed a `response` with its output, each that failed an `error`; 24 hours kept. An enforced deny wins over any Rule; `log_only` decides, records (`Decision.temporal`, the audit rows' `temporal`) and lets the action through. Not read: macros and information providers. Tested on Dogwood's published examples and AgentCore's with their expected decisions.
-- **`agent-shield policy export --dogwood <document> [--tool <server>___<tool>]`** (AC-43): a document's rules (first match wins: *do it* a permit guarded by the earlier rules; *ask* and *deny* not permitted) and its hard `tool_calls` (a count per tool), `model_tokens` and `spend` (running sums over `shield___model` requests) as a Dogwood policy set; soft thresholds are said in comments, a rule on commands or a glob with `?`/`[` is refused. A round-trip test holds that the exported set decides as the document does on the same events.
+- **The `cedar` authorizer**: a Cedar policy set behind the AuthZen port, decided in process by `cedarpy` (Cedar 4, the new `cedar` extra): `authorizer: {cedar: {policies: <text> | <path>.cedar}}`. The entities come from the call: the principal `Datalayer::User::"<subject>"` (`Datalayer::Agent`, `Datalayer::Deployment`) with `org_uid`, `app_uid` and `agent_uid` as attributes; the action `Datalayer::Action::"<server>___<tool>"` as AgentCore names a Gateway's tools, the Shield's own `shield___<kind>`; the resource `Datalayer::Runtime::"<runtime>"` (`local` standalone); `context.input` the tool's arguments, beside `class`, `kind`, `path`, `inside`, `command`, `url` and `target`. Deny by default, a forbid overriding any permit; without `cedarpy` every request is a deny that says so. `agent_shield.policy.cedar`.
+- **Dogwood temporal policies**: the policy document gains `dogwood: {policies, mode}` — a Dogwood policy set (Cedar, and `when temporal` / `unless temporal` over the session's events, AgentCore Policy's language) deciding every classed action. `agent_shield.policy.dogwood` parses the documented grammar (`formerly within`, `previous within`, `since within`, `!`, `&&`, `exists`, `tp`, `count` and `sum` with distinct domains, comparisons with `+ - *`, predicates on `request` / `response` / `error` events over `input.*`, `output.*`, `eventPrincipal`, `eventResource`), holds AgentCore's quotas as a document is read (20 temporal policies, 3 temporal operators in one, a 24-hour window at most) and lowers each temporal clause to a boolean `context.dogwood` slot; `agent_shield.policy.temporal` computes the slots over the session's `EventLog` — the current request counted — and `cedarpy` decides the lowered set. The proxy feeds the log: each decided call a `request` (an `error` when refused, by the policy or by the person), each that completed a `response` with its output, each that failed an `error`; 24 hours kept. An enforced deny wins over any Rule; `log_only` decides, records (`Decision.temporal`, the audit rows' `temporal`) and lets the action through. Not read: macros and information providers. Tested on Dogwood's published examples and AgentCore's with their expected decisions.
+- **`agent-shield policy export --dogwood <document> [--tool <server>___<tool>]`**: a document's rules (first match wins: *do it* a permit guarded by the earlier rules; *ask* and *deny* not permitted) and its hard `tool_calls` (a count per tool), `model_tokens` and `spend` (running sums over `shield___model` requests) as a Dogwood policy set; soft thresholds are said in comments, a rule on commands or a glob with `?`/`[` is refused. A round-trip test holds that the exported set decides as the document does on the same events.
 - `Action` gains `tool` and `input`, `Context` gains `runtime`, `history` and `now`, `Decision` gains `temporal` and `decided_by: dogwood`; the AuthZen request's context carries `inside`, `tool`, `input` and `runtime` when set. The schema, the TypeScript types and the policy reference follow; a documentation page, *Cedar and Dogwood*.
 
 ## 0.2.17
@@ -33,9 +37,9 @@ What 0.2.16 carries: its tag never published, because the npm package still said
 
 ## 0.2.16
 
-- **The organization's ceiling on the firewall** (Agent Firewall N3-01). The policy document gains `firewall: {egress, ingress}` (`FirewallCeiling`), the most any agent of an organization may be granted, in the grammar of `policy.shield`. It is an organization document's alone: a team or session document that carries it is refused. `schema/policy.schema.json` carries it.
+- **The organization's ceiling on the firewall**. The policy document gains `firewall: {egress, ingress}` (`FirewallCeiling`), the most any agent of an organization may be granted, in the grammar of `policy.shield`. It is an organization document's alone: a team or session document that carries it is refused. `schema/policy.schema.json` carries it.
 - `agent_shield.firewall.bounded(rules, ceiling)` holds an agent's rules to a ceiling, the strictest winning: `*` in the ceiling allows anything public; otherwise an exact host holds against the same host, an address or CIDR as far as a ceiling CIDR covers it, a port against the same port (an entry with no port narrowed to the ceiling's); the rules' `*` becomes the ceiling's entries; `platform` always stays in ingress; no ceiling leaves the rules as they are. `bounded_by(rules, ceilings)` applies several in turn, and `organization_ceilings(policies)` reads them from the documents in force.
-- **The firewall's rows to OTEL** (N3-03). `firewall watch` sends each `connection` row as a `shield.firewall.connection` span and each `firewall` row as a `shield.firewall.apply` span, once `configure_export` has set the tracer provider, each a root of its own: `shield.decision` (`allow` or `refuse`), `shield.rule`, `shield.destination`, `shield.host`, `shield.port`, `shield.protocol`, `shield.source`, `shield.repeated`, and `datalayer.runtime_uid` from `$AGENT_SHIELD_RUNTIME_UID` or `$DATALAYER_RUNTIME_ID` (`agent_shield.firewall.export`). `--no-export` turns them off. A `connection` row carries the destination's `port`.
+- **The firewall's rows to OTEL**. `firewall watch` sends each `connection` row as a `shield.firewall.connection` span and each `firewall` row as a `shield.firewall.apply` span, once `configure_export` has set the tracer provider, each a root of its own: `shield.decision` (`allow` or `refuse`), `shield.rule`, `shield.destination`, `shield.host`, `shield.port`, `shield.protocol`, `shield.source`, `shield.repeated`, and `datalayer.runtime_uid` from `$AGENT_SHIELD_RUNTIME_UID` or `$DATALAYER_RUNTIME_ID` (`agent_shield.firewall.export`). `--no-export` turns them off. A `connection` row carries the destination's `port`.
 - **Breaking:** `EchoingAuditLog` is replaced by `FirewallAuditLog(echo=, export=, runtime=, persist=)`.
 
 ## 0.2.15
@@ -88,13 +92,13 @@ What 0.2.16 carries: its tag never published, because the npm package still said
 
 ## 0.2.6
 
-- The registered standalone proxy lends PAP (SH-73): `agent-shield run --pap <company> -- <agent>` lends the gateway's `pap` toolset at that company as the MCP server `pap_<domain>` (`?only=pap&pap-company=<domain>` on `$DATALAYER_MCP_SERVER_URL`, else `https://mcp.datalayer.run/mcp`), reached with the registered Shield's own token — made at each session, so a token near its end is exchanged first, and written nowhere. It is held to the policy's `mcp.allow` like any lent server, so a flag never lends what the policy does not; local-only, or not allowed, `run` refuses before the agent starts, in a sentence. The harness's own fetch to that company is refused. `ShieldProxy(own_servers=…)`, `registration.pap_servers`, `pap_server_name`; `test_pap_standalone.py` (5).
+- The registered standalone proxy lends PAP: `agent-shield run --pap <company> -- <agent>` lends the gateway's `pap` toolset at that company as the MCP server `pap_<domain>` (`?only=pap&pap-company=<domain>` on `$DATALAYER_MCP_SERVER_URL`, else `https://mcp.datalayer.run/mcp`), reached with the registered Shield's own token — made at each session, so a token near its end is exchanged first, and written nowhere. It is held to the policy's `mcp.allow` like any lent server, so a flag never lends what the policy does not; local-only, or not allowed, `run` refuses before the agent starts, in a sentence. The harness's own fetch to that company is refused. `ShieldProxy(own_servers=…)`, `registration.pap_servers`, `pap_server_name`; `test_pap_standalone.py` (5).
 - The docs site's generated pages at the package's version, the register page listing the *listed* tier, and no *Not built* line naming a built part.
 
 ## 0.2.5
 
-- The Shield section of the conformance report says **what changed since the last report** (SH-36): `build_report(..., previous=<the last report's JSON>)` — the policies by level (new, gone, its version, its rules, its limits), a scope newly permitting more than the organization, the Validate gate, each count that moved (decisions, decided by, answers, limits reached), the coding agent; *No earlier report to compare with* without one, *Nothing changed since the last report* when nothing did. In the JSON (`shield.changed`) and the Markdown and Lexical exports. Tests in `test_conformance_map.py`.
-- `IamAuthorizer` held against a fake IAM over HTTP (SHIELD SH-75): the route and the bearer, read at each question; IAM's sentence on a deny; a 403 or a 503 a deny naming `openfga-through-iam`; an allow honoured through an outage until it expires. `test_iam_authorizer.py` (7).
+- The Shield section of the conformance report says **what changed since the last report**: `build_report(..., previous=<the last report's JSON>)` — the policies by level (new, gone, its version, its rules, its limits), a scope newly permitting more than the organization, the Validate gate, each count that moved (decisions, decided by, answers, limits reached), the coding agent; *No earlier report to compare with* without one, *Nothing changed since the last report* when nothing did. In the JSON (`shield.changed`) and the Markdown and Lexical exports. Tests in `test_conformance_map.py`.
+- `IamAuthorizer` held against a fake IAM over HTTP: the route and the bearer, read at each question; IAM's sentence on a deny; a 403 or a 503 a deny naming `openfga-through-iam`; an allow honoured through an outage until it expires. `test_iam_authorizer.py` (7).
 
 ## 0.2.4
 
@@ -103,22 +107,22 @@ What 0.2.16 carries: its tag never published, because the npm package still said
 
 ## 0.2.3 (tagged, not published)
 
-- Authority across the chain (SHIELD SH-33): the execution credential a caller hands in `_meta.datalayer.credential` is withheld from the agent (`"credential": "withheld"` at `session/new` and every prompt), becomes the `Authorization` of every lent HTTP MCP server — so the gateway decides the agent's calls and every sub-agent's alike — a stdio server is refused with it, and a prompt under another credential than the session was lent with is refused in a sentence. The audit writes *lent*, never which. `agent_shield.acp.credential`; `test_credential_chain.py` (5).
-- A terminal's output is pushed to the client while its command runs (SHIELD SH-13, SH-16): the terminal is the Shield's, so the client cannot ask it for its output; the proxy pushes it whole on its own row (`tool_call_update`, `in_progress`, the terminal's reference beside a text block) every 0.2 s while it grows, and once more `completed` when the command ended, before the agent's `terminal/wait_for_exit` or `terminal/release` is answered. `TerminalRun.received` counts every byte read. `test_terminal_stream.py` (2).
+- Authority across the chain: the execution credential a caller hands in `_meta.datalayer.credential` is withheld from the agent (`"credential": "withheld"` at `session/new` and every prompt), becomes the `Authorization` of every lent HTTP MCP server — so the gateway decides the agent's calls and every sub-agent's alike — a stdio server is refused with it, and a prompt under another credential than the session was lent with is refused in a sentence. The audit writes *lent*, never which. `agent_shield.acp.credential`; `test_credential_chain.py` (5).
+- A terminal's output is pushed to the client while its command runs: the terminal is the Shield's, so the client cannot ask it for its output; the proxy pushes it whole on its own row (`tool_call_update`, `in_progress`, the terminal's reference beside a text block) every 0.2 s while it grows, and once more `completed` when the command ended, before the agent's `terminal/wait_for_exit` or `terminal/release` is answered. `TerminalRun.received` counts every byte read. `test_terminal_stream.py` (2).
 
 ## 0.2.2
 
-- A stdio agent that exits before answering fails the request at once, `ChannelRefused` naming its exit code (*the agent exited (code 3) before answering initialize*), where the SDK's request waited for ever and the caller its own timeout — found by SHIELD SH-45's drill (`agent-shield run` with no policy exits).
+- A stdio agent that exits before answering fails the request at once, `ChannelRefused` naming its exit code (*the agent exited (code 3) before answering initialize*), where the SDK's request waited for ever and the caller its own timeout — found by a drill (`agent-shield run` with no policy exits).
 
 ## 0.2.1
 
-- `serve` reads a binary WebSocket frame as UTF-8 NDJSON, a message a line — what marimo's agents panel writes (use-acp's ndJsonStream): marimo's panel stayed on *Initializing agent…* against 0.2.0, and completes a shielded turn with this (SHIELD SH-49).
-- The register refuses, at `setup` and `run`, a harness of agentspecs' listed tier in the sentence *listed, not drilled yet* (SHIELD SH-57: the long tail of the ACP agents page, registered with its documented command and its terms) and an organization's own `org-…` harness, which is served on Datalayer only, where its organization's catalogue holds it and its policy admits the reviewed command (SH-46). agentspecs 0.0.107.
+- `serve` reads a binary WebSocket frame as UTF-8 NDJSON, a message a line — what marimo's agents panel writes (use-acp's ndJsonStream): marimo's panel stayed on *Initializing agent…* against 0.2.0, and completes a shielded turn with this.
+- The register refuses, at `setup` and `run`, a harness of agentspecs' listed tier in the sentence *listed, not drilled yet* (the long tail of the ACP agents page, registered with its documented command and its terms) and an organization's own `org-…` harness, which is served on Datalayer only, where its organization's catalogue holds it and its policy admits the reviewed command. agentspecs 0.0.107.
 
 ## 0.2.0
 
-External authorization and PAP through the Shield (SH-74, SH-75's client
-side, SH-78, SH-70, SH-71, SH-72, SH-73; 16 October 2026). **The schema changed** — the
+External authorization and PAP through the Shield (the client
+side; 16 October 2026). **The schema changed** — the
 document gains `authorize:` and `authorizer:` — so IAM and agentspecs follow (agentspecs
 0.0.105 carries it):
 
@@ -154,8 +158,7 @@ document gains `authorize:` and `authorizer:` — so IAM and agentspecs follow (
 
 ## 0.1.7
 
-The standalone side of Phase 3 (SH-52, SH-56, SH-55, SH-53, SH-40, SH-47, SH-73,
-SH-22; 15 October 2026):
+The standalone side of Phase 3 (15 October 2026):
 
 - `agent-shield serve` (`agent_shield.acp.server.ShieldServer`): the proxy as a server, one
   harness per connection, over **WebSocket** (`GET /acp` upgraded; `/acp/ws` as ACP Remote
@@ -205,14 +208,14 @@ caught), then the words moved out of it to a name that was not defined (a latent
 on a partially covered clause with no note, which no clause of the catalogue has — tested
 now). 0.1.6 is the same release, compiled on 3.10, 17 tests.
 
-The conformance side of Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2026):
+The conformance side of Phase 2 (15 October 2026):
 
 - `agent_shield.conformance`: the evidence map for AIUC-1, control by control for
-  all 55 at its 2026.4 version (agentspecs 0.0.104's `standards/` catalogue,
-  SH-60), each with its collectors — the policy document in force and its
+  all 55 at its 2026.4 version (agentspecs 0.0.104's `standards/` catalogue),
+  each with its collectors — the policy document in force and its
   versions by scope, the rules by class, the limits, the fetch and connection
   allow-lists; the record's rows by kind, behaviour and what decided them; the
-  OTEL counts; SH-37's drills as a stored report; the Validate gate and the
+  OTEL counts; the drills as a stored report; the Validate gate and the
   safety set; the benchmarks; the organization's signed documents; a third
   party's recorded reports; the facts the host asserts of its platform, each
   with where it was proved; the screens and notices — and the status rule.
@@ -236,18 +239,18 @@ The conformance side of Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2
   denials of the period with who decided, the limits reached, the coding
   agent's register entry); its first page says the Shield evidences and never
   certifies. Exported as Markdown, as a Lexical document (the Studio's), as
-  JSON; for an assessor (SH-65) the evidence list in AIUC-1's own columns
+  JSON; for an assessor the evidence list in AIUC-1's own columns
   (*Requirement*, *Control activity*, *Evidence*, *Tags*, with the status and
   the Datalayer evidence beside), as rows and CSV, and an audit-hub JSON with
   the representative configurations attached.
-- `agent_shield.conformance.continuous` (SH-63): `lapses` compares two
+- `agent_shield.conformance.continuous`: `lapses` compares two
   assessments and raises a notice per lapse — a cadence clock run out, an
   application's rules permitting more than the organization's, the
   organization's rules permitting more than before (the snapshot keeps the
   documents it decided with), a drill that failed, a document past its review,
   a control that was met and no longer is — keyed once a day each;
   `Snapshot` and `Trend` for the line over time, one point a week.
-- ISO/IEC 42001 through the crosswalk (SH-66): each clause answered from the
+- ISO/IEC 42001 through the crosswalk: each clause answered from the
   AIUC-1 controls that cover it, the weakest of them, partly met at most where
   the crosswalk says partial, the organization's where nothing covers it; the
   same report from the same evidence.
@@ -255,9 +258,9 @@ The conformance side of Phase 2 (SH-61, SH-62, SH-63, SH-65, SH-66; 15 October 2
 
 ## 0.1.2
 
-The policy side of Phase 2 (SH-50, SH-31, SH-32, SH-54, SH-35).
+The policy side of Phase 2.
 
-The audit side of Phase 2 (SH-34, SH-51, 15 October 2026):
+The audit side of Phase 2 (15 October 2026):
 
 - `agent_shield.tracing`: the Shield over OTEL — every audit row, after
   its redaction, a span event on the current span (`observe`, the safe
@@ -311,7 +314,7 @@ The audit side of Phase 2 (SH-34, SH-51, 15 October 2026):
   than the organization's documents refused with the sentences),
   `decide_budget`; a `policy` audit event.
 
-- The conformance table (SH-35): the same action over MCP, A2A, ACP, AG-UI
+- The conformance table: the same action over MCP, A2A, ACP, AG-UI
   and the embed gets the same answer at the three levels.
 
 - `agentspecs` is an extra (`[register]`, brought by each harness extra), no
@@ -323,10 +326,10 @@ The audit side of Phase 2 (SH-34, SH-51, 15 October 2026):
 
 ## 0.1.1
 
-The package made real (Phase 0: SH-07, SH-02, SH-08, SH-09, SH-04).
+The package made real (Phase 0).
 
 - `agent_shield.policy`: the policy document (one schema, published as
-  `schema/policy.schema.json`), the six classes of STUDIO F-10, three scopes
+  `schema/policy.schema.json`), the six action classes, three scopes
   strictest first, *first decision wins*, stateful limits with soft and hard
   thresholds, `decide(action, context, policies) -> Decision` pure and tested;
   the default policy.

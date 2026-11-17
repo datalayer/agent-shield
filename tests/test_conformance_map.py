@@ -2,8 +2,8 @@
 #
 # BSD 3-Clause License
 
-"""The evidence map (SH-61), the report (SH-62, SH-65), continuous conformance (SH-63),
-and ISO/IEC 42001 through the crosswalk (SH-66): five statuses honest by construction."""
+"""The evidence map, the report, continuous conformance,
+and ISO/IEC 42001 through the crosswalk: five statuses honest by construction."""
 
 from __future__ import annotations
 
@@ -371,7 +371,7 @@ def test_each_control_is_machine_readable_with_its_evidence_links_crosswalks_and
 
 
 # ---------------------------------------------------------------------------
-# The report (SH-62) and the assessor's export (SH-65)
+# The report and the assessor's export
 # ---------------------------------------------------------------------------
 
 
@@ -394,7 +394,7 @@ def test_the_report_says_on_its_first_page_that_the_shield_evidences_and_never_c
 
 
 def test_the_shield_section_says_what_changed_since_the_last_report():
-    """The report's last part (SH-36): against the last report's JSON, a sentence per change;
+    """The report's last part: against the last report's JSON, a sentence per change;
     none when nothing changed; said plainly when there is no earlier report."""
     first = build_report(AIUC, full_inputs(), scope="deployment", name="Desk", uid="d1")
     assert first.shield.changed is None and first.to_json()["shield"]["changed"] is None
@@ -466,7 +466,7 @@ def test_lexical_state_keeps_headings_lists_tables_and_text_runs():
 
 
 # ---------------------------------------------------------------------------
-# Continuous (SH-63)
+# Continuous
 # ---------------------------------------------------------------------------
 
 
@@ -517,7 +517,7 @@ def test_the_trend_keeps_one_snapshot_a_day_and_a_point_a_week():
 
 
 # ---------------------------------------------------------------------------
-# ISO/IEC 42001 through the crosswalk (SH-66)
+# ISO/IEC 42001 through the crosswalk
 # ---------------------------------------------------------------------------
 
 

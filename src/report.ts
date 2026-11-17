@@ -5,7 +5,7 @@
  */
 
 /**
- * The report document's renderer (SH-53): the conformance
+ * The report document's renderer: the conformance
  * report's JSON — what `agent_shield.conformance`'s `Assessment.to_json()`
  * writes: the standard, every control with its status, evidence, gaps,
  * crosswalks and cadence, and the disclaimer on the first page — rendered as

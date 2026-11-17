@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The temporal evaluator (AC-42): Dogwood's grammar, AgentCore's quotas, the published examples
+"""The temporal evaluator: Dogwood's grammar, AgentCore's quotas, the published examples
 with their expected decisions, self-reference, forbid overriding permit, window expiry, log_only,
 and the session's history fed by the Shield's decisions."""
 

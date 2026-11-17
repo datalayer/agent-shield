@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Three levels, the strictest answer in every order, nothing loosening below the organization's (SH-31)."""
+"""Three levels, the strictest answer in every order, nothing loosening below the organization's."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def level(scope: str, verdict: str, classes: list[str] | None = None, **fields) 
     )
 
 
-# --- SH-31: the three levels in every order ---------------------------------------------
+# --- The three levels in every order ---------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -82,7 +82,7 @@ def test_with_no_organization_rule_the_appspec_decides_before_the_session(appspe
 
 
 def test_an_organization_tightening_execute_to_ask_is_honoured_over_decision_5s_default_and_a_session_rule():
-    # The r1 drill of SH-50 in a test: the organization says execute asks; a session rule the person added
+    # The r1 drill in a test: the organization says execute asks; a session rule the person added
     # allowing `pytest` and the default's rule are both below it.
     organization = Policy(scope="organization", rules=[Rule(name="execute asks", decision="ask", classes=["execute"])])
     session = default_policy().model_copy(

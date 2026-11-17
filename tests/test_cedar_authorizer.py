@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The cedar authorizer (AC-41): Cedar behind the AuthZen port, entities from the call, deny by
+"""The cedar authorizer: Cedar behind the AuthZen port, entities from the call, deny by
 default, forbid over permit, fail closed without cedarpy."""
 
 from __future__ import annotations

@@ -34,11 +34,11 @@ from .dogwood import DogwoodRefused, DogwoodSet, cedar_problem, parse_set
 Scope = Literal["organization", "team", "session"]
 SCOPES_STRICTEST_FIRST: tuple[Scope, ...] = ("organization", "team", "session")
 
-#: The action classes (F-10).
+#: The action classes.
 ActionClass = Literal["read", "write", "send", "buy", "delete", "execute"]
 ACTION_CLASSES: tuple[ActionClass, ...] = ("read", "write", "send", "buy", "delete", "execute")
 
-#: What a decision says: *do it*, *ask me first*, *leave it to me* (R-05).
+#: What a decision says: *do it*, *ask me first*, *leave it to me*.
 Verdict = Literal["allow", "ask", "deny"]
 VERDICT_WORDS: dict[str, str] = {"allow": "do it", "ask": "ask me first", "deny": "leave it to me"}
 
@@ -176,7 +176,7 @@ DogwoodMode = Literal["enforce", "log_only"]
 
 
 class Dogwood(_Strict):
-    """A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+    """A Dogwood policy set (Cedar, and ``when temporal`` over the session's events).
 
     Read as it is loaded: the temporal clauses parsed, AgentCore's quotas held
     (20 temporal policies, 3 temporal operators in one, a 24-hour window at
@@ -231,7 +231,7 @@ class Rate(_Strict):
 
 
 class RateLimits(_Strict):
-    """What each person may spend through the organization's AgentCore Gateways (AC-45).
+    """What each person may spend through the organization's AgentCore Gateways.
 
     Per user — the Gateway's OAuth subject, or its IAM principal — across its
     tools, models and agents, as AgentCore's Gateway rate limits count them. The

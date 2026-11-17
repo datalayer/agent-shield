@@ -7,7 +7,7 @@
 /* eslint-disable */
 /**
  * GENERATED from schema/policy.schema.json by json-schema-to-typescript: do not edit.
- * `npm run generate` writes it; `npm test` regenerates and refuses a drift (SHIELD SH-53).
+ * `npm run generate` writes it; `npm test` regenerates and refuses a drift.
  */
 /**
  * The classes that need an authorizer's allow beside the Rules: a deny wins over any Rule, an unreachable authorizer is a deny. Empty needs none (local-only); Datalayer's documents name read, write, execute, send and buy.
@@ -177,7 +177,7 @@ export interface Headers {
   [k: string]: string;
 }
 /**
- * ``cedar: {policies}``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41).
+ * ``cedar: {policies}``: a Cedar policy set inline, or the path of a ``.cedar`` file.
  */
 export interface CedarAuthorizerConfig {
   policies: Policies;
@@ -207,7 +207,7 @@ export interface OpenFgaAuthorizerConfig {
   url: Url2;
 }
 /**
- * A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+ * A Dogwood policy set (Cedar, and ``when temporal`` over the session's events).
  *
  * Read as it is loaded: the temporal clauses parsed, AgentCore's quotas held
  * (20 temporal policies, 3 temporal operators in one, a 24-hour window at
@@ -287,7 +287,7 @@ export interface Network {
   fetch?: Fetch;
 }
 /**
- * What each person may spend through the organization's AgentCore Gateways (AC-45).
+ * What each person may spend through the organization's AgentCore Gateways.
  *
  * Per user — the Gateway's OAuth subject, or its IAM principal — across its
  * tools, models and agents, as AgentCore's Gateway rate limits count them. The

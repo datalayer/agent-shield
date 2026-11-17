@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The temporal evaluator (AC-42): a Dogwood policy set decided over the session's history.
+"""The temporal evaluator: a Dogwood policy set decided over the session's history.
 
 A policy document's ``dogwood`` section holds a policy set — Cedar, with
 ``when temporal { … }`` conditions over the session's earlier events, as

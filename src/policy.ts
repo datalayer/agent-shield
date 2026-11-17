@@ -12,7 +12,7 @@
  * `npm run generate` (json-schema-to-typescript) and checked in; `npm test`
  * regenerates it and refuses a drift. The constants below are the schema's
  * enums as arrays, held equal to it by the same test. The decisions'
- * sentences live here and nowhere else (SHIELD SH-53): `VERDICT_WORDS` and
+ * sentences live here and nowhere else: `VERDICT_WORDS` and
  * `describeDecision` are what every card, row and page says.
  */
 
@@ -70,14 +70,14 @@ export const TOOL_KINDS = [
 ] as const;
 export type ToolKind = (typeof TOOL_KINDS)[number];
 
-/** What a decision says: do it, ask me first, leave it to me (R-05). */
+/** What a decision says: do it, ask me first, leave it to me. */
 export const VERDICT_WORDS: Record<Verdict, string> = {
   allow: 'do it',
   ask: 'ask me first',
   deny: 'leave it to me',
 };
 
-/** ACP kind → F-10 class; null means nothing to decide. */
+/** ACP kind → action class; null means nothing to decide. */
 export const KIND_CLASS: Record<ToolKind, ActionClass | null> = {
   read: 'read',
   search: 'read',

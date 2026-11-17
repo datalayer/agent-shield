@@ -2,11 +2,11 @@
 #
 # BSD 3-Clause License
 
-"""Authority across the chain: the execution credential a caller hands the Shield (SH-33).
+"""Authority across the chain: the execution credential a caller hands the Shield.
 
 A caller that delegates work — an orchestrator, a person's runtime, Datalayer's
-control plane — hands the execution's own token in ``_meta.datalayer.credential``
-(ORCHESTRATOR O1-17), the key Datalayer's delegations already use beside the
+control plane — hands the execution's own token in ``_meta.datalayer.credential``,
+the key Datalayer's delegations already use beside the
 model budget. The Shield is where it stops:
 
 - **never to the agent.** The ``_meta`` the agent is handed keeps only that one
@@ -35,7 +35,7 @@ from typing import Any
 
 #: The key of Datalayer's own ``_meta`` (and of an A2A message's ``metadata``).
 DATALAYER_META = "datalayer"
-#: Where the execution's token travels under it (ORCHESTRATOR O1-17).
+#: Where the execution's token travels under it.
 CREDENTIAL_FIELD = "credential"
 #: What is left in its place: that one was sent, never what it was.
 WITHHELD = "withheld"

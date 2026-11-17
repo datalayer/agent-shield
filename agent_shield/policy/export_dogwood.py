@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""A Shield document's rules and limits as a Dogwood policy set (AC-43).
+"""A Shield document's rules and limits as a Dogwood policy set.
 
 ``agent-shield policy export --dogwood <document>`` writes what AgentCore
 Policy would decide the same way, for the part of a document Dogwood can say:

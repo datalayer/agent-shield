@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""An organization's policy compiled for AgentCore Policy (AC-44) and its Gateway rate limits (AC-45).
+"""An organization's policy compiled for AgentCore Policy and its Gateway rate limits.
 
 On Datalayer the Shield decides an organization's document in process. On
 Amazon Bedrock AgentCore the same document is compiled here into the policies
@@ -518,7 +518,7 @@ def compile_for_agentcore(policy: Policy, gateways: list[str], *, tools: list[st
     return AgentCorePolicies(statements=tuple(statements), mode=mode, notes=tuple(notes))
 
 
-# -- rate limits (AC-45) -----------------------------------------------------------------------
+# -- rate limits -----------------------------------------------------------------------
 
 
 def gateway_rate_limit(rate_limits: RateLimits, authorizer_type: str) -> dict:

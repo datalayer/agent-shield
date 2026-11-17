@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""PAP through the Shield (SH-70, SH-72): the gateway's ``pap_*`` tools
+"""PAP through the Shield: the gateway's ``pap_*`` tools
 classed and decided by the Rules, a company named as the authorizer's resource,
 the harness's own fetch to a connected company refused."""
 
@@ -77,7 +77,7 @@ def test_each_pap_operation_is_decided_by_the_rules_like_any_action():
 
 
 def test_the_pap_grant_is_a_decision_input_through_the_authorizer():
-    """SH-72: a propose at a company the person did not connect is refused at the
+    """A propose at a company the person did not connect is refused at the
     Rules, through the authorizer, whatever the Rule says."""
 
     class Grants:

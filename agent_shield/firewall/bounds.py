@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""An agent's rules held to its organization's ceiling (Agent Firewall N3-01).
+"""An agent's rules held to its organization's ceiling.
 
 An organization's policy document may carry ``firewall: {egress, ingress}``
 (:class:`~agent_shield.firewall.model.FirewallCeiling`): the most any agent of

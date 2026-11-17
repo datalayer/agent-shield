@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""Registration with Datalayer through a service-agent key (SHIELD SH-47, SH-73): exchanged, kept 0600, never shown."""
+"""Registration with Datalayer through a service-agent key: exchanged, kept 0600, never shown."""
 
 from __future__ import annotations
 

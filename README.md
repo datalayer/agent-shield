@@ -190,15 +190,15 @@ in front of the test agent (`VERDICT: CONFORMANT`); the audit; the
 
 Built in 0.1.7 (Phase 3's standalone side): `agent-shield serve` over
 WebSocket and ACP Streamable HTTP, one harness per connection, the token in the
-header or the first message (SH-52, SH-56); `agent-shield connect`; the bridge
-of the `datalayer-harnesses` sidecar (SH-40); `setup --register` through a
+header or the first message; `agent-shield connect`; the bridge
+of the `datalayer-harnesses` sidecar; `setup --register` through a
 service-agent key exchanged at IAM, the registered `serve` pulling its
-policies and exporting over OTEL (SH-47, SH-73); the TypeScript types
+policies and exporting over OTEL; the TypeScript types
 generated from the schema, the `diff` and `terminal` displays, the report
-renderer (SH-53); the documentation site built in CI, its policy reference
-and register generated, every page held to what is built (SH-22).
+renderer; the documentation site built in CI, its policy reference
+and register generated, every page held to what is built.
 
-Not built: the Shield report in Datalayer's Validate tab (SH-36); IAM serving
+Not built: the Shield report in Datalayer's Validate tab; IAM serving
 a service agent's organization documents, which a registered standalone
 Shield waits on (it refuses to start with none); a driven turn in VS Code,
 Neovim and marimo (each needs a window).

@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The policy document and ``decide`` (SHIELD SH-07): classes, scopes, first decision wins, limits."""
+"""The policy document and ``decide``: classes, scopes, first decision wins, limits."""
 
 from __future__ import annotations
 
@@ -289,7 +289,7 @@ def test_the_command_is_shown_in_the_sentence_and_a_long_one_is_cut(ctx, default
     assert "…" in long.sentence and len(long.sentence) < 300
 
 
-# --- nothing said: ask, never do it (R-05) ----------------------------------------
+# --- nothing said: ask, never do it ----------------------------------------
 
 
 def test_an_action_no_rule_names_is_asked_about(ctx):

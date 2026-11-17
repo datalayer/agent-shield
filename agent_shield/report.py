@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The conformance report, with the Shield report as its Shield section (SH-36, SH-62, SH-65).
+"""The conformance report, with the Shield report as its Shield section.
 
 Per deployment or per organization: every control of the standard with its
 status, its evidence linked, the cadence clocks, the gaps, and each
@@ -10,14 +10,14 @@ control's crosswalk (the EU AI Act article, the NIST AI RMF function, the
 ISO/IEC 42001 clause, the OWASP Agentic threat, and the rest the standard
 publishes). Its first page says the Shield evidences and never certifies.
 The **Shield section** is the Shield's report: the policies in force at the three
-levels, the tests the Rules passed (the Validate gate with SH-37's drills),
+levels, the tests the Rules passed (the Validate gate with the drills),
 the approvals and denials of the period with who decided, the limits and what
 they stopped, the harness's register entry.
 
 Exported three ways: as **Markdown** and as a **Lexical document** (the
 Studio's documents are Lexical; :func:`lexical_state` writes the editor state
 the Studio opens and comments on), and as **JSON** per control. For an
-assessor (SH-65): the **evidence list** in the shape of AIUC-1's own
+assessor: the **evidence list** in the shape of AIUC-1's own
 spreadsheet (its columns *Requirement*, *Control activity*, *Evidence*,
 *Tags*, with the status, the Datalayer evidence and its link beside them),
 as rows and as CSV, and an **audit-hub** JSON an evidence platform ingests,
@@ -36,7 +36,7 @@ from typing import Any
 from agent_shield.conformance import DISCLAIMER, STATUS_ORDER, STATUS_WORDS, Assessment, ControlStatus, Inputs
 from agent_shield.conformance import collect as c
 
-#: The crosswalk frameworks the report answers by name, in this order (SH-62), then the rest.
+#: The crosswalk frameworks the report answers by name, in this order, then the rest.
 NAMED_FRAMEWORKS = ("eu-ai-act", "nist-ai-rmf", "iso-42001", "owasp-agentic-top-10")
 
 
@@ -230,7 +230,7 @@ class ConformanceReport:
     uid: str
     assessment: Assessment
     shield: ShieldSection
-    #: The representative configurations (SH-65): the Appspec, the policies, the harness spec, as the host attaches them.
+    #: The representative configurations: the Appspec, the policies, the harness spec, as the host attaches them.
     configurations: Mapping[str, Any] = field(default_factory=dict)
     standard: Any = None
 
@@ -433,7 +433,7 @@ class ConformanceReport:
             },
         )
 
-    # -- The assessor's export (SH-65) ---------------------------------------
+    # -- The assessor's export ---------------------------------------
 
     EVIDENCE_COLUMNS = (
         "Requirement",

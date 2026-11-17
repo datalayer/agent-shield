@@ -2,14 +2,14 @@
 #
 # BSD 3-Clause License
 
-"""Write the generated pages of the documentation (SHIELD SH-22).
+"""Write the generated pages of the documentation.
 
 - ``docs/docs/policy/reference.mdx`` from ``schema/policy.schema.json``: every
   field, the classes, the scopes, the soft and hard limits;
 - ``docs/docs/harnesses/register.mdx`` from agentspecs' ``register.yaml``
   through the package's register: each harness, its adapter and pin, its
   licence, its terms, its credential, and what each plane rolled (``docs/rolled.json``,
-  refused when it is not what the register pins, SHIELD SH-42);
+  refused when it is not what the register pins);
 - ``docs/docs/api-reference/python.mdx`` from the package's docstrings: each
   module's first paragraph and its public names with their first line.
 
@@ -97,7 +97,7 @@ def policy_reference() -> str:
     rule = defs.get("Rule", {}).get("properties", {})
     classes = rule.get("classes", {}).get("items", {}).get("enum", [])
     kinds = rule.get("kinds", {}).get("items", {}).get("enum", [])
-    out.append(f"Every action is classed as one of {', '.join(f'`{c}`' for c in classes)} (F-10); ACP's tool kinds are "
+    out.append(f"Every action is classed as one of {', '.join(f'`{c}`' for c in classes)}; ACP's tool kinds are "
                f"{', '.join(f'`{k}`' for k in kinds)}, and `other` fails closed to `write`.")
     out.append("")
     out.append("## Soft and hard limits")
@@ -127,7 +127,7 @@ def register_table() -> str:
         "",
         "**Built:** the catalogue and the register come from agentspecs; `agent-shield setup --harness <id>` installs "
         "the pinned adapter of any npm-packaged one; the long tail of ACP agents is registered *listed* below, "
-        "with its terms, and refused by `setup` and `run` until drilled (SHIELD SH-57). **Not built:** a listed "
+        "with its terms, and refused by `setup` and `run` until drilled. **Not built:** a listed "
         "agent drilled and moved to the catalogue (none yet).",
         "",
         "| Harness | Adapter | Pinned | Credential | Third parties | Licence | Needs |",
@@ -160,7 +160,7 @@ def register_table() -> str:
 
 
 def listed_section() -> list[str]:
-    """The register's *listed* tier (SH-57): registered with its terms, offered by nothing until drilled."""
+    """The register's *listed* tier: registered with its terms, offered by nothing until drilled."""
     from agentspecs.harnesses import LISTED_HARNESSES, LISTED_NOT_DRILLED  # noqa: PLC0415
 
     out = [
@@ -185,7 +185,7 @@ def listed_section() -> list[str]:
 
 
 def rolled_section(pinned: dict[str, str]) -> list[str]:
-    """What each plane runs (SH-42), from ``docs/rolled.json``; a version the register does not pin is refused."""
+    """What each plane runs, from ``docs/rolled.json``; a version the register does not pin is refused."""
     data = json.loads((ROOT / "docs" / "rolled.json").read_text(encoding="utf8"))
     out = [
         "## Rolled where",

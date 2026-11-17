@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP (SH-52, SH-56).
+"""``agent-shield serve``: the proxy as a server, over WebSocket and ACP Streamable HTTP.
 
 One listener, two transports on one path, as the ecosystem's bridges speak
 them (``acp_rpc_bridge``'s Streamable HTTP, ACP Remote's WebSocket, and
@@ -32,7 +32,7 @@ in ``_meta.token`` — and never in the address**: a token in the query string
 is refused before anything is read. A listener bound beyond the loopback
 refuses to start without a token.
 
-**The bridge** (``--bridge``, SH-40): the same server with no Shield in it —
+**The bridge** (``--bridge``): the same server with no Shield in it —
 each connection's frames relayed verbatim to a harness it spawns — for the
 ``datalayer-harnesses`` sidecar, where the runtime's own Shield decides.
 """
@@ -196,7 +196,7 @@ class ShieldBackend:
 
 
 class BridgeBackend:
-    """No Shield: the harness spawned for this connection, every line relayed both ways (SH-40)."""
+    """No Shield: the harness spawned for this connection, every line relayed both ways."""
 
     def __init__(
         self,
@@ -391,7 +391,7 @@ class ShieldServer:
             if not suffix.endswith("/ws"):
                 application.router.add_post(path, self._post)
                 application.router.add_delete(path, self._delete)
-        # marimo's agents panel connects to ws://host:<port>/message (one port per agent, SH-55).
+        # marimo's agents panel connects to ws://host:<port>/message (one port per agent).
         application.router.add_get(MARIMO_PATH, self._get)
         application.router.add_get("/{agent}" + MARIMO_PATH, self._get)
         return application
@@ -623,7 +623,7 @@ class ShieldServer:
             async for frame in socket:
                 # A text frame holds one message; a binary frame is UTF-8
                 # NDJSON, a message a line — what marimo's agents panel
-                # (use-acp's ndJsonStream over the socket) writes (SH-49).
+                # (use-acp's ndJsonStream over the socket) writes.
                 if frame.type == WSMsgType.TEXT:
                     texts = [frame.data]
                 elif frame.type == WSMsgType.BINARY:

@@ -1,8 +1,8 @@
 name: Py Tests
 
 # Python tests on every supported Python, the TypeScript package's tests, and
-# the ACP Test Compatibility Kit against the proxy in front of the fake agent
-# (SHIELD SH-02, SH-08). No secrets: every test is self-contained.
+# the ACP Test Compatibility Kit against the proxy in front of the fake agent.
+# No secrets: every test is self-contained.
 
 on:
   push:

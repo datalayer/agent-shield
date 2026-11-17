@@ -50,20 +50,20 @@ agent-shield = "agent_shield.reactor_extension:plugin"
 # `agent-shield serve`), and `agent-shield connect`.
 websocket = ["websockets>=13"]
 # `agent-shield serve`: the proxy as a server over WebSocket and ACP Streamable
-# HTTP (SH-52, SH-56); the sidecar bridge (SH-40).
+# HTTP; the sidecar bridge.
 serve = ["aiohttp>=3.9"]
-# A registered Shield exports its telemetry to Datalayer's observability (SH-47, SH-51).
+# A registered Shield exports its telemetry to Datalayer's observability.
 otel = ["opentelemetry-sdk>=1.26", "opentelemetry-exporter-otlp-proto-http>=1.26"]
-# The harness catalogue and the register (SHIELD SH-01, SH-04): the Shield
+# The harness catalogue and the register: the Shield
 # reads them from agentspecs and keeps no copy. An extra, not a dependency:
 # the policy engine and the SaaS client (`agent_shield.policy`, `agent_shield.saas`)
 # are what IAM installs to validate a Shield policy, and they must not drag
-# the catalogue's sandbox stack behind them (SH-50).
+# the catalogue's sandbox stack behind them.
 register = ["agentspecs>=0.0.107"]
-# The company role of PAP (SH-71): the Shield in front of any agent, on the PAP SDK's company service.
+# The company role of PAP: the Shield in front of any agent, on the PAP SDK's company service.
 # The role is on draft 0.4 (Operations v2): the SDK 0.32.
 pap = ["personal-agent-protocol>=0.32.0,<0.33"]
-# Cedar 4 in process (AC-41, AC-42): the `cedar` authorizer and the policy document's `dogwood` set.
+# Cedar 4 in process: the `cedar` authorizer and the policy document's `dogwood` set.
 cedar = ["cedarpy>=4.12,<5"]
 # One extra per harness. The adapters are Node packages, which
 # pip cannot install: `agent-shield setup --harness <id>` installs the pinned

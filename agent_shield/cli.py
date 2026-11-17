@@ -210,7 +210,7 @@ def run(
 
 
 def _pap_lending(companies: list[str], policies: list) -> Callable[[], Sequence[Any]] | None:
-    """What lends the gateway's PAP toolsets (SH-73), or ``None``; refused before the agent starts.
+    """What lends the gateway's PAP toolsets, or ``None``; refused before the agent starts.
 
     Local-only, PAP is refused in :func:`pap_sentence`'s words; registered, each
     company's server must be named on the strictest policy's ``mcp.allow`` —
@@ -304,7 +304,7 @@ def setup(
     register: bool = typer.Option(
         False,
         "--register/--local",
-        help=f"Register with Datalayer through a service-agent key read from ${KEY_ENV} (SH-47), or stay local.",
+        help=f"Register with Datalayer through a service-agent key read from ${KEY_ENV}, or stay local.",
     ),
     org: Optional[str] = typer.Option(
         None, "--org", help="With --register: the organization the service agent belongs to."
@@ -531,7 +531,7 @@ def policy_export(
     tool: list[str] = typer.Option([], "--tool", help="A tool tool_calls holds, <server>___<tool>; repeatable."),
     scope: Optional[str] = typer.Option(None, "--scope", help="The document of a file holding several."),
 ) -> None:
-    """A document as another policy language: --dogwood, AgentCore Policy's (AC-43)."""
+    """A document as another policy language: --dogwood, AgentCore Policy's."""
     from agent_shield.policy.export_dogwood import ExportRefused, export_dogwood
 
     if not dogwood:
@@ -678,7 +678,7 @@ def serve(
         [], "--harness", help="A harness of the register to serve at /acp/<id> (repeatable), instead of one command."
     ),
     bridge: bool = typer.Option(
-        False, "--bridge", help="No Shield: relay each connection to a harness it spawns (the sidecar, SH-40)."
+        False, "--bridge", help="No Shield: relay each connection to a harness it spawns (the sidecar)."
     ),
     workspace: Optional[Path] = typer.Option(None, "--workspace", "-w", help="The directory the Shield guards."),
     policy: Optional[Path] = typer.Option(None, "--policy", "-p", help="The policy file (local-only)."),
@@ -846,7 +846,7 @@ def _registered_subject(registration: Registration):
 
 
 def _iam_authorizer(registration: Registration):
-    """OpenFGA through IAM (SH-75): the registered Shield's authorizer, the token kept fresh."""
+    """OpenFGA through IAM: the registered Shield's authorizer, the token kept fresh."""
     from agent_shield.saas import IamAuthorizer
 
     return IamAuthorizer(registration.iam_url, registration.fresh_token)
@@ -925,7 +925,7 @@ def connect(
         None, "--token-env", help="The environment variable holding the bearer token."
     ),
 ) -> None:
-    """A remote Shield as a local stdio agent, for clients that only start commands (SH-56)."""
+    """A remote Shield as a local stdio agent, for clients that only start commands."""
     from agent_shield.acp.remote import RemoteRefused, mirror_stdio
 
     token = None

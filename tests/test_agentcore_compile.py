@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""An organization's document compiled for AgentCore Policy (AC-44) and its Gateway rate limits (AC-45)."""
+"""An organization's document compiled for AgentCore Policy and its Gateway rate limits."""
 
 from __future__ import annotations
 
@@ -291,7 +291,7 @@ def test_the_statements_fit_create_policy() -> None:
         )
 
 
-# -- rate limits (AC-45) ------------------------------------------------------------------------
+# -- rate limits ------------------------------------------------------------------------
 
 
 def test_rate_limits_are_an_organizations_and_name_a_rate() -> None:

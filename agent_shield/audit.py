@@ -4,7 +4,7 @@
 
 """The audit: every action and decision, one JSON line each, nothing secret.
 
-The vocabulary is A-01's safe one, extended with ACP's kinds: a row says the
+The vocabulary is the record's safe one, extended with ACP's kinds: a row says the
 event, the kind and class, the decision and who decided it, a path or a
 command, a diff's hash and size — never a file's content, never a credential.
 Every string of a row goes through :func:`redact` before it is written; the
@@ -42,7 +42,7 @@ EVENTS = (
     "policy",
     # The agent's plan: how many steps, their status; never their text.
     "plan",
-    # PAP's vocabulary, the company role (SH-71): an operation performed
+    # PAP's vocabulary, the company role: an operation performed
     # for a person, signed; a review held for a person of the company, released or refused.
     "operation",
     "review",

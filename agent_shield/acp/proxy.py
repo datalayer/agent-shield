@@ -11,14 +11,14 @@ to the Shield; the Shield talks to the agent. In between:
   answered without the client, *ask me first* is forwarded with the same
   options and answered as the person chose, *leave it to me* is refused
   and the person told why;
-- the agent's ``tool_call`` notifications are classed (ACP ``kind`` → F-10
+- the agent's ``tool_call`` notifications are classed (ACP ``kind`` → action
   class, ``other`` → write) and held to the limits; a refusal cancels the
   turn and says so;
 - ``fs/*`` and ``terminal/*`` are answered by the Shield against the
   workspace, each a recorded, decided action the client sees as a tool row;
 - ``mcpServers`` are rewritten to the policy's allow-list, and lent with the
   execution's credential when the caller handed one in
-  ``_meta.datalayer.credential`` — withheld from the agent (SH-33, ``credential``);
+  ``_meta.datalayer.credential`` — withheld from the agent (``credential``);
 - every action and decision is a row of the audit, nothing secret.
 
 ``allow_always`` chosen by a person becomes a session rule, gone with the
@@ -104,7 +104,7 @@ logger = logging.getLogger(__name__)
 
 #: The JSON-RPC error a refused action answers with.
 REFUSED = -32010
-#: How often a running terminal's output is pushed to the client while it grows (SH-13, SH-16).
+#: How often a running terminal's output is pushed to the client while it grows.
 TERMINAL_PUSH_SECONDS = 0.2
 #: Each running terminal's pushes, awaited before its exit or its release is answered,
 #: so the client has the whole output before the agent goes on.
@@ -148,7 +148,7 @@ class SessionState:
     shield_calls: int = 0
     session_rules: list[Rule] = field(default_factory=list)
     #: Rules a host keeps for this session beside the Shield's own (a person's,
-    #: added from a panel while it runs, SH-54): read at every decision.
+    #: added from a panel while it runs): read at every decision.
     rules_from: Callable[[], Sequence[Rule]] | None = None
     #: Who acts in this session and the authorizer's hook, the proxy's.
     subject: Subject | None = None
@@ -156,13 +156,13 @@ class SessionState:
     #: The companies the application connects through PAP.
     companies: tuple[str, ...] = ()
     #: Which execution credential the session's MCP servers were lent with
-    #: (its fingerprint, SH-33), or ``None`` when none was handed.
+    #: (its fingerprint), or ``None`` when none was handed.
     lent_credential: str | None = None
     #: The bytes each tool call's diff carries, by its id: a harness that writes
     #: with its own tool (Claude Code's Write and Edit) shows the diff before it
     #: asks, and its permission is decided with that size against ``bytes_written``.
     write_bytes: dict[str, int] = field(default_factory=dict)
-    #: The session's events for the dogwood sets (AC-42): each decided call a
+    #: The session's events for the dogwood sets: each decided call a
     #: request (an error when refused), each that ended a response or an error.
     history: EventLog = field(default_factory=EventLog)
     #: The runtime the session runs in: the Cedar resource.
@@ -211,7 +211,7 @@ def _raw(value: Any, *names: str) -> str | None:
     return None
 
 
-#: What a host says of a lent tool (SH-70): the class of the tool as
+#: What a host says of a lent tool: the class of the tool as
 #: the model names it and the resource the authorizer is asked about
 #: (``connection:<company>``), or ``None`` for a tool of no company.
 ToolClass = Callable[[str], "tuple[str, str | None] | None"]
@@ -350,11 +350,11 @@ class ShieldProxy:
         #: connects through PAP: a fetch to one is refused.
         self.tool_class = tool_class
         self.companies = tuple(companies)
-        #: The MCP servers the Shield lends itself, made at each session (SH-73:
-        #: a registered Shield's PAP toolsets, with its token as it is then),
+        #: The MCP servers the Shield lends itself, made at each session
+        #: (a registered Shield's PAP toolsets, with its token as it is then),
         #: beside the client's and held to the same allow-list.
         self.own_servers = own_servers
-        #: The authorizer: the one given (IAM's on Datalayer, SH-75), else the one the
+        #: The authorizer: the one given (IAM's on Datalayer), else the one the
         #: strictest policy names under ``authorizer:``; none leaves every class a policy lists
         #: under ``authorize:`` refused. Allows are cached once per proxy, until they expire.
         self.subject = subject
@@ -362,7 +362,7 @@ class ShieldProxy:
         self._given_authorizer = authorizer
         self.authorizer: Authorizer | None = None
         self.authorize_hook: AuthorizeHook | None = None
-        #: The agent served at a URL instead of launched here (SH-40: the sidecar
+        #: The agent served at a URL instead of launched here (the sidecar
         #: bridge, ``ws://127.0.0.1:<port>/acp/<harness>``): the WebSocket
         #: channel, the same interface, the same decisions.
         self.connect_url = connect_url
@@ -400,7 +400,7 @@ class ShieldProxy:
         for session in self.sessions.values():
             session.authorize = self.authorize_hook
 
-    # -- the policies while running (SH-50, SH-54) ---------------------------------------
+    # -- the policies while running ---------------------------------------
 
     def replace_policies(self, policies: Sequence[LoadedPolicy]) -> None:
         """Take a changed set of documents, in force at once in every open session.
@@ -473,7 +473,7 @@ class ShieldProxy:
     def decide_budget(
         self, session_id: str, *, tokens: int = 0, cost: int = 0, title: str = "a model request"
     ) -> Decision:
-        """The next model request against the model limits in force (SH-32)."""
+        """The next model request against the model limits in force."""
         session = self._session(session_id)
         if self.unavailable is not None:
             return Decision(verdict="deny", decided_by="default", sentence=self.unavailable)
@@ -605,7 +605,7 @@ class ShieldProxy:
     def _lend(self, mcp_servers: Sequence[Any], session_id: str | None, credential: str | None = None) -> list[Any]:
         kept, cut = lend_mcp_servers(mcp_servers, self.policies)
         if credential is not None:
-            # Scoped by the execution's credential (SH-33): every lent HTTP
+            # Scoped by the execution's credential: every lent HTTP
             # server carries it, so the gateway decides the agent's calls and
             # its sub-agents' alike; a stdio server cannot carry it.
             try:
@@ -635,7 +635,7 @@ class ShieldProxy:
 
     async def new_session(self, cwd: str, mcp_servers: list, **kwargs: Any) -> NewSessionResponse:
         workspace = self._workspace_for(cwd)
-        # The execution's credential, never the agent's (SH-33): withheld from
+        # The execution's credential, never the agent's: withheld from
         # the `_meta` it is handed, the lent servers' authority instead.
         meta, credential = take_credential(kwargs)
         lent = self._lend(self._with_own(mcp_servers), None, credential)
@@ -688,7 +688,7 @@ class ShieldProxy:
         session = self._session(session_id)
         session.failed = None
         # A credential with the turn is withheld from the agent, and must be the
-        # one the session's servers were lent with (SH-33): its tools would
+        # one the session's servers were lent with: its tools would
         # otherwise act with another authority than the turn's.
         meta, credential = take_credential(kwargs)
         if credential is not None and fingerprint(credential) != session.lent_credential:
@@ -701,7 +701,7 @@ class ShieldProxy:
             raise RequestError(REFUSED, sentence)
         self.audit.write("turn", session=session_id, what="prompt", blocks=len(prompt), by="shield")
         # The trace the face arrived on, handed to the harness in the key ACP
-        # reserves for it (SH-51); a caller's own `_meta.traceparent` wins.
+        # reserves for it; a caller's own `_meta.traceparent` wins.
         answer = await self.channel.prompt(session_id, prompt, meta=with_traceparent(meta or {}))
         if session.failed is not None:
             turn_ended("refusal")
@@ -1324,7 +1324,7 @@ class _InnerClient:
 
     async def _push_output(self, session_id: str, call_id: str, run: Any) -> None:
         """Push a running terminal's output on the Shield's row while it grows, then
-        once more when the command has ended (SH-13, SH-16): `tool_call_update`
+        once more when the command has ended: `tool_call_update`
         content replaces what the client shows, so each push carries it whole (within
         the terminal's byte limit) with the terminal's reference."""
 

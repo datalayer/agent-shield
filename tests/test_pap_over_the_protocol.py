@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The Shield as a PAP company, over the protocol (SHIELD SH-71), PAP draft 0.4.
+"""The Shield as a PAP company, over the protocol, PAP draft 0.4.
 
 A personal agent — the PAP SDK's client, its own identity, discovery, a
 Session with the extensions it negotiated, Device Sign-In — talks to a company

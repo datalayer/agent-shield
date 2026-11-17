@@ -2,7 +2,7 @@
 #
 # BSD 3-Clause License
 
-"""The harness register, read from agentspecs (SH-04).
+"""The harness register, read from agentspecs.
 
 The catalogue of harnesses and the register — every harness with its
 adapter, the version pinned, its licence and where that was read, the
@@ -152,14 +152,14 @@ def harness(harness_id: str) -> Harness:
         raise RegisterRefused(str(exc)) from None
     if harness_id == CUSTOM_HARNESS:
         raise RegisterRefused("'custom' is an organization's own spec, not one the Shield sets up from the catalogue")
-    # The long tail (SH-57): registered with its documented command and its
+    # The long tail: registered with its documented command and its
     # terms, offered by nothing until drilled.
     from agentspecs.harnesses import is_organization_harness, listed_refusal  # noqa: PLC0415
 
     listed = listed_refusal(harness_id)
     if listed is not None:
         raise RegisterRefused(listed)
-    # An organization's own (SH-46): read from its organization's catalogue on
+    # An organization's own: read from its organization's catalogue on
     # Datalayer and admitted by its policy there; a standalone Shield has neither.
     if is_organization_harness(harness_id):
         raise RegisterRefused(

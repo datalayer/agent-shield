@@ -51,7 +51,7 @@ One policy document, one scope.
 
 ## CedarAuthorizerConfig
 
-``cedar: &#123;policies&#125;``: a Cedar policy set inline, or the path of a ``.cedar`` file (AC-41).
+``cedar: &#123;policies&#125;``: a Cedar policy set inline, or the path of a ``.cedar`` file.
 
 | Field | Type | Required | What it says |
 |---|---|---|---|
@@ -59,7 +59,7 @@ One policy document, one scope.
 
 ## Dogwood
 
-A Dogwood policy set (Cedar, and ``when temporal`` over the session's events), AC-42.
+A Dogwood policy set (Cedar, and ``when temporal`` over the session's events).
 
 Read as it is loaded: the temporal clauses parsed, AgentCore's quotas held
 (20 temporal policies, 3 temporal operators in one, a 24-hour window at
@@ -170,7 +170,7 @@ A rate: at most ``rate`` per ``per``.
 
 ## RateLimits
 
-What each person may spend through the organization's AgentCore Gateways (AC-45).
+What each person may spend through the organization's AgentCore Gateways.
 
 Per user — the Gateway's OAuth subject, or its IAM principal — across its
 tools, models and agents, as AgentCore's Gateway rate limits count them. The
@@ -209,7 +209,7 @@ A soft threshold asks once; a hard one refuses each call that would cross it.
 
 ## The classes and the kinds
 
-Every action is classed as one of `read`, `write`, `send`, `buy`, `delete`, `execute` (F-10); ACP's tool kinds are `read`, `edit`, `delete`, `move`, `search`, `execute`, `think`, `fetch`, `switch_mode`, `other`, and `other` fails closed to `write`.
+Every action is classed as one of `read`, `write`, `send`, `buy`, `delete`, `execute`; ACP's tool kinds are `read`, `edit`, `delete`, `move`, `search`, `execute`, `think`, `fetch`, `switch_mode`, `other`, and `other` fails closed to `write`.
 
 ## Soft and hard limits
 
