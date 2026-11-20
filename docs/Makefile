@@ -11,6 +11,7 @@ SHELL=/bin/bash
 CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate
 CONDA_DEACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda deactivate
 CONDA_REMOVE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda remove -y --all -n
+AGENT_SHIELD_CLOUDFRONT_DISTRIBUTION="EJHMA988QWCWT"
 
 ENV_NAME=datalayer
 
