@@ -59,6 +59,19 @@ def cli_commands() -> dict[str, set[str]]:
     return commands
 
 
+def cli_groups() -> set[str]:
+    """The command groups (`policy`, `firewall`): named alone, a group prints its subcommands."""
+    groups: set[str] = set()
+    for source in cli_sources():
+        for node in ast.walk(ast.parse(source.read_text(encoding="utf8"))):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "Typer":
+                for keyword in node.keywords:
+                    if keyword.arg == "name" and isinstance(keyword.value, ast.Constant):
+                        groups.add(str(keyword.value.value))
+    groups.discard("agent-shield")
+    return groups
+
+
 def _commands_of(tree: ast.Module) -> dict[str, set[str]]:
     """The commands one module defines, named with their Typer group."""
     groups: dict[str, str] = {}
@@ -99,10 +112,6 @@ def _commands_of(tree: ast.Module) -> dict[str, set[str]]:
                                 options.add(flag.strip())
             options.update({"--help", "-h"})
             commands[full] = options
-    # A group is a command too: `agent-shield firewall` alone prints its subcommands.
-    for group in groups.values():
-        if group != "agent-shield":
-            commands.setdefault(group, {"--help", "-h"})
     return commands
 
 
@@ -132,7 +141,7 @@ def package_names() -> set[str]:
     return names
 
 
-def check_page(page: Path, commands: dict[str, set[str]], names: set[str]) -> list[str]:
+def check_page(page: Path, commands: dict[str, set[str]], names: set[str], groups: set[str] = frozenset()) -> list[str]:
     text = page.read_text(encoding="utf8")
     problems: list[str] = []
     where = page.relative_to(ROOT)
@@ -145,6 +154,10 @@ def check_page(page: Path, commands: dict[str, set[str]], names: set[str]) -> li
         words = found.group(1).split()
         candidates = [" ".join(words[:n]) for n in range(len(words), 0, -1)]
         command = next((c for c in candidates if c in commands), None)
+        if command is None and " ".join(words) in groups:
+            # A group named alone, nothing after it: `agent-shield firewall`. A group
+            # followed by a word that is not one of its commands is still refused.
+            continue
         if command is None:
             problems.append(f"{where}: `agent-shield {found.group(1)}` is not a command the CLI has")
             continue
@@ -164,13 +177,14 @@ def check_page(page: Path, commands: dict[str, set[str]], names: set[str]) -> li
 
 def main() -> int:
     commands = cli_commands()
+    groups = cli_groups()
     names = package_names()
     problems: list[str] = []
     pages = sorted(DOCS.rglob("*.mdx")) + sorted(DOCS.rglob("*.md"))
     if not pages:
         problems.append(f"no page under {DOCS}")
     for page in pages:
-        problems.extend(check_page(page, commands, names))
+        problems.extend(check_page(page, commands, names, groups))
     generated = subprocess.run(
         [sys.executable, str(Path(__file__).with_name("generate.py")), "--check"], capture_output=True, text=True
     )
