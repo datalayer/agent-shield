@@ -14,6 +14,8 @@ policy:
     ingress: ["platform"]
 ```
 
+**Built:** the rules below (`*`, `*:port`, exact hosts, addresses and CIDRs, with their refusals), the layers, the record of each connection, the organization's ceiling (`bounded`), and `agent-shield firewall check`, `schema`, `compile`, `apply` and `watch`. **Not built:** on Datalayer, the `shield-firewall` sidecar of the runtime pod that runs `watch` is not yet deployed.
+
 ## The rules
 
 **Egress** is what the agent may reach beyond the platform's own endpoints. Each entry is one of:
