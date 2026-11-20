@@ -10,7 +10,8 @@ For every page under ``docs/docs``:
   ``:::note[Built]`` admonition with both), so a reader is told on every page
   what exists and what does not;
 - every ``agent-shield <command>`` the page names is a command of the CLI
-  (read from ``agent_shield/cli.py``: ``@app.command`` and ``policy`` subcommands),
+  (read from ``agent_shield/cli.py`` and each subpackage's ``cli.py``: ``@app.command``,
+  ``policy`` and ``firewall`` subcommands),
   and every ``--flag`` named right after it is an option of that command;
 - every ``agent_shield.<module>`` the page names is a module or a public
   name of the package (read from the files, nothing imported);
@@ -44,9 +45,22 @@ BUILT = re.compile(r"\*\*Built:\*\* ")
 NOT_BUILT = re.compile(r"\*\*Not built:\*\* ")
 
 
+def cli_sources() -> list[Path]:
+    """``agent_shield/cli.py`` and each subpackage's own ``cli.py`` (the firewall's
+    ``firewall_app``, added to the CLI with ``add_typer``)."""
+    return [CLI, *sorted(PACKAGE.glob("*/cli.py"))]
+
+
 def cli_commands() -> dict[str, set[str]]:
     """Each command and the options it takes, from the Typer source."""
-    tree = ast.parse(CLI.read_text(encoding="utf8"))
+    commands: dict[str, set[str]] = {}
+    for source in cli_sources():
+        commands.update(_commands_of(ast.parse(source.read_text(encoding="utf8"))))
+    return commands
+
+
+def _commands_of(tree: ast.Module) -> dict[str, set[str]]:
+    """The commands one module defines, named with their Typer group."""
     groups: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
@@ -85,6 +99,10 @@ def cli_commands() -> dict[str, set[str]]:
                                 options.add(flag.strip())
             options.update({"--help", "-h"})
             commands[full] = options
+    # A group is a command too: `agent-shield firewall` alone prints its subcommands.
+    for group in groups.values():
+        if group != "agent-shield":
+            commands.setdefault(group, {"--help", "-h"})
     return commands
 
 
