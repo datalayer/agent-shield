@@ -6,6 +6,10 @@
 
 # Changelog
 
+## 0.2.24
+
+- **`cluster_ranges` is validated when the base layer is read** (Copilot review of 0.2.23): it must be a list of IPv4 networks, each normalized (`203.0.113.9/24` becomes `203.0.113.0/24`, an address becomes a `/32`). A string (`"203.0.113.0/24"` was read as its characters), a malformed network (`203.0.113.0/typo`), a non-string item or an IPv6 network (the firewall's rules are IPv4) raises `ValueError`, so `firewall compile` and the controller refuse the base layer (`AGENT_SHIELD_FIREWALL_BASE is not a base layer: …`) instead of ignoring the range and letting a spec host's answer in it through, or writing an invalid destination under `*`.
+
 ## 0.2.23
 
 - **DNS rebinding guard in the firewall:** a spec host's answers are filtered before any rule is written. An address in a private, loopback, link-local (the metadata address 169.254.169.254 among them), shared (100.64/10), multicast or reserved range, an IPv6 answer (unique-local and link-local included), or an address in the cluster's own networks is dropped, and said: in the controller's log (`<host> resolved to <addresses>, not a public address; dropped`), in the `firewall` row and `applied.json` (`non_public`). A host left with no public address gets no rule (`<host> resolves only to non-public addresses; it gets no rule`, `non_public_only`). The same holds at each refresh, so a public name that later resolves into a private range never reaches it. The base layer's addresses are never filtered: the platform's own endpoints can be private by design. `firewall compile` says the same on stderr.
