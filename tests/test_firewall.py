@@ -27,6 +27,7 @@ from agent_shield.firewall import (
     FirewallRules,
     compile_rules,
     firewall_json_schema,
+    is_public_address,
     parse_entry,
     rules_of_spec,
 )
@@ -194,6 +195,133 @@ def test_an_unresolved_host_is_refused_and_said():
     compiled = compile_rules(BASE, FirewallRules(egress=["gone.example.com:443"]), resolved={})
     assert compiled.unresolved == ["gone.example.com"]
     assert "gone.example.com" not in compiled.script.replace('"', "")
+
+
+def test_a_spec_hosts_non_public_answers_are_dropped_and_said():
+    """DNS rebinding: a public name that later resolves into a private range gets no rule there."""
+    compiled = compile_rules(
+        BASE,
+        FirewallRules(egress=["mixed.example.com:443", "rebound.example.com:443", "api.tavily.com"]),
+        resolved={
+            "mixed.example.com": ["198.51.100.7", "10.0.0.5", "169.254.169.254"],
+            "rebound.example.com": ["127.0.0.1", "100.64.1.1", "192.168.1.1", "172.16.0.9", "fd00::1"],
+            "api.tavily.com": ["198.51.100.8"],
+        },
+    )
+    lines = compiled.script.splitlines()
+    assert "-A SHIELD-EGRESS -d 198.51.100.7/32 -p tcp --dport 443 -j ACCEPT" in lines
+    assert "-A SHIELD-EGRESS -d 198.51.100.8/32 -p tcp -j ACCEPT" in lines
+    for address in ("10.0.0.5", "127.0.0.1", "100.64.1.1", "192.168.1.1", "172.16.0.9"):
+        assert not [line for line in lines if f"-d {address}/32" in line and "ACCEPT" in line]
+    # The metadata address stays refused by the base, never accepted for a host.
+    assert not [line for line in lines if "169.254.169.254/32" in line and "ACCEPT" in line]
+    assert compiled.non_public == {
+        "mixed.example.com": ["10.0.0.5", "169.254.169.254"],
+        "rebound.example.com": ["100.64.1.1", "127.0.0.1", "172.16.0.9", "192.168.1.1", "fd00::1"],
+    }
+    assert compiled.non_public_only == ["rebound.example.com"]
+    assert compiled.unresolved == []
+    assert '--nflog-prefix "shield allow spec:rebound.example.com:443"' not in compiled.script
+    assert compiled.hosts.get("10.0.0.5") is None
+
+
+def test_the_cluster_ranges_are_never_a_spec_hosts_and_star_refuses_them():
+    base = BaseLayer(dns=("10.96.0.10",), cluster_ranges=("198.18.0.0/15", "203.0.113.0/24"))
+    compiled = compile_rules(
+        base, FirewallRules(egress=["svc.example.com:443"]), resolved={"svc.example.com": ["203.0.113.9"]}
+    )
+    assert compiled.non_public_only == ["svc.example.com"]
+    lines = compile_rules(base, FirewallRules(egress=["*"])).script.splitlines()
+    accept = lines.index("-A SHIELD-EGRESS -p tcp -j ACCEPT")
+    assert lines.index("-A SHIELD-EGRESS -d 203.0.113.0/24 -j SHIELD-REFUSE") < accept
+    assert BaseLayer.from_json(base.to_json()) == base
+
+
+def test_the_base_layers_private_endpoints_are_never_filtered():
+    """The platform's own endpoints (a cluster database, a broker) are the base's, and private by design."""
+    base = BaseLayer(
+        dns=("10.96.0.10",),
+        allow=(
+            BaseAllowance("memories", "memories-postgres.datalayer.svc", ("10.43.12.7",), (5432,)),
+            BaseAllowance("pulsar", "pulsar.datalayer.svc", ("10.43.20.1",), (6650,)),
+        ),
+    )
+    compiled = compile_rules(base, FirewallRules(egress=["*:80", "*:443"]))
+    lines = compiled.script.splitlines()
+    assert "-A SHIELD-EGRESS -d 10.43.12.7/32 -p tcp --dport 5432 -j ACCEPT" in lines
+    assert "-A SHIELD-EGRESS -d 10.43.20.1/32 -p tcp --dport 6650 -j ACCEPT" in lines
+    assert compiled.non_public == {} and compiled.non_public_only == []
+
+
+@pytest.mark.parametrize(
+    "address,public",
+    [
+        ("93.184.215.14", True),
+        ("140.82.121.4", True),
+        ("10.1.2.3", False),
+        ("172.31.255.255", False),
+        ("192.168.0.1", False),
+        ("127.0.0.1", False),
+        ("169.254.169.254", False),
+        ("100.64.0.1", False),
+        ("0.0.0.0", False),
+        ("224.0.0.1", False),
+        ("fd12:3456::1", False),
+        ("fe80::1", False),
+        ("2606:4700::1111", False),
+        ("not-an-address", False),
+    ],
+)
+def test_is_public_address(address, public):
+    assert is_public_address(address) is public
+
+
+def test_is_public_address_takes_the_cluster_ranges():
+    assert is_public_address("203.0.113.9") is True
+    assert is_public_address("203.0.113.9", ("203.0.113.0/24",)) is False
+
+
+def test_the_controller_says_dropped_answers_in_its_log_its_row_and_its_state(tmp_path, caplog):
+    audit = AuditLog(tmp_path / "audit.jsonl")
+    answers = {"rebound.example.com": ["10.0.0.5"], "mixed.example.com": ["198.51.100.7", "192.168.0.4"]}
+    controller = Controller(
+        BASE, audit=audit, runner=FakeKernel(), resolver=lambda host: answers[host], state_dir=tmp_path / "state"
+    )
+    with caplog.at_level("WARNING", logger="agent_shield.firewall.controller"):
+        controller.apply(FirewallRules(egress=["rebound.example.com:443", "mixed.example.com:443"]))
+    said = caplog.text
+    assert "rebound.example.com resolves only to non-public addresses; it gets no rule" in said
+    assert "mixed.example.com resolved to 192.168.0.4, not a public address; dropped" in said
+    row = audit.rows()[-1]
+    assert row["non_public_only"] == ["rebound.example.com"]
+    assert row["non_public"]["mixed.example.com"] == ["192.168.0.4"]
+    state = json.loads((tmp_path / "state" / "applied.json").read_text())
+    assert state["non_public_only"] == ["rebound.example.com"]
+    from agent_shield.firewall.export import row_attributes
+
+    assert row_attributes(row)["shield.non_public_only"] == ["rebound.example.com"]
+    # A later answer that turns private is dropped at the refresh as well.
+    answers["mixed.example.com"] = ["10.9.9.9"]
+    assert controller.refresh() is True
+    assert controller.applied.compiled.non_public_only == ["rebound.example.com", "mixed.example.com"]
+
+
+def test_compile_says_a_host_that_resolves_only_to_private_addresses(tmp_path, monkeypatch):
+    from agent_shield.firewall import controller as controller_module
+
+    monkeypatch.setattr(
+        controller_module.socket,
+        "getaddrinfo",
+        lambda host, *args: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.5", 0))],
+    )
+    base = tmp_path / "base.json"
+    base.write_text(json.dumps(BASE.to_json()))
+    rules = tmp_path / "rules.yaml"
+    rules.write_text("egress: ['rebound.example.com:443']\n")
+    result = runner.invoke(app, ["firewall", "compile", "--base", str(base), "--rules", str(rules)])
+    assert result.exit_code == 0, result.output
+    assert "rebound.example.com resolves only to non-public addresses; it gets no rule" in result.output
+    assert "10.0.0.5/32" not in result.output.split("agent-shield:")[0]
 
 
 def test_the_address_map_names_base_and_spec_hosts():

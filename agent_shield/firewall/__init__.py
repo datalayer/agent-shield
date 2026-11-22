@@ -32,6 +32,7 @@ from agent_shield.firewall.model import (
     FirewallError,
     FirewallRules,
     firewall_json_schema,
+    is_public_address,
     parse_entry,
     rules_of_spec,
 )
@@ -60,6 +61,7 @@ __all__ = [
     "bounded_by",
     "compile_rules",
     "firewall_json_schema",
+    "is_public_address",
     "organization_ceilings",
     "parse_entry",
     "rules_of_spec",

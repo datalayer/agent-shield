@@ -161,6 +161,10 @@ def compile_command(
     typer.echo(compiled.script, nl=False)
     for host in compiled.unresolved:
         typer.echo(f"agent-shield: {host} resolves to nothing; it is refused", err=True)
+    for host, addresses in compiled.non_public.items():
+        typer.echo(f"agent-shield: {host} resolved to {', '.join(addresses)}, not a public address; dropped", err=True)
+    for host in compiled.non_public_only:
+        typer.echo(f"agent-shield: {host} resolves only to non-public addresses; it gets no rule", err=True)
 
 
 @firewall_app.command("apply")

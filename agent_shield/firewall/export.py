@@ -28,7 +28,9 @@ The attributes (the contract the platform's views query):
   ``refresh``, ``apply``), ``shield.revision``, ``shield.egress`` and
   ``shield.ingress`` (the entries applied), ``shield.base`` (the base layer's
   allowances by name), ``shield.rules`` (how many rules were compiled),
-  ``shield.unresolved`` (hosts that resolved to nothing).
+  ``shield.unresolved`` (hosts that resolved to nothing),
+  ``shield.non_public_only`` (hosts that resolved only to non-public
+  addresses, given no rule).
 
 A refused connection is ``deny`` in the audit (the Shield's vocabulary, counted
 with the refusals) and ``refuse`` on the span (the firewall's, as its log
@@ -69,6 +71,7 @@ _FIREWALL_FIELDS = {
     "base": "shield.base",
     "rules": "shield.rules",
     "unresolved": "shield.unresolved",
+    "non_public_only": "shield.non_public_only",
 }
 
 
