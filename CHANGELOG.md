@@ -6,6 +6,12 @@
 
 # Changelog
 
+## 0.2.23
+
+- **DNS rebinding guard in the firewall:** a spec host's answers are filtered before any rule is written. An address in a private, loopback, link-local (the metadata address 169.254.169.254 among them), shared (100.64/10), multicast or reserved range, an IPv6 answer (unique-local and link-local included), or an address in the cluster's own networks is dropped, and said: in the controller's log (`<host> resolved to <addresses>, not a public address; dropped`), in the `firewall` row and `applied.json` (`non_public`). A host left with no public address gets no rule (`<host> resolves only to non-public addresses; it gets no rule`, `non_public_only`). The same holds at each refresh, so a public name that later resolves into a private range never reaches it. The base layer's addresses are never filtered: the platform's own endpoints can be private by design. `firewall compile` says the same on stderr.
+- **`cluster_ranges` in the base layer** (optional): the cluster's pod and service networks, when the platform knows them. They are never a spec host's address, and `*` (or `*:port`) refuses them as it refuses the non-public ranges.
+- `agent_shield.firewall.is_public_address(address, also_private=())`: the check the filter uses.
+
 ## 0.2.22
 
 - **Comments, docstrings, docs and this changelog without references to internal planning documents:** the bracketed item ids and document names are gone and the sentences are kept. Descriptions only: the policy schema's descriptions (`schema/policy.schema.json`, the TypeScript types), two CLI help lines and a conformance map's sentence follow; nothing decides differently. `agent_shield/policy/dogwood.py` and the schema are again byte for byte what agentspecs carries.

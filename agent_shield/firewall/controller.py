@@ -9,7 +9,9 @@ Datalayer, the ``shield-firewall`` sidecar of the runtime pod — and nowhere
 else does anything change the rules:
 
 * :meth:`Controller.apply` resolves the spec's hosts (a host that resolves to
-  nothing is refused and said), compiles base + spec, applies the script with
+  nothing is refused and said; a non-public answer — private, loopback,
+  link-local, the metadata address, shared, reserved, the cluster's — is
+  dropped and said, and a host with only such answers gets no rule), compiles base + spec, applies the script with
   ``iptables-restore --noflush`` in one commit, hooks the chains from
   ``OUTPUT`` (and ``INPUT`` when ingress is enforced) once, keeps the address →
   host map the record names destinations by, and writes a ``firewall`` row;
@@ -123,6 +125,14 @@ class Controller:
             self._hook("INPUT", INGRESS_CHAIN)
         for host in compiled.unresolved:
             logger.warning("firewall: %s resolves to nothing; it is refused", host)
+        for host, addresses in compiled.non_public.items():
+            logger.warning(
+                "firewall: %s resolved to %s, not a public address; dropped from its rule",
+                host,
+                ", ".join(addresses),
+            )
+        for host in compiled.non_public_only:
+            logger.warning("firewall: %s resolves only to non-public addresses; it gets no rule", host)
         self.applied = Applied(rules, resolved, compiled, revision=revision)
         if self.state_dir is not None:
             self.state_dir.mkdir(parents=True, exist_ok=True)
@@ -138,6 +148,8 @@ class Controller:
                 base=[a.name for a in self.base.allow],
                 rules=compiled.rules,
                 unresolved=compiled.unresolved or None,
+                non_public=compiled.non_public or None,
+                non_public_only=compiled.non_public_only or None,
             )
         return self.applied
 
@@ -163,6 +175,8 @@ class Controller:
             "enforce_ingress": self.enforce_ingress,
             "resolved": self.applied.resolved,
             "unresolved": self.applied.compiled.unresolved,
+            "non_public": self.applied.compiled.non_public,
+            "non_public_only": self.applied.compiled.non_public_only,
             "rules": self.applied.compiled.rules,
         }
 

@@ -65,6 +65,32 @@ NON_PUBLIC = (
 Direction = Literal["egress", "ingress"]
 
 
+def is_public_address(address: str, also_private: tuple[str, ...] = ()) -> bool:
+    """Whether a resolved address may stand in a spec host's rule: a public IPv4 address.
+
+    Public means outside the ranges ``*`` leaves refused. ``False`` for
+    anything in :data:`NON_PUBLIC` (RFC 1918, loopback, link-local and the
+    metadata address 169.254.169.254, shared CGNAT 100.64/10, multicast,
+    reserved), for any range in `also_private` (the cluster's pod and
+    service networks when the base names them), and for anything that is
+    not an IPv4 address (an IPv6 answer, unique-local and link-local
+    included, is never written: the firewall's rules are IPv4).
+    """
+    try:
+        parsed = ipaddress.ip_address(str(address).strip())
+    except ValueError:
+        return False
+    if not isinstance(parsed, ipaddress.IPv4Address):
+        return False
+    for item in (*NON_PUBLIC, *also_private):
+        try:
+            if parsed in ipaddress.IPv4Network(item, strict=False):
+                return False
+        except ValueError:
+            continue
+    return True
+
+
 class FirewallError(ValueError):
     """An entry the firewall cannot take, said in a sentence."""
 
@@ -285,6 +311,7 @@ __all__ = [
     "FirewallError",
     "FirewallRules",
     "firewall_json_schema",
+    "is_public_address",
     "parse_entry",
     "rules_of_spec",
 ]

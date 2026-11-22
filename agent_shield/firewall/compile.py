@@ -11,6 +11,15 @@ it (its egress table) and hands it over as JSON; no spec removes any of it.
 The *spec* is the agent's ``policy.shield`` (:class:`FirewallRules`), its
 hosts resolved by the controller.
 
+A spec host's answers are filtered before any rule is written (DNS rebinding):
+a public name checked once can later resolve to a private, loopback,
+link-local (the metadata address among them), shared or reserved address, or
+into the cluster's own networks (``cluster_ranges``), and such an address is
+dropped and said (``Compiled.non_public``). A host left with no public
+address gets no rule (``Compiled.non_public_only``). The base layer's
+addresses are the platform's and are never filtered: its endpoints (a
+cluster-internal database, a message broker) are legitimately private.
+
 The firewall owns three chains in the ``filter`` table:
 
 ``SHIELD-EGRESS`` (from ``OUTPUT``)
@@ -38,7 +47,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from agent_shield.firewall.model import NON_PUBLIC, FirewallRules
+from agent_shield.firewall.model import NON_PUBLIC, FirewallRules, is_public_address
 
 EGRESS_CHAIN = "SHIELD-EGRESS"
 INGRESS_CHAIN = "SHIELD-INGRESS"
@@ -71,13 +80,16 @@ class BaseLayer:
     refuse: tuple[str, ...] = (METADATA,)
     #: Sources of ingress the ``platform`` entry stands for (the ingress, the nodes' probes).
     platform_sources: tuple[str, ...] = ()
+    #: The cluster's own networks (pods, services), when known: never a spec host's address, and
+    #: refused under ``*`` as the non-public ranges are.
+    cluster_ranges: tuple[str, ...] = ()
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> BaseLayer:
         """The Operator's JSON (``egress.base_layer``) as a layer; a wrong shape is refused."""
         if not isinstance(data, dict):
             raise ValueError("a base layer is a mapping")
-        unknown = set(data) - {"dns", "allow", "refuse", "platform_sources"}
+        unknown = set(data) - {"dns", "allow", "refuse", "platform_sources", "cluster_ranges"}
         if unknown:
             raise ValueError(f"a base layer has no {', '.join(sorted(unknown))}")
         allow = []
@@ -99,6 +111,7 @@ class BaseLayer:
             allow=tuple(allow),
             refuse=refuse,
             platform_sources=tuple(str(s) for s in data.get("platform_sources") or ()),
+            cluster_ranges=tuple(str(c) for c in data.get("cluster_ranges") or ()),
         )
 
     def to_json(self) -> dict[str, Any]:
@@ -116,6 +129,7 @@ class BaseLayer:
             ],
             "refuse": list(self.refuse),
             "platform_sources": list(self.platform_sources),
+            "cluster_ranges": list(self.cluster_ranges),
         }
 
 
@@ -129,6 +143,10 @@ class Compiled:
     #: Spec hosts that resolved to nothing: refused.
     unresolved: list[str] = field(default_factory=list)
     rules: int = 0
+    #: Spec host → the non-public addresses it resolved to, dropped (DNS rebinding).
+    non_public: dict[str, list[str]] = field(default_factory=dict)
+    #: Spec hosts that resolved only to non-public addresses: no rule.
+    non_public_only: list[str] = field(default_factory=list)
 
 
 def _cidr(address: str) -> str:
@@ -163,7 +181,9 @@ def compile_rules(
         The agent's ``policy.shield``; none keeps the base alone.
     resolved : dict, optional
         Each spec host's addresses, as the controller resolved them; a host
-        missing or empty here is refused and listed in ``unresolved``.
+        missing or empty here is refused and listed in ``unresolved``. A
+        non-public answer is dropped (``non_public``); a host with only such
+        answers gets no rule (``non_public_only``).
     enforce_ingress : bool
         Write ``SHIELD-INGRESS``; off, ingress is left as the pod has it.
     """
@@ -171,6 +191,8 @@ def compile_rules(
     resolved = resolved or {}
     hosts: dict[str, list[str]] = {}
     unresolved: list[str] = []
+    non_public: dict[str, list[str]] = {}
+    non_public_only: list[str] = []
 
     def remember(address: str, host: str) -> None:
         if host and host not in hosts.setdefault(address, []):
@@ -210,7 +232,7 @@ def compile_rules(
             # ``*`` refuses the non-public ranges on every protocol; ``*:port``
             # on its port only, so an entry for another port is left to decide.
             scope = f" -p tcp{port}" if entry.port else ""
-            for network in NON_PUBLIC:
+            for network in (*NON_PUBLIC, *base.cluster_ranges):
                 lines.append(_log(egress_chain, f"-d {network}{scope}", "refuse", f"{rule} non-public"))
                 lines.append(f"-A {egress_chain} -d {network}{scope} -j {refuse}")
             lines.append(_log(egress_chain, f"-p tcp{port}", "allow", rule))
@@ -219,9 +241,17 @@ def compile_rules(
         if entry.kind == "network":
             addresses = [entry.value]
         else:
-            addresses = sorted(set(resolved.get(entry.value) or []))
-            if not addresses:
+            answers = sorted(set(resolved.get(entry.value) or []))
+            if not answers:
                 unresolved.append(entry.value)
+                continue
+            addresses = [a for a in answers if is_public_address(a, base.cluster_ranges)]
+            dropped = [a for a in answers if a not in addresses]
+            if dropped:
+                non_public[entry.value] = sorted(set(non_public.get(entry.value, []) + dropped))
+            if not addresses:
+                if entry.value not in non_public_only:
+                    non_public_only.append(entry.value)
                 continue
         for address in addresses:
             if entry.kind == "host":
@@ -254,7 +284,14 @@ def compile_rules(
         lines.append(f"-A {ingress_chain} -j {refuse}")
     lines.append("COMMIT")
     count = sum(1 for line in lines if line.startswith("-A "))
-    return Compiled(script="\n".join(lines) + "\n", hosts=hosts, unresolved=unresolved, rules=count)
+    return Compiled(
+        script="\n".join(lines) + "\n",
+        hosts=hosts,
+        unresolved=unresolved,
+        rules=count,
+        non_public=non_public,
+        non_public_only=non_public_only,
+    )
 
 
 __all__ = [

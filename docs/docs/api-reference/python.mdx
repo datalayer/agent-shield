@@ -335,6 +335,7 @@ The firewall's rows to OTEL: one span per ``connection`` and ``firewall`` row.
 
 The firewall's rules: what an agent's pod may reach, and who may reach it.
 
+- `is_public_address` — Whether a resolved address may stand in a spec host's rule: a public IPv4 address.
 - `FirewallError` — An entry the firewall cannot take, said in a sentence.
 - `Entry` — One parsed entry: ``any``, ``platform``, a ``host`` or a ``network``, and its port.
 - `parse_entry` — One entry of ``egress`` or ``ingress``, parsed, or :class:`FirewallError` saying why not.
