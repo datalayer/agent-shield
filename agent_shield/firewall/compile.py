@@ -43,6 +43,7 @@ chains in one commit, and the pod is never open nor shut in between.
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -69,6 +70,32 @@ class BaseAllowance:
     addresses: tuple[str, ...]
     ports: tuple[int, ...]
     protocol: str = "tcp"
+
+
+def _cluster_ranges(value: Any) -> tuple[str, ...]:
+    """``cluster_ranges`` as normalized IPv4 networks; anything else is refused.
+
+    A list of networks only: a string (``"203.0.113.0/24"``) is not a list of its
+    characters, and a malformed network (``"203.0.113.0/typo"``) or an IPv6 one is
+    refused rather than ignored, since an ignored range would let a spec host's
+    answer in it through. The firewall's rules are IPv4.
+    """
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise ValueError(f"cluster_ranges is a list of IPv4 networks, not {type(value).__name__} {value!r}")
+    ranges: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ValueError(f"cluster_ranges takes IPv4 networks as strings, not {item!r}")
+        try:
+            network = ipaddress.ip_network(item.strip(), strict=False)
+        except ValueError:
+            raise ValueError(f"cluster_ranges: {item!r} is not an IPv4 network") from None
+        if not isinstance(network, ipaddress.IPv4Network):
+            raise ValueError(f"cluster_ranges: {item!r} is an IPv6 network; the firewall's rules are IPv4 only")
+        ranges.append(str(network))
+    return tuple(ranges)
 
 
 @dataclass(frozen=True)
@@ -111,7 +138,7 @@ class BaseLayer:
             allow=tuple(allow),
             refuse=refuse,
             platform_sources=tuple(str(s) for s in data.get("platform_sources") or ()),
-            cluster_ranges=tuple(str(c) for c in data.get("cluster_ranges") or ()),
+            cluster_ranges=_cluster_ranges(data.get("cluster_ranges")),
         )
 
     def to_json(self) -> dict[str, Any]:

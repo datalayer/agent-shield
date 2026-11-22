@@ -237,6 +237,55 @@ def test_the_cluster_ranges_are_never_a_spec_hosts_and_star_refuses_them():
     assert BaseLayer.from_json(base.to_json()) == base
 
 
+def test_cluster_ranges_as_a_string_is_refused():
+    with pytest.raises(ValueError, match="cluster_ranges is a list of IPv4 networks"):
+        BaseLayer.from_json({"cluster_ranges": "203.0.113.0/24"})
+
+
+@pytest.mark.parametrize("bad", ["203.0.113.0/typo", "not-a-network", "203.0.113.300/24", ""])
+def test_a_malformed_cluster_range_is_refused(bad):
+    with pytest.raises(ValueError, match="is not an IPv4 network"):
+        BaseLayer.from_json({"cluster_ranges": ["10.42.0.0/16", bad]})
+
+
+def test_an_ipv6_cluster_range_is_refused_with_a_sentence():
+    with pytest.raises(ValueError, match="IPv6 network; the firewall's rules are IPv4 only"):
+        BaseLayer.from_json({"cluster_ranges": ["fd00:10:42::/56"]})
+
+
+def test_a_cluster_range_that_is_not_a_string_is_refused():
+    with pytest.raises(ValueError, match="as strings"):
+        BaseLayer.from_json({"cluster_ranges": [167772160]})
+
+
+def test_valid_cluster_ranges_are_normalized():
+    base = BaseLayer.from_json({"cluster_ranges": ["203.0.113.9/24", " 10.42.0.0/16 ", "198.51.100.7"]})
+    assert base.cluster_ranges == ("203.0.113.0/24", "10.42.0.0/16", "198.51.100.7/32")
+    assert BaseLayer.from_json({}).cluster_ranges == ()
+    assert BaseLayer.from_json({"cluster_ranges": None}).cluster_ranges == ()
+    compiled = compile_rules(
+        base, FirewallRules(egress=["svc.example.com:443"]), resolved={"svc.example.com": ["203.0.113.9"]}
+    )
+    assert compiled.non_public_only == ["svc.example.com"]
+
+
+def test_load_base_refuses_a_bad_cluster_range(tmp_path, monkeypatch, capsys):
+    import typer
+
+    from agent_shield.firewall.cli import BASE_ENV, load_base
+
+    path = tmp_path / "base.json"
+    path.write_text(json.dumps({"dns": ["10.96.0.10"], "cluster_ranges": ["203.0.113.0/typo"]}))
+    with pytest.raises(typer.Exit) as raised:
+        load_base(path)
+    assert raised.value.exit_code == 2
+    assert "is not a base layer: cluster_ranges: '203.0.113.0/typo' is not an IPv4 network" in capsys.readouterr().err
+    monkeypatch.setenv(BASE_ENV, json.dumps({"cluster_ranges": "203.0.113.0/24"}))
+    with pytest.raises(typer.Exit):
+        load_base(None)
+    assert f"{BASE_ENV} is not a base layer: cluster_ranges is a list" in capsys.readouterr().err
+
+
 def test_the_base_layers_private_endpoints_are_never_filtered():
     """The platform's own endpoints (a cluster database, a broker) are the base's, and private by design."""
     base = BaseLayer(
